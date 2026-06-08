@@ -39,7 +39,6 @@ import {
   saveMerchIdeas,
   saveMockupPromptRecords,
   saveProductListings,
-  saveReleasePlans,
   saveSocialRepurposingRecords,
 } from "@/lib/storage"
 import { normalizeAnalyticsRecord } from "@/lib/analytics-tracker"
@@ -48,7 +47,6 @@ import { normalizeEmailCampaignRecord } from "@/lib/email-campaigns"
 import { normalizeMockupPromptRecord } from "@/lib/mockup-prompts"
 import { normalizeMerchIdea } from "@/lib/merch-ideas"
 import { normalizeProductListing } from "@/lib/product-listings"
-import { normalizeReleasePlan } from "@/lib/release-planner"
 import { normalizeSocialRepurposingRecord } from "@/lib/social-repurposing"
 import {
   deletePromptById,
@@ -62,6 +60,12 @@ import {
   importPromptRuns as importPromptRunsToDb,
   upsertPromptRun,
 } from "@/lib/actions/prompt-runs"
+import {
+  deleteReleasePlanById,
+  getReleasePlans,
+  importReleasePlans as importReleasePlansToDb,
+  upsertReleasePlan,
+} from "@/lib/actions/release-plans"
 import {
   deleteYouTubeThumbnailById,
   getYouTubeThumbnails,
@@ -111,6 +115,7 @@ interface StoreContextValue {
   workflowRunsUseDatabase: boolean
   youtubePackagesUseDatabase: boolean
   youtubeThumbnailRecordsUseDatabase: boolean
+  releasePlansUseDatabase: boolean
   addPrompt: (p: Prompt) => Promise<void>
   updatePrompt: (p: Prompt) => Promise<void>
   deletePrompt: (id: string) => Promise<void>
@@ -149,10 +154,11 @@ interface StoreContextValue {
   updateSocialRepurposingRecord: (record: SocialRepurposingRecord) => void
   deleteSocialRepurposingRecord: (id: string) => void
   importSocialRepurposingRecords: (items: SocialRepurposingRecord[]) => void
-  addReleasePlan: (plan: ReleasePlan) => void
-  updateReleasePlan: (plan: ReleasePlan) => void
-  deleteReleasePlan: (id: string) => void
-  importReleasePlans: (items: ReleasePlan[]) => void
+  addReleasePlan: (plan: ReleasePlan) => Promise<void>
+  updateReleasePlan: (plan: ReleasePlan) => Promise<void>
+  deleteReleasePlan: (id: string) => Promise<void>
+  importReleasePlans: (items: ReleasePlan[]) => Promise<void>
+  reloadReleasePlans: () => Promise<void>
   addAnalyticsRecord: (record: AnalyticsRecord) => void
   updateAnalyticsRecord: (record: AnalyticsRecord) => void
   deleteAnalyticsRecord: (id: string) => void
@@ -222,6 +228,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [youtubePackagesUseDatabase, setYoutubePackagesUseDatabase] =
     React.useState(true)
   const [youtubeThumbnailRecordsUseDatabase, setYoutubeThumbnailRecordsUseDatabase] =
+    React.useState(true)
+  const [releasePlansUseDatabase, setReleasePlansUseDatabase] =
     React.useState(true)
 
   const reloadPrompts = React.useCallback(async () => {
@@ -306,6 +314,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       )
       setYoutubeThumbnailRecords(loadYouTubeThumbnailRecords())
       setYoutubeThumbnailRecordsUseDatabase(false)
+      throw error
+    }
+  }, [])
+
+  const reloadReleasePlans = React.useCallback(async () => {
+    try {
+      const next = await getReleasePlans()
+      setReleasePlans(next)
+      setReleasePlansUseDatabase(true)
+    } catch (error) {
+      console.error(
+        "[CreatorOps] Failed to reload release plans from database; using localStorage.",
+        error,
+      )
+      setReleasePlans(loadReleasePlans())
+      setReleasePlansUseDatabase(false)
       throw error
     }
   }, [])
@@ -412,7 +436,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setMerchIdeas(loadMerchIdeas())
       setProductListings(loadProductListings())
       setSocialRepurposingRecords(loadSocialRepurposingRecords())
-      setReleasePlans(loadReleasePlans())
+
+      try {
+        const dbReleasePlans = await getReleasePlans()
+        if (!cancelled) {
+          setReleasePlans(dbReleasePlans)
+          setReleasePlansUseDatabase(true)
+        }
+      } catch (error) {
+        console.error(
+          "[CreatorOps] Failed to load release plans from database; using localStorage.",
+          error,
+        )
+        if (!cancelled) {
+          setReleasePlans(loadReleasePlans())
+          setReleasePlansUseDatabase(false)
+        }
+      }
+
+      if (cancelled) return
+
       setAnalyticsRecords(loadAnalyticsRecords())
       setMockupPromptRecords(loadMockupPromptRecords())
       setEmailCampaignRecords(loadEmailCampaignRecords())
@@ -464,11 +507,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!hydrated) return
     saveSocialRepurposingRecords(socialRepurposingRecords)
   }, [socialRepurposingRecords, hydrated])
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveReleasePlans(releasePlans)
-  }, [releasePlans, hydrated])
 
   React.useEffect(() => {
     if (!hydrated) return
@@ -694,25 +732,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [],
   )
 
-  const addReleasePlan = React.useCallback((plan: ReleasePlan) => {
-    setReleasePlans((prev) => [plan, ...prev])
+  const addReleasePlan = React.useCallback(async (plan: ReleasePlan) => {
+    const saved = await upsertReleasePlan(plan)
+    setReleasePlans((prev) => [saved, ...prev.filter((x) => x.id !== saved.id)])
+    setReleasePlansUseDatabase(true)
   }, [])
 
-  const updateReleasePlan = React.useCallback((plan: ReleasePlan) => {
-    setReleasePlans((prev) => prev.map((x) => (x.id === plan.id ? plan : x)))
+  const updateReleasePlan = React.useCallback(async (plan: ReleasePlan) => {
+    const saved = await upsertReleasePlan(plan)
+    setReleasePlans((prev) => prev.map((x) => (x.id === saved.id ? saved : x)))
+    setReleasePlansUseDatabase(true)
   }, [])
 
-  const deleteReleasePlan = React.useCallback((id: string) => {
+  const deleteReleasePlan = React.useCallback(async (id: string) => {
+    await deleteReleasePlanById(id)
     setReleasePlans((prev) => prev.filter((x) => x.id !== id))
+    setReleasePlansUseDatabase(true)
   }, [])
 
-  const importReleasePlans = React.useCallback((items: ReleasePlan[]) => {
-    setReleasePlans((prev) =>
-      mergeById(
-        prev,
-        items.map((item) => normalizeReleasePlan(item)),
-      ),
-    )
+  const importReleasePlans = React.useCallback(async (items: ReleasePlan[]) => {
+    const merged = await importReleasePlansToDb(items)
+    setReleasePlans(merged)
+    setReleasePlansUseDatabase(true)
   }, [])
 
   const addAnalyticsRecord = React.useCallback((record: AnalyticsRecord) => {
@@ -882,6 +923,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     workflowRunsUseDatabase,
     youtubePackagesUseDatabase,
     youtubeThumbnailRecordsUseDatabase,
+    releasePlansUseDatabase,
     addPrompt,
     updatePrompt,
     deletePrompt,
@@ -924,6 +966,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     updateReleasePlan,
     deleteReleasePlan,
     importReleasePlans,
+    reloadReleasePlans,
     addAnalyticsRecord,
     updateAnalyticsRecord,
     deleteAnalyticsRecord,

@@ -224,6 +224,12 @@ export function loadReleasePlans(): ReleasePlan[] {
   }
 }
 
+/**
+ * Legacy localStorage persistence for release plans.
+ * AI Music Release Planner now reads/writes SQLite via server actions.
+ * Kept for rollback, JSON migration, and one-time "Migrate local release plans" flow.
+ * TODO: Remove once all environments use the database and migration is complete.
+ */
 export function saveReleasePlans(plans: ReleasePlan[]): void {
   if (typeof window === "undefined") return
   localStorage.setItem(RELEASE_PLANS_KEY, JSON.stringify(plans))

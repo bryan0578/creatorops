@@ -4,6 +4,7 @@ import * as React from "react"
 import { useSearchParams } from "next/navigation"
 import {
   Copy,
+  Database,
   Download,
   Search,
   Trash2,
@@ -15,7 +16,8 @@ import { useStore, createId } from "@/lib/store"
 import type { ReleasePlan, ReleasePlanFormValues } from "@/lib/types"
 import { RELEASE_PLANNER_GOALS } from "@/lib/types"
 import { copyToClipboard } from "@/lib/copy-to-clipboard"
-import { downloadJson } from "@/lib/storage"
+import { migrateLocalReleasePlansToDatabase } from "@/lib/actions/release-plans"
+import { downloadJson, loadReleasePlans } from "@/lib/storage"
 import {
   buildFinalReleasePlanText,
   buildReleasePlannerCompletedPrompt,
@@ -48,7 +50,6 @@ import {
 } from "@/components/ui/select"
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -186,10 +187,12 @@ export function ReleasePlannerTool() {
   const {
     prompts,
     releasePlans,
+    releasePlansUseDatabase,
     addReleasePlan,
     updateReleasePlan,
     deleteReleasePlan,
     importReleasePlans,
+    reloadReleasePlans,
   } = useStore()
 
   const [form, setForm] = React.useState<ReleasePlanFormValues>(
@@ -205,6 +208,7 @@ export function ReleasePlannerTool() {
   const [pendingDelete, setPendingDelete] = React.useState<ReleasePlan | null>(
     null,
   )
+  const [migrating, setMigrating] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const prefillApplied = React.useRef(false)
   const searchParams = useSearchParams()
@@ -278,7 +282,7 @@ export function ReleasePlannerTool() {
     }
   }
 
-  function handleSavePlan() {
+  async function handleSavePlan() {
     const now = Date.now()
     const plan = normalizeReleasePlan({
       id: editingId ?? createId("release"),
@@ -292,13 +296,17 @@ export function ReleasePlannerTool() {
       updatedAt: now,
     })
 
-    if (editingId) {
-      updateReleasePlan(plan)
-      toast.success("Release plan updated")
-    } else {
-      addReleasePlan(plan)
-      setEditingId(plan.id)
-      toast.success("Release plan saved")
+    try {
+      if (editingId) {
+        await updateReleasePlan(plan)
+        toast.success("Release plan updated")
+      } else {
+        await addReleasePlan(plan)
+        setEditingId(plan.id)
+        toast.success("Release plan saved")
+      }
+    } catch {
+      toast.error("Could not save release plan to database")
     }
   }
 
@@ -365,12 +373,16 @@ export function ReleasePlannerTool() {
     toast.success("Prefilled from artist CRM")
   }, [searchParams])
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!pendingDelete) return
-    deleteReleasePlan(pendingDelete.id)
-    if (editingId === pendingDelete.id) resetForm()
-    setPendingDelete(null)
-    toast.success("Release plan deleted")
+    try {
+      await deleteReleasePlan(pendingDelete.id)
+      if (editingId === pendingDelete.id) resetForm()
+      setPendingDelete(null)
+      toast.success("Release plan deleted")
+    } catch {
+      toast.error("Could not delete release plan from database")
+    }
   }
 
   function handleExport() {
@@ -382,20 +394,41 @@ export function ReleasePlannerTool() {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const parsed = JSON.parse(String(reader.result))
         const items = (Array.isArray(parsed) ? parsed : [parsed]).map((item) =>
           normalizeReleasePlan(item as ReleasePlan),
         )
-        importReleasePlans(items)
-        toast.success(`Imported ${items.length} release plan(s)`)
+        await importReleasePlans(items)
+        toast.success(`Imported ${items.length} release plan(s) to database`)
       } catch {
-        toast.error("Invalid JSON file")
+        toast.error("Invalid JSON file or import failed")
       }
     }
     reader.readAsText(file)
     e.target.value = ""
+  }
+
+  async function handleMigrateLocal() {
+    const local = loadReleasePlans()
+    if (local.length === 0) {
+      toast.error("No release plans found in localStorage to migrate")
+      return
+    }
+    setMigrating(true)
+    try {
+      const { migrated, total } =
+        await migrateLocalReleasePlansToDatabase(local)
+      await reloadReleasePlans()
+      toast.success(
+        `Migrated ${migrated} local release plan(s). Database now has ${total} total.`,
+      )
+    } catch {
+      toast.error("Migration to database failed")
+    } finally {
+      setMigrating(false)
+    }
   }
 
   const finalPlanText = buildFinalReleasePlanText(
@@ -641,6 +674,9 @@ export function ReleasePlannerTool() {
             <CardDescription>
               {releasePlans.length} saved plan
               {releasePlans.length === 1 ? "" : "s"}
+              {releasePlansUseDatabase
+                ? " · stored in SQLite"
+                : " · using localStorage fallback"}
             </CardDescription>
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
@@ -653,6 +689,16 @@ export function ReleasePlannerTool() {
                 className="pl-8"
               />
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleMigrateLocal}
+              disabled={migrating}
+            >
+              <Database className="size-4" />
+              {migrating ? "Migrating…" : "Migrate local"}
+            </Button>
             <Button type="button" variant="outline" size="sm" onClick={handleExport}>
               <Download className="size-4" />
               Export
@@ -822,10 +868,18 @@ export function ReleasePlannerTool() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPendingDelete(null)}
+            >
               Cancel
-            </DialogClose>
-            <Button variant="destructive" onClick={confirmDelete}>
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDelete}
+            >
               Delete
             </Button>
           </DialogFooter>

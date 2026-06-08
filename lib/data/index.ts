@@ -12,6 +12,13 @@
  */
 
 export {
+  normalizeReleasePlan,
+  prismaReleasePlanToReleasePlan,
+  releasePlanToPrismaCreate,
+  releasePlanToPrismaUpdate,
+} from "@/lib/data/release-plans"
+
+export {
   normalizeYouTubeThumbnailRecord,
   prismaYouTubeThumbnailToRecord,
   youtubeThumbnailToPrismaCreate,

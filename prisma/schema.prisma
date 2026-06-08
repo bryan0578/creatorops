@@ -190,3 +190,41 @@ model YouTubeThumbnail {
   @@index([videoTitle])
   @@index([updatedAt])
 }
+
+/// Saved release plan from the AI Music Release Planner.
+model ReleasePlan {
+  id                       String   @id
+  artistName               String   @default("")
+  songTitle                String   @default("")
+  genre                    String   @default("")
+  mood                     String   @default("")
+  releaseDate              String   @default("")
+  youtubeChannel           String   @default("")
+  targetAudience           String   @default("")
+  visualTheme              String   @default("")
+  merchTieIn               String   @default("")
+  streamingPlatforms       String   @default("")
+  primaryGoal              String   @default("")
+  notes                    String   @default("")
+  completedPrompt          String   @default("")
+  aiResponse               String   @default("")
+  finalStrategySummary     String   @default("")
+  finalTargetListener      String   @default("")
+  finalPreReleasePlan      String   @default("")
+  finalReleaseDayChecklist String   @default("")
+  finalPostReleasePlan     String   @default("")
+  finalYouTubePackage      String   @default("")
+  finalShortFormIdeas      String   @default("")
+  finalSocialCaptions      String   @default("")
+  finalEmailAnnouncement   String   @default("")
+  finalMerchTieIns         String   @default("")
+  finalPriorityTasks       String   @default("")
+  finalChecklist           String   @default("")
+  createdAt                DateTime
+  updatedAt                DateTime
+
+  @@index([artistName])
+  @@index([songTitle])
+  @@index([releaseDate])
+  @@index([updatedAt])
+}
