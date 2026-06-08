@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation"
 import {
   AlertCircle,
   Copy,
+  Database,
   Download,
   Play,
   Search,
@@ -15,10 +16,11 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
+import { migrateLocalPromptRunsToDatabase } from "@/lib/actions/prompt-runs"
 import { useStore, createId } from "@/lib/store"
 import type { Prompt, PromptRun } from "@/lib/types"
 import { copyToClipboard } from "@/lib/copy-to-clipboard"
-import { downloadJson } from "@/lib/storage"
+import { downloadJson, loadRuns } from "@/lib/storage"
 import {
   buildCompletedPrompt,
   getMissingVariables,
@@ -44,7 +46,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { RatingStars } from "@/components/rating-stars"
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -68,10 +69,12 @@ export function PromptRunner() {
     prompts,
     runs,
     hydrated,
+    runsUseDatabase,
     addRun,
     updateRun,
     deleteRun,
     importRuns,
+    reloadRuns,
   } = useStore()
 
   const [promptSearch, setPromptSearch] = React.useState("")
@@ -89,6 +92,7 @@ export function PromptRunner() {
   const [pendingDelete, setPendingDelete] = React.useState<PromptRun | null>(
     null,
   )
+  const [migrating, setMigrating] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   const selectedPrompt = prompts.find((p) => p.id === selectedPromptId) ?? null
@@ -185,7 +189,7 @@ export function PromptRunner() {
     }
   }
 
-  function handleSaveRun() {
+  async function handleSaveRun() {
     if (!selectedPrompt) return
 
     const now = Date.now()
@@ -204,13 +208,17 @@ export function PromptRunner() {
       updatedAt: now,
     }
 
-    if (editingRunId) {
-      updateRun(run)
-      toast.success("Run updated")
-    } else {
-      addRun(run)
-      setEditingRunId(run.id)
-      toast.success("Run saved")
+    try {
+      if (editingRunId) {
+        await updateRun(run)
+        toast.success("Run updated")
+      } else {
+        await addRun(run)
+        setEditingRunId(run.id)
+        toast.success("Run saved")
+      }
+    } catch {
+      toast.error("Could not save run to database")
     }
   }
 
@@ -224,14 +232,18 @@ export function PromptRunner() {
     toast.success("Run loaded")
   }
 
-  function confirmDeleteRun() {
+  async function confirmDeleteRun() {
     if (!pendingDelete) return
-    deleteRun(pendingDelete.id)
-    if (editingRunId === pendingDelete.id) {
-      setEditingRunId(null)
+    try {
+      await deleteRun(pendingDelete.id)
+      if (editingRunId === pendingDelete.id) {
+        setEditingRunId(null)
+      }
+      setPendingDelete(null)
+      toast.success("Run deleted")
+    } catch {
+      toast.error("Could not delete run from database")
     }
-    setPendingDelete(null)
-    toast.success("Run deleted")
   }
 
   function handleExportRuns() {
@@ -243,18 +255,39 @@ export function PromptRunner() {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const parsed = JSON.parse(String(reader.result))
         const items = Array.isArray(parsed) ? parsed : [parsed]
-        importRuns(items as PromptRun[])
-        toast.success(`Imported ${items.length} run(s)`)
+        await importRuns(items as PromptRun[])
+        toast.success(`Imported ${items.length} run(s) to database`)
       } catch {
-        toast.error("Invalid JSON file")
+        toast.error("Invalid JSON file or import failed")
       }
     }
     reader.readAsText(file)
     e.target.value = ""
+  }
+
+  async function handleMigrateLocal() {
+    const local = loadRuns()
+    if (local.length === 0) {
+      toast.error("No prompt runs found in localStorage to migrate")
+      return
+    }
+    setMigrating(true)
+    try {
+      const { migrated, total } =
+        await migrateLocalPromptRunsToDatabase(local)
+      await reloadRuns()
+      toast.success(
+        `Migrated ${migrated} local prompt run(s). Database now has ${total} total.`,
+      )
+    } catch {
+      toast.error("Migration to database failed")
+    } finally {
+      setMigrating(false)
+    }
   }
 
   if (hydrated && prompts.length === 0) {
@@ -521,6 +554,16 @@ export function PromptRunner() {
               type="button"
               variant="outline"
               size="sm"
+              onClick={handleMigrateLocal}
+              disabled={migrating}
+            >
+              <Database className="size-4" />
+              {migrating ? "Migrating…" : "Migrate local runs"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={() => fileInputRef.current?.click()}
             >
               <Upload className="size-4" />
@@ -539,6 +582,12 @@ export function PromptRunner() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {runs.length} saved run{runs.length === 1 ? "" : "s"}
+            {runsUseDatabase
+              ? " · stored in SQLite"
+              : " · using localStorage fallback"}
+          </p>
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -648,10 +697,18 @@ export function PromptRunner() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPendingDelete(null)}
+            >
               Cancel
-            </DialogClose>
-            <Button variant="destructive" onClick={confirmDeleteRun}>
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDeleteRun}
+            >
               Delete
             </Button>
           </DialogFooter>

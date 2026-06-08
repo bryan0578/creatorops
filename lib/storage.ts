@@ -93,6 +93,12 @@ export function loadRuns(): PromptRun[] {
   }
 }
 
+/**
+ * Legacy localStorage persistence for prompt runs.
+ * Prompt Runner now reads/writes SQLite via server actions.
+ * Kept for rollback, JSON migration, and one-time "Migrate local prompt runs" flow.
+ * TODO: Remove once all environments use the database and migration is complete.
+ */
 export function saveRuns(runs: PromptRun[]): void {
   if (typeof window === "undefined") return
   localStorage.setItem(RUNS_KEY, JSON.stringify(runs))

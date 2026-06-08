@@ -8,8 +8,17 @@
  * 4. Point lib/store.tsx hydration + CRUD at server actions
  * 5. Keep lib/storage.ts localStorage helpers for rollback/migration
  *
- * TODO: prompt runs, workflow runs, youtube packages, etc.
+ * TODO: workflow runs, youtube packages, etc.
  */
+
+export {
+  normalizePromptRun,
+  parseJsonRecord,
+  prismaPromptRunToPromptRun,
+  promptRunToPrismaCreate,
+  promptRunToPrismaUpdate,
+  stringifyJsonRecord,
+} from "@/lib/data/prompt-runs"
 
 export {
   normalizePrompt,

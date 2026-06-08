@@ -40,7 +40,6 @@ import {
   saveMockupPromptRecords,
   saveProductListings,
   saveReleasePlans,
-  saveRuns,
   saveSocialRepurposingRecords,
   saveWorkflowRuns,
   saveYouTubePackages,
@@ -62,6 +61,12 @@ import {
   importPrompts as importPromptsToDb,
   upsertPrompt,
 } from "@/lib/actions/prompts"
+import {
+  deletePromptRunById,
+  getPromptRuns,
+  importPromptRuns as importPromptRunsToDb,
+  upsertPromptRun,
+} from "@/lib/actions/prompt-runs"
 import {
   deleteWorkflowById,
   getWorkflows,
@@ -89,6 +94,7 @@ interface StoreContextValue {
   hydrated: boolean
   promptsUseDatabase: boolean
   workflowsUseDatabase: boolean
+  runsUseDatabase: boolean
   addPrompt: (p: Prompt) => Promise<void>
   updatePrompt: (p: Prompt) => Promise<void>
   deletePrompt: (id: string) => Promise<void>
@@ -100,10 +106,11 @@ interface StoreContextValue {
   importWorkflows: (items: Workflow[]) => Promise<void>
   reloadWorkflows: () => Promise<void>
   getPrompt: (id: string | null) => Prompt | undefined
-  addRun: (run: PromptRun) => void
-  updateRun: (run: PromptRun) => void
-  deleteRun: (id: string) => void
-  importRuns: (items: PromptRun[]) => void
+  addRun: (run: PromptRun) => Promise<void>
+  updateRun: (run: PromptRun) => Promise<void>
+  deleteRun: (id: string) => Promise<void>
+  importRuns: (items: PromptRun[]) => Promise<void>
+  reloadRuns: () => Promise<void>
   addWorkflowRun: (run: WorkflowRun) => void
   updateWorkflowRun: (run: WorkflowRun) => void
   deleteWorkflowRun: (id: string) => void
@@ -190,6 +197,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = React.useState(false)
   const [promptsUseDatabase, setPromptsUseDatabase] = React.useState(true)
   const [workflowsUseDatabase, setWorkflowsUseDatabase] = React.useState(true)
+  const [runsUseDatabase, setRunsUseDatabase] = React.useState(true)
 
   const reloadPrompts = React.useCallback(async () => {
     const next = await getPrompts()
@@ -209,6 +217,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       )
       setWorkflows(loadWorkflows())
       setWorkflowsUseDatabase(false)
+      throw error
+    }
+  }, [])
+
+  const reloadRuns = React.useCallback(async () => {
+    try {
+      const next = await getPromptRuns()
+      setRuns(next)
+      setRunsUseDatabase(true)
+    } catch (error) {
+      console.error(
+        "[CreatorOps] Failed to reload prompt runs from database; using localStorage.",
+        error,
+      )
+      setRuns(loadRuns())
+      setRunsUseDatabase(false)
       throw error
     }
   }, [])
@@ -255,7 +279,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       if (cancelled) return
 
-      setRuns(loadRuns())
+      try {
+        const dbRuns = await getPromptRuns()
+        if (!cancelled) {
+          setRuns(dbRuns)
+          setRunsUseDatabase(true)
+        }
+      } catch (error) {
+        console.error(
+          "[CreatorOps] Failed to load prompt runs from database; using localStorage.",
+          error,
+        )
+        if (!cancelled) {
+          setRuns(loadRuns())
+          setRunsUseDatabase(false)
+        }
+      }
+
+      if (cancelled) return
+
       setWorkflowRuns(loadWorkflowRuns())
       setYoutubePackages(loadYouTubePackages())
       setMerchIdeas(loadMerchIdeas())
@@ -277,13 +319,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Prompts and workflows persist in SQLite — see lib/actions/prompts.ts, lib/actions/workflows.ts
+  // Prompts, workflows, and prompt runs persist in SQLite — see lib/actions/*
   // TODO: Remove localStorage save effects as each module migrates to Prisma.
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveRuns(runs)
-  }, [runs, hydrated])
 
   React.useEffect(() => {
     if (!hydrated) return
@@ -393,20 +430,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [prompts],
   )
 
-  const addRun = React.useCallback((run: PromptRun) => {
-    setRuns((prev) => [run, ...prev])
+  const addRun = React.useCallback(async (run: PromptRun) => {
+    const saved = await upsertPromptRun(run)
+    setRuns((prev) => [saved, ...prev.filter((x) => x.id !== saved.id)])
+    setRunsUseDatabase(true)
   }, [])
 
-  const updateRun = React.useCallback((run: PromptRun) => {
-    setRuns((prev) => prev.map((x) => (x.id === run.id ? run : x)))
+  const updateRun = React.useCallback(async (run: PromptRun) => {
+    const saved = await upsertPromptRun(run)
+    setRuns((prev) => prev.map((x) => (x.id === saved.id ? saved : x)))
+    setRunsUseDatabase(true)
   }, [])
 
-  const deleteRun = React.useCallback((id: string) => {
+  const deleteRun = React.useCallback(async (id: string) => {
+    await deletePromptRunById(id)
     setRuns((prev) => prev.filter((x) => x.id !== id))
+    setRunsUseDatabase(true)
   }, [])
 
-  const importRuns = React.useCallback((items: PromptRun[]) => {
-    setRuns((prev) => mergeById(prev, items))
+  const importRuns = React.useCallback(async (items: PromptRun[]) => {
+    const merged = await importPromptRunsToDb(items)
+    setRuns(merged)
+    setRunsUseDatabase(true)
   }, [])
 
   const addWorkflowRun = React.useCallback((run: WorkflowRun) => {
@@ -700,6 +745,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     hydrated,
     promptsUseDatabase,
     workflowsUseDatabase,
+    runsUseDatabase,
     addPrompt,
     updatePrompt,
     deletePrompt,
@@ -715,6 +761,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     updateRun,
     deleteRun,
     importRuns,
+    reloadRuns,
     addWorkflowRun,
     updateWorkflowRun,
     deleteWorkflowRun,

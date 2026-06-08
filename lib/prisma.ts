@@ -37,6 +37,7 @@ const globalForPrisma = globalThis as unknown as {
 
 type PrismaWithDelegates = PrismaClient & {
   prompt?: unknown
+  promptRun?: unknown
   workflow?: unknown
   workflowStep?: unknown
 }
@@ -45,6 +46,7 @@ function isPrismaClientComplete(client: PrismaClient): boolean {
   const c = client as PrismaWithDelegates
   return (
     typeof c.prompt !== "undefined" &&
+    typeof c.promptRun !== "undefined" &&
     typeof c.workflow !== "undefined" &&
     typeof c.workflowStep !== "undefined"
   )
@@ -65,7 +67,7 @@ function createPrismaClient(): PrismaClient {
 
   if (!isPrismaClientComplete(client)) {
     throw new Error(
-      "Prisma Client is missing expected model delegates (prompt, workflow, workflowStep). Run `npx prisma generate` and `npm run db:migrate`, then restart the dev server.",
+      "Prisma Client is missing expected model delegates (prompt, promptRun, workflow, workflowStep). Run `npx prisma generate` and `npm run db:migrate`, then restart the dev server.",
     )
   }
 

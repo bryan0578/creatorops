@@ -1,5 +1,5 @@
 // CreatorOps Dashboard — Prisma schema
-// TODO: Migrate Workflow, PromptRun, and other modules using the same pattern as Prompt.
+// TODO: Migrate workflow runs and other modules using the same pattern as Prompt.
 
 generator client {
   provider = "prisma-client"
@@ -61,4 +61,22 @@ model WorkflowStep {
 
   @@index([workflowId])
   @@index([promptId])
+}
+
+/// Saved execution of a prompt in Prompt Runner.
+model PromptRun {
+  id              String   @id
+  promptId        String
+  promptName      String
+  category        String
+  /// JSON Record<string, string> — variable values filled at run time
+  inputValues     String   @default("{}")
+  completedPrompt String   @default("")
+  aiResponse      String   @default("")
+  notes           String   @default("")
+  createdAt       DateTime
+  updatedAt       DateTime
+
+  @@index([promptId])
+  @@index([updatedAt])
 }
