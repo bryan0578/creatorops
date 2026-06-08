@@ -318,3 +318,36 @@ model ArtistCampaign {
 
   @@index([artistId])
 }
+
+/// Saved merch concept from the Merch Idea Generator.
+model MerchIdea {
+  id                         String   @id
+  niche                      String   @default("")
+  audience                   String   @default("")
+  productType                String   @default("")
+  tone                       String   @default("")
+  noun                       String   @default("")
+  verb                       String   @default("")
+  designStyle                String   @default("")
+  storeType                  String   @default("")
+  primaryGoal                String   @default("")
+  completedPrompt            String   @default("")
+  aiResponse                 String   @default("")
+  selectedConceptName        String   @default("")
+  selectedSlogan             String   @default("")
+  selectedDesignDirection    String   @default("")
+  selectedProductTitle       String   @default("")
+  selectedProductDescription String   @default("")
+  selectedTags               String   @default("")
+  selectedMockupIdea         String   @default("")
+  selectedSocialCaption      String   @default("")
+  notes                      String   @default("")
+  createdAt                  DateTime
+  updatedAt                  DateTime
+
+  @@index([niche])
+  @@index([productType])
+  @@index([storeType])
+  @@index([selectedConceptName])
+  @@index([updatedAt])
+}

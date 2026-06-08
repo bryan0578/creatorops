@@ -8,8 +8,15 @@
  * 4. Point lib/store.tsx hydration + CRUD at server actions
  * 5. Keep lib/storage.ts localStorage helpers for rollback/migration
  *
- * TODO: merch ideas, product listings, etc.
+ * TODO: product listings, etc.
  */
+
+export {
+  normalizeMerchIdea,
+  prismaMerchIdeaToMerchIdea,
+  merchIdeaToPrismaCreate,
+  merchIdeaToPrismaUpdate,
+} from "@/lib/data/merch-ideas"
 
 export {
   normalizeArtistRecord,

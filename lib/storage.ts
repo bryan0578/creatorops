@@ -162,6 +162,12 @@ export function loadMerchIdeas(): MerchIdea[] {
   }
 }
 
+/**
+ * Legacy localStorage persistence for merch ideas.
+ * Merch Idea Generator now reads/writes SQLite via server actions.
+ * Kept for rollback, JSON migration, and one-time "Migrate local merch ideas" flow.
+ * TODO: Remove once all environments use the database and migration is complete.
+ */
 export function saveMerchIdeas(ideas: MerchIdea[]): void {
   if (typeof window === "undefined") return
   localStorage.setItem(MERCH_IDEAS_KEY, JSON.stringify(ideas))

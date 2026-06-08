@@ -35,7 +35,6 @@ import {
   mergeById,
   saveAnalyticsRecords,
   saveEmailCampaignRecords,
-  saveMerchIdeas,
   saveMockupPromptRecords,
   saveProductListings,
   saveSocialRepurposingRecords,
@@ -43,9 +42,14 @@ import {
 import { normalizeAnalyticsRecord } from "@/lib/analytics-tracker"
 import { normalizeEmailCampaignRecord } from "@/lib/email-campaigns"
 import { normalizeMockupPromptRecord } from "@/lib/mockup-prompts"
-import { normalizeMerchIdea } from "@/lib/merch-ideas"
 import { normalizeProductListing } from "@/lib/product-listings"
 import { normalizeSocialRepurposingRecord } from "@/lib/social-repurposing"
+import {
+  deleteMerchIdeaById,
+  getMerchIdeas,
+  importMerchIdeas as importMerchIdeasToDb,
+  upsertMerchIdea,
+} from "@/lib/actions/merch-ideas"
 import {
   deleteArtistById,
   getArtists,
@@ -121,6 +125,7 @@ interface StoreContextValue {
   youtubeThumbnailRecordsUseDatabase: boolean
   releasePlansUseDatabase: boolean
   artistRecordsUseDatabase: boolean
+  merchIdeasUseDatabase: boolean
   addPrompt: (p: Prompt) => Promise<void>
   updatePrompt: (p: Prompt) => Promise<void>
   deletePrompt: (id: string) => Promise<void>
@@ -147,10 +152,11 @@ interface StoreContextValue {
   deleteYouTubePackage: (id: string) => Promise<void>
   importYouTubePackages: (items: YouTubePackage[]) => Promise<void>
   reloadYouTubePackages: () => Promise<void>
-  addMerchIdea: (idea: MerchIdea) => void
-  updateMerchIdea: (idea: MerchIdea) => void
-  deleteMerchIdea: (id: string) => void
-  importMerchIdeas: (items: MerchIdea[]) => void
+  addMerchIdea: (idea: MerchIdea) => Promise<void>
+  updateMerchIdea: (idea: MerchIdea) => Promise<void>
+  deleteMerchIdea: (id: string) => Promise<void>
+  importMerchIdeas: (items: MerchIdea[]) => Promise<void>
+  reloadMerchIdeas: () => Promise<void>
   addProductListing: (listing: ProductListing) => void
   updateProductListing: (listing: ProductListing) => void
   deleteProductListing: (id: string) => void
@@ -238,6 +244,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [releasePlansUseDatabase, setReleasePlansUseDatabase] =
     React.useState(true)
   const [artistRecordsUseDatabase, setArtistRecordsUseDatabase] =
+    React.useState(true)
+  const [merchIdeasUseDatabase, setMerchIdeasUseDatabase] =
     React.useState(true)
 
   const reloadPrompts = React.useCallback(async () => {
@@ -358,6 +366,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  const reloadMerchIdeas = React.useCallback(async () => {
+    try {
+      const next = await getMerchIdeas()
+      setMerchIdeas(next)
+      setMerchIdeasUseDatabase(true)
+    } catch (error) {
+      console.error(
+        "[CreatorOps] Failed to reload merch ideas from database; using localStorage.",
+        error,
+      )
+      setMerchIdeas(loadMerchIdeas())
+      setMerchIdeasUseDatabase(false)
+      throw error
+    }
+  }, [])
+
   React.useEffect(() => {
     let cancelled = false
 
@@ -457,7 +481,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       if (cancelled) return
 
-      setMerchIdeas(loadMerchIdeas())
+      try {
+        const dbMerchIdeas = await getMerchIdeas()
+        if (!cancelled) {
+          setMerchIdeas(dbMerchIdeas)
+          setMerchIdeasUseDatabase(true)
+        }
+      } catch (error) {
+        console.error(
+          "[CreatorOps] Failed to load merch ideas from database; using localStorage.",
+          error,
+        )
+        if (!cancelled) {
+          setMerchIdeas(loadMerchIdeas())
+          setMerchIdeasUseDatabase(false)
+        }
+      }
+
+      if (cancelled) return
+
       setProductListings(loadProductListings())
       setSocialRepurposingRecords(loadSocialRepurposingRecords())
 
@@ -532,11 +574,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   // Core modules persist in SQLite — see lib/actions/*
   // TODO: Remove localStorage save effects as each module migrates to Prisma.
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveMerchIdeas(merchIdeas)
-  }, [merchIdeas, hydrated])
 
   React.useEffect(() => {
     if (!hydrated) return
@@ -691,25 +728,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [],
   )
 
-  const addMerchIdea = React.useCallback((idea: MerchIdea) => {
-    setMerchIdeas((prev) => [idea, ...prev])
+  const addMerchIdea = React.useCallback(async (idea: MerchIdea) => {
+    const saved = await upsertMerchIdea(idea)
+    setMerchIdeas((prev) => [saved, ...prev.filter((x) => x.id !== saved.id)])
+    setMerchIdeasUseDatabase(true)
   }, [])
 
-  const updateMerchIdea = React.useCallback((idea: MerchIdea) => {
-    setMerchIdeas((prev) => prev.map((x) => (x.id === idea.id ? idea : x)))
+  const updateMerchIdea = React.useCallback(async (idea: MerchIdea) => {
+    const saved = await upsertMerchIdea(idea)
+    setMerchIdeas((prev) => prev.map((x) => (x.id === saved.id ? saved : x)))
+    setMerchIdeasUseDatabase(true)
   }, [])
 
-  const deleteMerchIdea = React.useCallback((id: string) => {
+  const deleteMerchIdea = React.useCallback(async (id: string) => {
+    await deleteMerchIdeaById(id)
     setMerchIdeas((prev) => prev.filter((x) => x.id !== id))
+    setMerchIdeasUseDatabase(true)
   }, [])
 
-  const importMerchIdeas = React.useCallback((items: MerchIdea[]) => {
-    setMerchIdeas((prev) =>
-      mergeById(
-        prev,
-        items.map((item) => normalizeMerchIdea(item)),
-      ),
-    )
+  const importMerchIdeas = React.useCallback(async (items: MerchIdea[]) => {
+    const merged = await importMerchIdeasToDb(items)
+    setMerchIdeas(merged)
+    setMerchIdeasUseDatabase(true)
   }, [])
 
   const addProductListing = React.useCallback((listing: ProductListing) => {
@@ -964,6 +1004,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     youtubeThumbnailRecordsUseDatabase,
     releasePlansUseDatabase,
     artistRecordsUseDatabase,
+    merchIdeasUseDatabase,
     addPrompt,
     updatePrompt,
     deletePrompt,
@@ -994,6 +1035,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     updateMerchIdea,
     deleteMerchIdea,
     importMerchIdeas,
+    reloadMerchIdeas,
     addProductListing,
     updateProductListing,
     deleteProductListing,

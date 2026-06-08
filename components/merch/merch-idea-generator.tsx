@@ -3,6 +3,7 @@
 import * as React from "react"
 import {
   Copy,
+  Database,
   Download,
   Search,
   Trash2,
@@ -14,7 +15,8 @@ import { useStore, createId } from "@/lib/store"
 import type { MerchIdea, MerchIdeaFormValues } from "@/lib/types"
 import { MERCH_PRODUCT_TYPES, MERCH_STORE_TYPES } from "@/lib/types"
 import { copyToClipboard } from "@/lib/copy-to-clipboard"
-import { downloadJson } from "@/lib/storage"
+import { migrateLocalMerchIdeasToDatabase } from "@/lib/actions/merch-ideas"
+import { downloadJson, loadMerchIdeas } from "@/lib/storage"
 import {
   buildMerchIdeaCompletedPrompt,
   buildSelectedConceptText,
@@ -47,7 +49,6 @@ import {
 } from "@/components/ui/select"
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -166,10 +167,12 @@ export function MerchIdeaGenerator() {
   const {
     prompts,
     merchIdeas,
+    merchIdeasUseDatabase,
     addMerchIdea,
     updateMerchIdea,
     deleteMerchIdea,
     importMerchIdeas,
+    reloadMerchIdeas,
   } = useStore()
 
   const [form, setForm] = React.useState<MerchIdeaFormValues>(
@@ -184,6 +187,7 @@ export function MerchIdeaGenerator() {
   const [pendingDelete, setPendingDelete] = React.useState<MerchIdea | null>(
     null,
   )
+  const [migrating, setMigrating] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   const template = React.useMemo(
@@ -254,7 +258,7 @@ export function MerchIdeaGenerator() {
     }
   }
 
-  function handleSaveIdea() {
+  async function handleSaveIdea() {
     const now = Date.now()
     const idea = normalizeMerchIdea({
       id: editingId ?? createId("merch"),
@@ -268,13 +272,17 @@ export function MerchIdeaGenerator() {
       updatedAt: now,
     })
 
-    if (editingId) {
-      updateMerchIdea(idea)
-      toast.success("Merch idea updated")
-    } else {
-      addMerchIdea(idea)
-      setEditingId(idea.id)
-      toast.success("Merch idea saved")
+    try {
+      if (editingId) {
+        await updateMerchIdea(idea)
+        toast.success("Merch idea updated")
+      } else {
+        await addMerchIdea(idea)
+        setEditingId(idea.id)
+        toast.success("Merch idea saved")
+      }
+    } catch {
+      toast.error("Could not save merch idea to database")
     }
   }
 
@@ -299,12 +307,16 @@ export function MerchIdeaGenerator() {
     toast.success("Merch idea loaded")
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!pendingDelete) return
-    deleteMerchIdea(pendingDelete.id)
-    if (editingId === pendingDelete.id) resetForm()
-    setPendingDelete(null)
-    toast.success("Merch idea deleted")
+    try {
+      await deleteMerchIdea(pendingDelete.id)
+      if (editingId === pendingDelete.id) resetForm()
+      setPendingDelete(null)
+      toast.success("Merch idea deleted")
+    } catch {
+      toast.error("Could not delete merch idea from database")
+    }
   }
 
   function handleExport() {
@@ -316,20 +328,40 @@ export function MerchIdeaGenerator() {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const parsed = JSON.parse(String(reader.result))
         const items = (Array.isArray(parsed) ? parsed : [parsed]).map(
           (item) => normalizeMerchIdea(item as MerchIdea),
         )
-        importMerchIdeas(items)
-        toast.success(`Imported ${items.length} merch idea(s)`)
+        await importMerchIdeas(items)
+        toast.success(`Imported ${items.length} merch idea(s) to database`)
       } catch {
-        toast.error("Invalid JSON file")
+        toast.error("Invalid JSON file or import failed")
       }
     }
     reader.readAsText(file)
     e.target.value = ""
+  }
+
+  async function handleMigrateLocal() {
+    const local = loadMerchIdeas()
+    if (local.length === 0) {
+      toast.error("No merch ideas found in localStorage to migrate")
+      return
+    }
+    setMigrating(true)
+    try {
+      const { migrated, total } = await migrateLocalMerchIdeasToDatabase(local)
+      await reloadMerchIdeas()
+      toast.success(
+        `Migrated ${migrated} local merch idea(s). Database now has ${total} total.`,
+      )
+    } catch {
+      toast.error("Migration to database failed")
+    } finally {
+      setMigrating(false)
+    }
   }
 
   const selectedConceptText = buildSelectedConceptText(selectedConcept)
@@ -565,6 +597,9 @@ export function MerchIdeaGenerator() {
             <CardDescription>
               {merchIdeas.length} saved concept
               {merchIdeas.length === 1 ? "" : "s"}
+              {merchIdeasUseDatabase
+                ? " · stored in SQLite"
+                : " · using localStorage fallback"}
             </CardDescription>
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
@@ -577,6 +612,16 @@ export function MerchIdeaGenerator() {
                 className="pl-8"
               />
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleMigrateLocal}
+              disabled={migrating}
+            >
+              <Database className="size-4" />
+              {migrating ? "Migrating…" : "Migrate local"}
+            </Button>
             <Button type="button" variant="outline" size="sm" onClick={handleExport}>
               <Download className="size-4" />
               Export
@@ -735,10 +780,18 @@ export function MerchIdeaGenerator() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPendingDelete(null)}
+            >
               Cancel
-            </DialogClose>
-            <Button variant="destructive" onClick={confirmDelete}>
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDelete}
+            >
               Delete
             </Button>
           </DialogFooter>
