@@ -36,12 +36,16 @@ import {
   saveAnalyticsRecords,
   saveEmailCampaignRecords,
   saveMockupPromptRecords,
-  saveSocialRepurposingRecords,
 } from "@/lib/storage"
 import { normalizeAnalyticsRecord } from "@/lib/analytics-tracker"
 import { normalizeEmailCampaignRecord } from "@/lib/email-campaigns"
 import { normalizeMockupPromptRecord } from "@/lib/mockup-prompts"
-import { normalizeSocialRepurposingRecord } from "@/lib/social-repurposing"
+import {
+  deleteSocialRepurposingRecordById,
+  getSocialRepurposingRecords,
+  importSocialRepurposingRecords as importSocialRepurposingRecordsToDb,
+  upsertSocialRepurposingRecord,
+} from "@/lib/actions/social-repurposing"
 import {
   deleteMerchIdeaById,
   getMerchIdeas,
@@ -131,6 +135,7 @@ interface StoreContextValue {
   artistRecordsUseDatabase: boolean
   merchIdeasUseDatabase: boolean
   productListingsUseDatabase: boolean
+  socialRepurposingRecordsUseDatabase: boolean
   addPrompt: (p: Prompt) => Promise<void>
   updatePrompt: (p: Prompt) => Promise<void>
   deletePrompt: (id: string) => Promise<void>
@@ -167,10 +172,11 @@ interface StoreContextValue {
   deleteProductListing: (id: string) => Promise<void>
   importProductListings: (items: ProductListing[]) => Promise<void>
   reloadProductListings: () => Promise<void>
-  addSocialRepurposingRecord: (record: SocialRepurposingRecord) => void
-  updateSocialRepurposingRecord: (record: SocialRepurposingRecord) => void
-  deleteSocialRepurposingRecord: (id: string) => void
-  importSocialRepurposingRecords: (items: SocialRepurposingRecord[]) => void
+  addSocialRepurposingRecord: (record: SocialRepurposingRecord) => Promise<void>
+  updateSocialRepurposingRecord: (record: SocialRepurposingRecord) => Promise<void>
+  deleteSocialRepurposingRecord: (id: string) => Promise<void>
+  importSocialRepurposingRecords: (items: SocialRepurposingRecord[]) => Promise<void>
+  reloadSocialRepurposingRecords: () => Promise<void>
   addReleasePlan: (plan: ReleasePlan) => Promise<void>
   updateReleasePlan: (plan: ReleasePlan) => Promise<void>
   deleteReleasePlan: (id: string) => Promise<void>
@@ -254,6 +260,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [merchIdeasUseDatabase, setMerchIdeasUseDatabase] =
     React.useState(true)
   const [productListingsUseDatabase, setProductListingsUseDatabase] =
+    React.useState(true)
+  const [socialRepurposingRecordsUseDatabase, setSocialRepurposingRecordsUseDatabase] =
     React.useState(true)
 
   const reloadPrompts = React.useCallback(async () => {
@@ -406,6 +414,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  const reloadSocialRepurposingRecords = React.useCallback(async () => {
+    try {
+      const next = await getSocialRepurposingRecords()
+      setSocialRepurposingRecords(next)
+      setSocialRepurposingRecordsUseDatabase(true)
+    } catch (error) {
+      console.error(
+        "[CreatorOps] Failed to reload social repurposing records from database; using localStorage.",
+        error,
+      )
+      setSocialRepurposingRecords(loadSocialRepurposingRecords())
+      setSocialRepurposingRecordsUseDatabase(false)
+      throw error
+    }
+  }, [])
+
   React.useEffect(() => {
     let cancelled = false
 
@@ -543,7 +567,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       if (cancelled) return
 
-      setSocialRepurposingRecords(loadSocialRepurposingRecords())
+      try {
+        const dbSocialRecords = await getSocialRepurposingRecords()
+        if (!cancelled) {
+          setSocialRepurposingRecords(dbSocialRecords)
+          setSocialRepurposingRecordsUseDatabase(true)
+        }
+      } catch (error) {
+        console.error(
+          "[CreatorOps] Failed to load social repurposing records from database; using localStorage.",
+          error,
+        )
+        if (!cancelled) {
+          setSocialRepurposingRecords(loadSocialRepurposingRecords())
+          setSocialRepurposingRecordsUseDatabase(false)
+        }
+      }
+
+      if (cancelled) return
 
       try {
         const dbReleasePlans = await getReleasePlans()
@@ -616,11 +657,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   // Core modules persist in SQLite — see lib/actions/*
   // TODO: Remove localStorage save effects as each module migrates to Prisma.
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveSocialRepurposingRecords(socialRepurposingRecords)
-  }, [socialRepurposingRecords, hydrated])
 
   React.useEffect(() => {
     if (!hydrated) return
@@ -817,33 +853,39 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   )
 
   const addSocialRepurposingRecord = React.useCallback(
-    (record: SocialRepurposingRecord) => {
-      setSocialRepurposingRecords((prev) => [record, ...prev])
+    async (record: SocialRepurposingRecord) => {
+      const saved = await upsertSocialRepurposingRecord(record)
+      setSocialRepurposingRecords((prev) => [
+        saved,
+        ...prev.filter((x) => x.id !== saved.id),
+      ])
+      setSocialRepurposingRecordsUseDatabase(true)
     },
     [],
   )
 
   const updateSocialRepurposingRecord = React.useCallback(
-    (record: SocialRepurposingRecord) => {
+    async (record: SocialRepurposingRecord) => {
+      const saved = await upsertSocialRepurposingRecord(record)
       setSocialRepurposingRecords((prev) =>
-        prev.map((x) => (x.id === record.id ? record : x)),
+        prev.map((x) => (x.id === saved.id ? saved : x)),
       )
+      setSocialRepurposingRecordsUseDatabase(true)
     },
     [],
   )
 
-  const deleteSocialRepurposingRecord = React.useCallback((id: string) => {
+  const deleteSocialRepurposingRecord = React.useCallback(async (id: string) => {
+    await deleteSocialRepurposingRecordById(id)
     setSocialRepurposingRecords((prev) => prev.filter((x) => x.id !== id))
+    setSocialRepurposingRecordsUseDatabase(true)
   }, [])
 
   const importSocialRepurposingRecords = React.useCallback(
-    (items: SocialRepurposingRecord[]) => {
-      setSocialRepurposingRecords((prev) =>
-        mergeById(
-          prev,
-          items.map((item) => normalizeSocialRepurposingRecord(item)),
-        ),
-      )
+    async (items: SocialRepurposingRecord[]) => {
+      const merged = await importSocialRepurposingRecordsToDb(items)
+      setSocialRepurposingRecords(merged)
+      setSocialRepurposingRecordsUseDatabase(true)
     },
     [],
   )
@@ -1047,6 +1089,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     artistRecordsUseDatabase,
     merchIdeasUseDatabase,
     productListingsUseDatabase,
+    socialRepurposingRecordsUseDatabase,
     addPrompt,
     updatePrompt,
     deletePrompt,
@@ -1087,6 +1130,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     updateSocialRepurposingRecord,
     deleteSocialRepurposingRecord,
     importSocialRepurposingRecords,
+    reloadSocialRepurposingRecords,
     addReleasePlan,
     updateReleasePlan,
     deleteReleasePlan,

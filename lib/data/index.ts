@@ -8,8 +8,15 @@
  * 4. Point lib/store.tsx hydration + CRUD at server actions
  * 5. Keep lib/storage.ts localStorage helpers for rollback/migration
  *
- * TODO: social repurposing, etc.
+ * TODO: analytics, etc.
  */
+
+export {
+  normalizeSocialRepurposingRecord,
+  prismaSocialRepurposingToSocialRepurposingRecord,
+  socialRepurposingToPrismaCreate,
+  socialRepurposingToPrismaUpdate,
+} from "@/lib/data/social-repurposing"
 
 export {
   normalizeProductListing,

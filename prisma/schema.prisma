@@ -388,3 +388,40 @@ model ProductListing {
   @@index([finalCollection])
   @@index([updatedAt])
 }
+
+/// Saved social repurposing campaign from the Social Repurposing Engine.
+model SocialRepurposing {
+  id                       String   @id
+  campaignName             String   @default("")
+  sourceContent            String   @default("")
+  businessArea             String   @default("")
+  goal                     String   @default("")
+  audience                 String   @default("")
+  tone                     String   @default("")
+  platforms                String   @default("")
+  callToAction             String   @default("")
+  productOrReleaseLink     String   @default("")
+  contentType              String   @default("")
+  completedPrompt          String   @default("")
+  aiResponse               String   @default("")
+  finalCoreMessage         String   @default("")
+  finalTikTokCaption       String   @default("")
+  finalInstagramCaption    String   @default("")
+  finalXPost               String   @default("")
+  finalYouTubeShortsIdea    String   @default("")
+  finalYouTubeCommunityPost String  @default("")
+  finalEmailSnippet        String   @default("")
+  finalHashtags            String   @default("")
+  finalCTA                 String   @default("")
+  notes                    String   @default("")
+  createdAt                DateTime
+  updatedAt                DateTime
+
+  @@index([campaignName])
+  @@index([contentType])
+  @@index([businessArea])
+  @@index([goal])
+  @@index([platforms])
+  @@index([finalCoreMessage])
+  @@index([updatedAt])
+}

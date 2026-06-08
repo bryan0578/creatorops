@@ -4,6 +4,7 @@ import * as React from "react"
 import { useSearchParams } from "next/navigation"
 import {
   Copy,
+  Database,
   Download,
   Search,
   Trash2,
@@ -18,7 +19,8 @@ import type {
 } from "@/lib/types"
 import { SOCIAL_BUSINESS_AREAS, SOCIAL_CONTENT_TYPES } from "@/lib/types"
 import { copyToClipboard } from "@/lib/copy-to-clipboard"
-import { downloadJson } from "@/lib/storage"
+import { migrateLocalSocialRepurposingRecordsToDatabase } from "@/lib/actions/social-repurposing"
+import { downloadJson, loadSocialRepurposingRecords } from "@/lib/storage"
 import {
   buildFinalContentText,
   buildSocialRepurposingCompletedPrompt,
@@ -51,7 +53,6 @@ import {
 } from "@/components/ui/select"
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -169,10 +170,12 @@ export function SocialRepurposingEngine() {
   const {
     prompts,
     socialRepurposingRecords,
+    socialRepurposingRecordsUseDatabase,
     addSocialRepurposingRecord,
     updateSocialRepurposingRecord,
     deleteSocialRepurposingRecord,
     importSocialRepurposingRecords,
+    reloadSocialRepurposingRecords,
   } = useStore()
 
   const [form, setForm] = React.useState<SocialRepurposingFormValues>(
@@ -186,6 +189,7 @@ export function SocialRepurposingEngine() {
   const [recordSearch, setRecordSearch] = React.useState("")
   const [pendingDelete, setPendingDelete] =
     React.useState<SocialRepurposingRecord | null>(null)
+  const [migrating, setMigrating] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const prefillApplied = React.useRef(false)
   const searchParams = useSearchParams()
@@ -261,7 +265,7 @@ export function SocialRepurposingEngine() {
     }
   }
 
-  function handleSaveRecord() {
+  async function handleSaveRecord() {
     const now = Date.now()
     const record = normalizeSocialRepurposingRecord({
       id: editingId ?? createId("social"),
@@ -276,13 +280,17 @@ export function SocialRepurposingEngine() {
       updatedAt: now,
     })
 
-    if (editingId) {
-      updateSocialRepurposingRecord(record)
-      toast.success("Social content updated")
-    } else {
-      addSocialRepurposingRecord(record)
-      setEditingId(record.id)
-      toast.success("Social content saved")
+    try {
+      if (editingId) {
+        await updateSocialRepurposingRecord(record)
+        toast.success("Social content updated")
+      } else {
+        await addSocialRepurposingRecord(record)
+        setEditingId(record.id)
+        toast.success("Social content saved")
+      }
+    } catch {
+      toast.error("Could not save social content to database")
     }
   }
 
@@ -339,12 +347,16 @@ export function SocialRepurposingEngine() {
     toast.success("Prefilled from artist CRM")
   }, [searchParams])
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!pendingDelete) return
-    deleteSocialRepurposingRecord(pendingDelete.id)
-    if (editingId === pendingDelete.id) resetForm()
-    setPendingDelete(null)
-    toast.success("Social content deleted")
+    try {
+      await deleteSocialRepurposingRecord(pendingDelete.id)
+      if (editingId === pendingDelete.id) resetForm()
+      setPendingDelete(null)
+      toast.success("Social content deleted")
+    } catch {
+      toast.error("Could not delete social content from database")
+    }
   }
 
   function handleExport() {
@@ -359,21 +371,42 @@ export function SocialRepurposingEngine() {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const parsed = JSON.parse(String(reader.result))
         const items = (Array.isArray(parsed) ? parsed : [parsed]).map(
           (item) =>
             normalizeSocialRepurposingRecord(item as SocialRepurposingRecord),
         )
-        importSocialRepurposingRecords(items)
-        toast.success(`Imported ${items.length} record(s)`)
+        await importSocialRepurposingRecords(items)
+        toast.success(`Imported ${items.length} record(s) to database`)
       } catch {
-        toast.error("Invalid JSON file")
+        toast.error("Invalid JSON file or import failed")
       }
     }
     reader.readAsText(file)
     e.target.value = ""
+  }
+
+  async function handleMigrateLocal() {
+    const local = loadSocialRepurposingRecords()
+    if (local.length === 0) {
+      toast.error("No social repurposing records found in localStorage to migrate")
+      return
+    }
+    setMigrating(true)
+    try {
+      const { migrated, total } =
+        await migrateLocalSocialRepurposingRecordsToDatabase(local)
+      await reloadSocialRepurposingRecords()
+      toast.success(
+        `Migrated ${migrated} local record(s). Database now has ${total} total.`,
+      )
+    } catch {
+      toast.error("Migration to database failed")
+    } finally {
+      setMigrating(false)
+    }
   }
 
   const finalContentText = buildFinalContentText(
@@ -639,6 +672,9 @@ export function SocialRepurposingEngine() {
             <CardDescription>
               {socialRepurposingRecords.length} saved record
               {socialRepurposingRecords.length === 1 ? "" : "s"}
+              {socialRepurposingRecordsUseDatabase
+                ? " · stored in SQLite"
+                : " · using localStorage fallback"}
             </CardDescription>
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
@@ -651,6 +687,16 @@ export function SocialRepurposingEngine() {
                 className="pl-8"
               />
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleMigrateLocal}
+              disabled={migrating}
+            >
+              <Database className="size-4" />
+              {migrating ? "Migrating…" : "Migrate local"}
+            </Button>
             <Button type="button" variant="outline" size="sm" onClick={handleExport}>
               <Download className="size-4" />
               Export
@@ -817,10 +863,18 @@ export function SocialRepurposingEngine() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPendingDelete(null)}
+            >
               Cancel
-            </DialogClose>
-            <Button variant="destructive" onClick={confirmDelete}>
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDelete}
+            >
               Delete
             </Button>
           </DialogFooter>

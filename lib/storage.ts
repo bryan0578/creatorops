@@ -216,6 +216,12 @@ export function loadSocialRepurposingRecords(): SocialRepurposingRecord[] {
   }
 }
 
+/**
+ * Legacy localStorage persistence for social repurposing records.
+ * Social Repurposing Engine now reads/writes SQLite via server actions.
+ * Kept for rollback, JSON migration, and one-time "Migrate local social repurposing" flow.
+ * TODO: Remove once all environments use the database and migration is complete.
+ */
 export function saveSocialRepurposingRecords(
   records: SocialRepurposingRecord[],
 ): void {
