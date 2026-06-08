@@ -152,3 +152,41 @@ model YouTubePackage {
   @@index([artistName])
   @@index([updatedAt])
 }
+
+/// Saved YouTube thumbnail record from the YouTube Thumbnail Generator.
+model YouTubeThumbnail {
+  id                  String   @id
+  trackTitle          String   @default("")
+  artistName          String   @default("")
+  videoTitle          String   @default("")
+  contentFormat       String   @default("")
+  videoType           String   @default("")
+  genre               String   @default("")
+  mood                String   @default("")
+  targetAudience      String   @default("")
+  visualTheme         String   @default("")
+  hookAngle           String   @default("")
+  mainSubject         String   @default("")
+  textOverlay         String   @default("")
+  colorDirection      String   @default("")
+  brandingNotes       String   @default("")
+  referenceStyle      String   @default("")
+  ctaGoal             String   @default("")
+  notes               String   @default("")
+  completedPrompt     String   @default("")
+  aiResponse          String   @default("")
+  finalConcept        String   @default("")
+  finalTextOverlay    String   @default("")
+  finalComposition    String   @default("")
+  finalColorDirection String   @default("")
+  finalImagePrompt    String   @default("")
+  finalAltVariation   String   @default("")
+  finalShortsVersion  String   @default("")
+  createdAt           DateTime
+  updatedAt           DateTime
+
+  @@index([trackTitle])
+  @@index([artistName])
+  @@index([videoTitle])
+  @@index([updatedAt])
+}

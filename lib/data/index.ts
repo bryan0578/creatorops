@@ -12,6 +12,13 @@
  */
 
 export {
+  normalizeYouTubeThumbnailRecord,
+  prismaYouTubeThumbnailToRecord,
+  youtubeThumbnailToPrismaCreate,
+  youtubeThumbnailToPrismaUpdate,
+} from "@/lib/data/youtube-thumbnails"
+
+export {
   normalizeYouTubePackage,
   prismaYouTubePackageToYouTubePackage,
   youtubePackageToPrismaCreate,

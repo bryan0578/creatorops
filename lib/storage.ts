@@ -326,6 +326,12 @@ export function loadYouTubeThumbnailRecords(): YouTubeThumbnailRecord[] {
   }
 }
 
+/**
+ * Legacy localStorage persistence for YouTube thumbnail records.
+ * YouTube Thumbnail Generator now reads/writes SQLite via server actions.
+ * Kept for rollback, JSON migration, and one-time "Migrate local YouTube thumbnails" flow.
+ * TODO: Remove once all environments use the database and migration is complete.
+ */
 export function saveYouTubeThumbnailRecords(
   records: YouTubeThumbnailRecord[],
 ): void {

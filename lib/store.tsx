@@ -41,7 +41,6 @@ import {
   saveProductListings,
   saveReleasePlans,
   saveSocialRepurposingRecords,
-  saveYouTubeThumbnailRecords,
 } from "@/lib/storage"
 import { normalizeAnalyticsRecord } from "@/lib/analytics-tracker"
 import { normalizeArtistRecord } from "@/lib/artist-crm"
@@ -51,7 +50,6 @@ import { normalizeMerchIdea } from "@/lib/merch-ideas"
 import { normalizeProductListing } from "@/lib/product-listings"
 import { normalizeReleasePlan } from "@/lib/release-planner"
 import { normalizeSocialRepurposingRecord } from "@/lib/social-repurposing"
-import { normalizeYouTubeThumbnailRecord } from "@/lib/youtube-thumbnails"
 import {
   deletePromptById,
   getPrompts,
@@ -64,6 +62,12 @@ import {
   importPromptRuns as importPromptRunsToDb,
   upsertPromptRun,
 } from "@/lib/actions/prompt-runs"
+import {
+  deleteYouTubeThumbnailById,
+  getYouTubeThumbnails,
+  importYouTubeThumbnails as importYouTubeThumbnailsToDb,
+  upsertYouTubeThumbnail,
+} from "@/lib/actions/youtube-thumbnails"
 import {
   deleteYouTubePackageById,
   getYouTubePackages,
@@ -106,6 +110,7 @@ interface StoreContextValue {
   runsUseDatabase: boolean
   workflowRunsUseDatabase: boolean
   youtubePackagesUseDatabase: boolean
+  youtubeThumbnailRecordsUseDatabase: boolean
   addPrompt: (p: Prompt) => Promise<void>
   updatePrompt: (p: Prompt) => Promise<void>
   deletePrompt: (id: string) => Promise<void>
@@ -164,10 +169,11 @@ interface StoreContextValue {
   updateArtistRecord: (record: ArtistRecord) => void
   deleteArtistRecord: (id: string) => void
   importArtistRecords: (items: ArtistRecord[]) => void
-  addYouTubeThumbnailRecord: (record: YouTubeThumbnailRecord) => void
-  updateYouTubeThumbnailRecord: (record: YouTubeThumbnailRecord) => void
-  deleteYouTubeThumbnailRecord: (id: string) => void
-  importYouTubeThumbnailRecords: (items: YouTubeThumbnailRecord[]) => void
+  addYouTubeThumbnailRecord: (record: YouTubeThumbnailRecord) => Promise<void>
+  updateYouTubeThumbnailRecord: (record: YouTubeThumbnailRecord) => Promise<void>
+  deleteYouTubeThumbnailRecord: (id: string) => Promise<void>
+  importYouTubeThumbnailRecords: (items: YouTubeThumbnailRecord[]) => Promise<void>
+  reloadYouTubeThumbnailRecords: () => Promise<void>
 }
 
 const StoreContext = React.createContext<StoreContextValue | null>(null)
@@ -214,6 +220,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [workflowRunsUseDatabase, setWorkflowRunsUseDatabase] =
     React.useState(true)
   const [youtubePackagesUseDatabase, setYoutubePackagesUseDatabase] =
+    React.useState(true)
+  const [youtubeThumbnailRecordsUseDatabase, setYoutubeThumbnailRecordsUseDatabase] =
     React.useState(true)
 
   const reloadPrompts = React.useCallback(async () => {
@@ -282,6 +290,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       )
       setYoutubePackages(loadYouTubePackages())
       setYoutubePackagesUseDatabase(false)
+      throw error
+    }
+  }, [])
+
+  const reloadYouTubeThumbnailRecords = React.useCallback(async () => {
+    try {
+      const next = await getYouTubeThumbnails()
+      setYoutubeThumbnailRecords(next)
+      setYoutubeThumbnailRecordsUseDatabase(true)
+    } catch (error) {
+      console.error(
+        "[CreatorOps] Failed to reload YouTube thumbnails from database; using localStorage.",
+        error,
+      )
+      setYoutubeThumbnailRecords(loadYouTubeThumbnailRecords())
+      setYoutubeThumbnailRecordsUseDatabase(false)
       throw error
     }
   }, [])
@@ -393,7 +417,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setMockupPromptRecords(loadMockupPromptRecords())
       setEmailCampaignRecords(loadEmailCampaignRecords())
       setArtistRecords(loadArtistRecords())
-      setYoutubeThumbnailRecords(loadYouTubeThumbnailRecords())
+
+      if (cancelled) return
+
+      try {
+        const dbThumbnails = await getYouTubeThumbnails()
+        if (!cancelled) {
+          setYoutubeThumbnailRecords(dbThumbnails)
+          setYoutubeThumbnailRecordsUseDatabase(true)
+        }
+      } catch (error) {
+        console.error(
+          "[CreatorOps] Failed to load YouTube thumbnails from database; using localStorage.",
+          error,
+        )
+        if (!cancelled) {
+          setYoutubeThumbnailRecords(loadYouTubeThumbnailRecords())
+          setYoutubeThumbnailRecordsUseDatabase(false)
+        }
+      }
+
       setHydrated(true)
     }
 
@@ -446,11 +489,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!hydrated) return
     saveArtistRecords(artistRecords)
   }, [artistRecords, hydrated])
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveYouTubeThumbnailRecords(youtubeThumbnailRecords)
-  }, [youtubeThumbnailRecords, hydrated])
 
   const addPrompt = React.useCallback(async (p: Prompt) => {
     const saved = await upsertPrompt(p)
@@ -785,33 +823,39 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const addYouTubeThumbnailRecord = React.useCallback(
-    (record: YouTubeThumbnailRecord) => {
-      setYoutubeThumbnailRecords((prev) => [record, ...prev])
+    async (record: YouTubeThumbnailRecord) => {
+      const saved = await upsertYouTubeThumbnail(record)
+      setYoutubeThumbnailRecords((prev) => [
+        saved,
+        ...prev.filter((x) => x.id !== saved.id),
+      ])
+      setYoutubeThumbnailRecordsUseDatabase(true)
     },
     [],
   )
 
   const updateYouTubeThumbnailRecord = React.useCallback(
-    (record: YouTubeThumbnailRecord) => {
+    async (record: YouTubeThumbnailRecord) => {
+      const saved = await upsertYouTubeThumbnail(record)
       setYoutubeThumbnailRecords((prev) =>
-        prev.map((x) => (x.id === record.id ? record : x)),
+        prev.map((x) => (x.id === saved.id ? saved : x)),
       )
+      setYoutubeThumbnailRecordsUseDatabase(true)
     },
     [],
   )
 
-  const deleteYouTubeThumbnailRecord = React.useCallback((id: string) => {
+  const deleteYouTubeThumbnailRecord = React.useCallback(async (id: string) => {
+    await deleteYouTubeThumbnailById(id)
     setYoutubeThumbnailRecords((prev) => prev.filter((x) => x.id !== id))
+    setYoutubeThumbnailRecordsUseDatabase(true)
   }, [])
 
   const importYouTubeThumbnailRecords = React.useCallback(
-    (items: YouTubeThumbnailRecord[]) => {
-      setYoutubeThumbnailRecords((prev) =>
-        mergeById(
-          prev,
-          items.map((item) => normalizeYouTubeThumbnailRecord(item)),
-        ),
-      )
+    async (items: YouTubeThumbnailRecord[]) => {
+      const merged = await importYouTubeThumbnailsToDb(items)
+      setYoutubeThumbnailRecords(merged)
+      setYoutubeThumbnailRecordsUseDatabase(true)
     },
     [],
   )
@@ -837,6 +881,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     runsUseDatabase,
     workflowRunsUseDatabase,
     youtubePackagesUseDatabase,
+    youtubeThumbnailRecordsUseDatabase,
     addPrompt,
     updatePrompt,
     deletePrompt,
@@ -899,6 +944,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     updateYouTubeThumbnailRecord,
     deleteYouTubeThumbnailRecord,
     importYouTubeThumbnailRecords,
+    reloadYouTubeThumbnailRecords,
   }
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>

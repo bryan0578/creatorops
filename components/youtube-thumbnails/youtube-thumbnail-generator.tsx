@@ -4,6 +4,7 @@ import * as React from "react"
 import { useSearchParams } from "next/navigation"
 import {
   Copy,
+  Database,
   Download,
   Search,
   Trash2,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
+import { migrateLocalYouTubeThumbnailsToDatabase } from "@/lib/actions/youtube-thumbnails"
 import { useStore, createId } from "@/lib/store"
 import type {
   YouTubeThumbnailFormValues,
@@ -22,7 +24,7 @@ import {
   THUMBNAIL_VIDEO_TYPES,
 } from "@/lib/types"
 import { copyToClipboard } from "@/lib/copy-to-clipboard"
-import { downloadJson } from "@/lib/storage"
+import { downloadJson, loadYouTubeThumbnailRecords } from "@/lib/storage"
 import {
   buildFinalThumbnailText,
   buildYouTubeThumbnailCompletedPrompt,
@@ -57,7 +59,6 @@ import {
 } from "@/components/ui/select"
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -167,10 +168,12 @@ export function YouTubeThumbnailGenerator() {
   const {
     prompts,
     youtubeThumbnailRecords,
+    youtubeThumbnailRecordsUseDatabase,
     addYouTubeThumbnailRecord,
     updateYouTubeThumbnailRecord,
     deleteYouTubeThumbnailRecord,
     importYouTubeThumbnailRecords,
+    reloadYouTubeThumbnailRecords,
   } = useStore()
 
   const [form, setForm] = React.useState<YouTubeThumbnailFormValues>(
@@ -185,6 +188,7 @@ export function YouTubeThumbnailGenerator() {
   const [pendingDelete, setPendingDelete] =
     React.useState<YouTubeThumbnailRecord | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const [migrating, setMigrating] = React.useState(false)
   const prefillApplied = React.useRef(false)
   const searchParams = useSearchParams()
 
@@ -261,7 +265,7 @@ export function YouTubeThumbnailGenerator() {
     }
   }
 
-  function handleSave() {
+  async function handleSave() {
     const now = Date.now()
     const record = normalizeYouTubeThumbnailRecord({
       id: editingId ?? createId("thumbnail"),
@@ -276,13 +280,17 @@ export function YouTubeThumbnailGenerator() {
       updatedAt: now,
     })
 
-    if (editingId) {
-      updateYouTubeThumbnailRecord(record)
-      toast.success("Thumbnail updated")
-    } else {
-      addYouTubeThumbnailRecord(record)
-      setEditingId(record.id)
-      toast.success("Thumbnail saved")
+    try {
+      if (editingId) {
+        await updateYouTubeThumbnailRecord(record)
+        toast.success("Thumbnail updated")
+      } else {
+        await addYouTubeThumbnailRecord(record)
+        setEditingId(record.id)
+        toast.success("Thumbnail saved")
+      }
+    } catch {
+      toast.error("Could not save thumbnail to database")
     }
   }
 
@@ -358,12 +366,16 @@ export function YouTubeThumbnailGenerator() {
     toast.success("Prefilled from artist CRM")
   }, [searchParams, youtubeThumbnailRecords])
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!pendingDelete) return
-    deleteYouTubeThumbnailRecord(pendingDelete.id)
-    if (editingId === pendingDelete.id) resetForm()
-    setPendingDelete(null)
-    toast.success("Thumbnail deleted")
+    try {
+      await deleteYouTubeThumbnailRecord(pendingDelete.id)
+      if (editingId === pendingDelete.id) resetForm()
+      setPendingDelete(null)
+      toast.success("Thumbnail deleted")
+    } catch {
+      toast.error("Could not delete thumbnail from database")
+    }
   }
 
   function handleExport() {
@@ -378,20 +390,41 @@ export function YouTubeThumbnailGenerator() {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const parsed = JSON.parse(String(reader.result))
         const items = (Array.isArray(parsed) ? parsed : [parsed]).map((item) =>
           normalizeYouTubeThumbnailRecord(item as YouTubeThumbnailRecord),
         )
-        importYouTubeThumbnailRecords(items)
-        toast.success(`Imported ${items.length} record(s)`)
+        await importYouTubeThumbnailRecords(items)
+        toast.success(`Imported ${items.length} record(s) to database`)
       } catch {
-        toast.error("Invalid JSON file")
+        toast.error("Invalid JSON file or import failed")
       }
     }
     reader.readAsText(file)
     e.target.value = ""
+  }
+
+  async function handleMigrateLocal() {
+    const local = loadYouTubeThumbnailRecords()
+    if (local.length === 0) {
+      toast.error("No YouTube thumbnails found in localStorage to migrate")
+      return
+    }
+    setMigrating(true)
+    try {
+      const { migrated, total } =
+        await migrateLocalYouTubeThumbnailsToDatabase(local)
+      await reloadYouTubeThumbnailRecords()
+      toast.success(
+        `Migrated ${migrated} local thumbnail(s). Database now has ${total} total.`,
+      )
+    } catch {
+      toast.error("Migration to database failed")
+    } finally {
+      setMigrating(false)
+    }
   }
 
   const finalThumbnailText = buildFinalThumbnailText(
@@ -666,6 +699,9 @@ export function YouTubeThumbnailGenerator() {
             <CardDescription>
               {youtubeThumbnailRecords.length} saved record
               {youtubeThumbnailRecords.length === 1 ? "" : "s"}
+              {youtubeThumbnailRecordsUseDatabase
+                ? " · stored in SQLite"
+                : " · using localStorage fallback"}
             </CardDescription>
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
@@ -678,6 +714,16 @@ export function YouTubeThumbnailGenerator() {
                 className="pl-8"
               />
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleMigrateLocal}
+              disabled={migrating}
+            >
+              <Database className="size-4" />
+              {migrating ? "Migrating…" : "Migrate local"}
+            </Button>
             <Button type="button" variant="outline" size="sm" onClick={handleExport}>
               <Download className="size-4" />
               Export
@@ -851,10 +897,18 @@ export function YouTubeThumbnailGenerator() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPendingDelete(null)}
+            >
               Cancel
-            </DialogClose>
-            <Button variant="destructive" onClick={confirmDelete}>
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDelete}
+            >
               Delete
             </Button>
           </DialogFooter>
