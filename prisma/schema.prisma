@@ -228,3 +228,93 @@ model ReleasePlan {
   @@index([releaseDate])
   @@index([updatedAt])
 }
+
+/// Artist / Label CRM profile.
+model Artist {
+  id               String           @id
+  artistName       String           @default("")
+  artistType       String           @default("")
+  genre            String           @default("")
+  subGenres        String           @default("")
+  mood             String           @default("")
+  brandDescription String           @default("")
+  visualIdentity   String           @default("")
+  targetAudience   String           @default("")
+  contentStyle     String           @default("")
+  youtubeChannel   String           @default("")
+  spotifyLink      String           @default("")
+  appleMusicLink   String           @default("")
+  amazonMusicLink  String           @default("")
+  websiteLink      String           @default("")
+  merchStoreLink   String           @default("")
+  socialLinks      String           @default("")
+  notes            String           @default("")
+  createdAt        DateTime
+  updatedAt        DateTime
+  releases         ArtistRelease[]
+  products         ArtistProduct[]
+  campaigns        ArtistCampaign[]
+
+  @@index([artistName])
+  @@index([artistType])
+  @@index([genre])
+  @@index([updatedAt])
+}
+
+/// Release tracked under an artist; soft links to other CreatorOps records.
+model ArtistRelease {
+  id                       String @id
+  artistId                 String
+  sortOrder                Int
+  songTitle                String @default("")
+  releaseDate              String @default("")
+  genre                    String @default("")
+  mood                     String @default("")
+  status                   String @default("")
+  youtubeUrl               String @default("")
+  streamingLinks           String @default("")
+  notes                    String @default("")
+  thumbnailRecordId        String @default("")
+  youtubePackagingRecordId String @default("")
+  releasePlanRecordId      String @default("")
+  analyticsRecordId        String @default("")
+  artist                   Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@index([artistId])
+  @@index([songTitle])
+  @@index([thumbnailRecordId])
+  @@index([youtubePackagingRecordId])
+  @@index([releasePlanRecordId])
+  @@index([analyticsRecordId])
+}
+
+/// Merch / product tracked under an artist.
+model ArtistProduct {
+  id          String @id
+  artistId    String
+  sortOrder   Int
+  productName String @default("")
+  productType String @default("")
+  status      String @default("")
+  storeLink   String @default("")
+  notes       String @default("")
+  artist      Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@index([artistId])
+}
+
+/// Campaign tracked under an artist.
+model ArtistCampaign {
+  id           String @id
+  artistId     String
+  sortOrder    Int
+  campaignName String @default("")
+  campaignType String @default("")
+  status       String @default("")
+  startDate    String @default("")
+  endDate      String @default("")
+  notes        String @default("")
+  artist       Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@index([artistId])
+}

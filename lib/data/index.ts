@@ -12,6 +12,17 @@
  */
 
 export {
+  normalizeArtistRecord,
+  prismaArtistToArtistRecord,
+  artistToPrismaCreate,
+  artistToPrismaUpdate,
+  artistRelationsToNestedCreate,
+  releasesToPrismaCreate,
+  productsToPrismaCreate,
+  campaignsToPrismaCreate,
+} from "@/lib/data/artists"
+
+export {
   normalizeReleasePlan,
   prismaReleasePlanToReleasePlan,
   releasePlanToPrismaCreate,

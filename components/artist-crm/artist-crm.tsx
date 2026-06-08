@@ -6,6 +6,7 @@ import {
   BarChart3,
   CalendarDays,
   Copy,
+  Database,
   Download,
   ExternalLink,
   ImagePlus,
@@ -34,7 +35,8 @@ import {
   RELEASE_STATUSES,
 } from "@/lib/types"
 import { copyToClipboard } from "@/lib/copy-to-clipboard"
-import { downloadJson } from "@/lib/storage"
+import { migrateLocalArtistsToDatabase } from "@/lib/actions/artists"
+import { downloadJson, loadArtistRecords } from "@/lib/storage"
 import {
   buildFinalThumbnailText,
   finalFieldsFromThumbnailRecord,
@@ -84,7 +86,6 @@ import {
 } from "@/components/ui/select"
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -190,6 +191,7 @@ export function ArtistCrm() {
   const {
     prompts,
     artistRecords,
+    artistRecordsUseDatabase,
     youtubeThumbnailRecords,
     youtubePackages,
     releasePlans,
@@ -198,6 +200,7 @@ export function ArtistCrm() {
     updateArtistRecord,
     deleteArtistRecord,
     importArtistRecords,
+    reloadArtistRecords,
   } = useStore()
 
   const [form, setForm] = React.useState<ArtistFormValues>(emptyArtistForm())
@@ -212,6 +215,7 @@ export function ArtistCrm() {
   const [pendingDelete, setPendingDelete] = React.useState<ArtistRecord | null>(
     null,
   )
+  const [migrating, setMigrating] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   const showDetail = Boolean(editingId || form.artistName.trim())
@@ -254,7 +258,7 @@ export function ArtistCrm() {
     }
   }
 
-  function handleSave() {
+  async function handleSave() {
     const now = Date.now()
     const record = normalizeArtistRecord({
       id: editingId ?? createId("artist"),
@@ -268,13 +272,17 @@ export function ArtistCrm() {
       updatedAt: now,
     })
 
-    if (editingId) {
-      updateArtistRecord(record)
-      toast.success("Artist updated")
-    } else {
-      addArtistRecord(record)
-      setEditingId(record.id)
-      toast.success("Artist saved")
+    try {
+      if (editingId) {
+        await updateArtistRecord(record)
+        toast.success("Artist updated")
+      } else {
+        await addArtistRecord(record)
+        setEditingId(record.id)
+        toast.success("Artist saved")
+      }
+    } catch {
+      toast.error("Could not save artist to database")
     }
   }
 
@@ -307,12 +315,16 @@ export function ArtistCrm() {
     toast.success("Artist loaded")
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!pendingDelete) return
-    deleteArtistRecord(pendingDelete.id)
-    if (editingId === pendingDelete.id) resetForm()
-    setPendingDelete(null)
-    toast.success("Artist deleted")
+    try {
+      await deleteArtistRecord(pendingDelete.id)
+      if (editingId === pendingDelete.id) resetForm()
+      setPendingDelete(null)
+      toast.success("Artist deleted")
+    } catch {
+      toast.error("Could not delete artist from database")
+    }
   }
 
   function handleExport() {
@@ -324,20 +336,40 @@ export function ArtistCrm() {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const parsed = JSON.parse(String(reader.result))
         const items = (Array.isArray(parsed) ? parsed : [parsed]).map((item) =>
           normalizeArtistRecord(item as ArtistRecord),
         )
-        importArtistRecords(items)
-        toast.success(`Imported ${items.length} record(s)`)
+        await importArtistRecords(items)
+        toast.success(`Imported ${items.length} record(s) to database`)
       } catch {
-        toast.error("Invalid JSON file")
+        toast.error("Invalid JSON file or import failed")
       }
     }
     reader.readAsText(file)
     e.target.value = ""
+  }
+
+  async function handleMigrateLocal() {
+    const local = loadArtistRecords()
+    if (local.length === 0) {
+      toast.error("No artists found in localStorage to migrate")
+      return
+    }
+    setMigrating(true)
+    try {
+      const { migrated, total } = await migrateLocalArtistsToDatabase(local)
+      await reloadArtistRecords()
+      toast.success(
+        `Migrated ${migrated} local artist(s). Database now has ${total} total.`,
+      )
+    } catch {
+      toast.error("Migration to database failed")
+    } finally {
+      setMigrating(false)
+    }
   }
 
   function updateRelease(id: string, patch: Partial<ArtistRelease>) {
@@ -475,6 +507,9 @@ export function ArtistCrm() {
                 <CardDescription>
                   {artistRecords.length} saved artist
                   {artistRecords.length === 1 ? "" : "s"}
+                  {artistRecordsUseDatabase
+                    ? " · stored in SQLite"
+                    : " · using localStorage fallback"}
                 </CardDescription>
               </div>
               <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
@@ -487,6 +522,16 @@ export function ArtistCrm() {
                     className="pl-8"
                   />
                 </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleMigrateLocal}
+                  disabled={migrating}
+                >
+                  <Database className="size-4" />
+                  {migrating ? "Migrating…" : "Migrate local"}
+                </Button>
                 <Button
                   type="button"
                   variant="outline"
@@ -1558,10 +1603,18 @@ export function ArtistCrm() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPendingDelete(null)}
+            >
               Cancel
-            </DialogClose>
-            <Button variant="destructive" onClick={confirmDelete}>
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDelete}
+            >
               Delete
             </Button>
           </DialogFooter>

@@ -34,7 +34,6 @@ import {
   loadYouTubeThumbnailRecords,
   mergeById,
   saveAnalyticsRecords,
-  saveArtistRecords,
   saveEmailCampaignRecords,
   saveMerchIdeas,
   saveMockupPromptRecords,
@@ -42,12 +41,17 @@ import {
   saveSocialRepurposingRecords,
 } from "@/lib/storage"
 import { normalizeAnalyticsRecord } from "@/lib/analytics-tracker"
-import { normalizeArtistRecord } from "@/lib/artist-crm"
 import { normalizeEmailCampaignRecord } from "@/lib/email-campaigns"
 import { normalizeMockupPromptRecord } from "@/lib/mockup-prompts"
 import { normalizeMerchIdea } from "@/lib/merch-ideas"
 import { normalizeProductListing } from "@/lib/product-listings"
 import { normalizeSocialRepurposingRecord } from "@/lib/social-repurposing"
+import {
+  deleteArtistById,
+  getArtists,
+  importArtists as importArtistsToDb,
+  upsertArtist,
+} from "@/lib/actions/artists"
 import {
   deletePromptById,
   getPrompts,
@@ -116,6 +120,7 @@ interface StoreContextValue {
   youtubePackagesUseDatabase: boolean
   youtubeThumbnailRecordsUseDatabase: boolean
   releasePlansUseDatabase: boolean
+  artistRecordsUseDatabase: boolean
   addPrompt: (p: Prompt) => Promise<void>
   updatePrompt: (p: Prompt) => Promise<void>
   deletePrompt: (id: string) => Promise<void>
@@ -171,10 +176,11 @@ interface StoreContextValue {
   updateEmailCampaignRecord: (record: EmailCampaignRecord) => void
   deleteEmailCampaignRecord: (id: string) => void
   importEmailCampaignRecords: (items: EmailCampaignRecord[]) => void
-  addArtistRecord: (record: ArtistRecord) => void
-  updateArtistRecord: (record: ArtistRecord) => void
-  deleteArtistRecord: (id: string) => void
-  importArtistRecords: (items: ArtistRecord[]) => void
+  addArtistRecord: (record: ArtistRecord) => Promise<void>
+  updateArtistRecord: (record: ArtistRecord) => Promise<void>
+  deleteArtistRecord: (id: string) => Promise<void>
+  importArtistRecords: (items: ArtistRecord[]) => Promise<void>
+  reloadArtistRecords: () => Promise<void>
   addYouTubeThumbnailRecord: (record: YouTubeThumbnailRecord) => Promise<void>
   updateYouTubeThumbnailRecord: (record: YouTubeThumbnailRecord) => Promise<void>
   deleteYouTubeThumbnailRecord: (id: string) => Promise<void>
@@ -230,6 +236,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [youtubeThumbnailRecordsUseDatabase, setYoutubeThumbnailRecordsUseDatabase] =
     React.useState(true)
   const [releasePlansUseDatabase, setReleasePlansUseDatabase] =
+    React.useState(true)
+  const [artistRecordsUseDatabase, setArtistRecordsUseDatabase] =
     React.useState(true)
 
   const reloadPrompts = React.useCallback(async () => {
@@ -330,6 +338,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       )
       setReleasePlans(loadReleasePlans())
       setReleasePlansUseDatabase(false)
+      throw error
+    }
+  }, [])
+
+  const reloadArtistRecords = React.useCallback(async () => {
+    try {
+      const next = await getArtists()
+      setArtistRecords(next)
+      setArtistRecordsUseDatabase(true)
+    } catch (error) {
+      console.error(
+        "[CreatorOps] Failed to reload artists from database; using localStorage.",
+        error,
+      )
+      setArtistRecords(loadArtistRecords())
+      setArtistRecordsUseDatabase(false)
       throw error
     }
   }, [])
@@ -459,7 +483,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setAnalyticsRecords(loadAnalyticsRecords())
       setMockupPromptRecords(loadMockupPromptRecords())
       setEmailCampaignRecords(loadEmailCampaignRecords())
-      setArtistRecords(loadArtistRecords())
+
+      try {
+        const dbArtists = await getArtists()
+        if (!cancelled) {
+          setArtistRecords(dbArtists)
+          setArtistRecordsUseDatabase(true)
+        }
+      } catch (error) {
+        console.error(
+          "[CreatorOps] Failed to load artists from database; using localStorage.",
+          error,
+        )
+        if (!cancelled) {
+          setArtistRecords(loadArtistRecords())
+          setArtistRecordsUseDatabase(false)
+        }
+      }
 
       if (cancelled) return
 
@@ -522,11 +562,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!hydrated) return
     saveEmailCampaignRecords(emailCampaignRecords)
   }, [emailCampaignRecords, hydrated])
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveArtistRecords(artistRecords)
-  }, [artistRecords, hydrated])
 
   const addPrompt = React.useCallback(async (p: Prompt) => {
     const saved = await upsertPrompt(p)
@@ -843,24 +878,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [],
   )
 
-  const addArtistRecord = React.useCallback((record: ArtistRecord) => {
-    setArtistRecords((prev) => [record, ...prev])
+  const addArtistRecord = React.useCallback(async (record: ArtistRecord) => {
+    const saved = await upsertArtist(record)
+    setArtistRecords((prev) => [saved, ...prev.filter((x) => x.id !== saved.id)])
+    setArtistRecordsUseDatabase(true)
   }, [])
 
-  const updateArtistRecord = React.useCallback((record: ArtistRecord) => {
-    setArtistRecords((prev) =>
-      prev.map((x) => (x.id === record.id ? record : x)),
-    )
+  const updateArtistRecord = React.useCallback(async (record: ArtistRecord) => {
+    const saved = await upsertArtist(record)
+    setArtistRecords((prev) => prev.map((x) => (x.id === saved.id ? saved : x)))
+    setArtistRecordsUseDatabase(true)
   }, [])
 
-  const deleteArtistRecord = React.useCallback((id: string) => {
+  const deleteArtistRecord = React.useCallback(async (id: string) => {
+    await deleteArtistById(id)
     setArtistRecords((prev) => prev.filter((x) => x.id !== id))
+    setArtistRecordsUseDatabase(true)
   }, [])
 
-  const importArtistRecords = React.useCallback((items: ArtistRecord[]) => {
-    setArtistRecords((prev) =>
-      mergeById(prev, items.map((item) => normalizeArtistRecord(item))),
-    )
+  const importArtistRecords = React.useCallback(async (items: ArtistRecord[]) => {
+    const merged = await importArtistsToDb(items)
+    setArtistRecords(merged)
+    setArtistRecordsUseDatabase(true)
   }, [])
 
   const addYouTubeThumbnailRecord = React.useCallback(
@@ -924,6 +963,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     youtubePackagesUseDatabase,
     youtubeThumbnailRecordsUseDatabase,
     releasePlansUseDatabase,
+    artistRecordsUseDatabase,
     addPrompt,
     updatePrompt,
     deletePrompt,
@@ -983,6 +1023,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     updateArtistRecord,
     deleteArtistRecord,
     importArtistRecords,
+    reloadArtistRecords,
     addYouTubeThumbnailRecord,
     updateYouTubeThumbnailRecord,
     deleteYouTubeThumbnailRecord,

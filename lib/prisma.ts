@@ -45,6 +45,10 @@ type PrismaWithDelegates = PrismaClient & {
   youTubePackage?: unknown
   youTubeThumbnail?: unknown
   releasePlan?: unknown
+  artist?: unknown
+  artistRelease?: unknown
+  artistProduct?: unknown
+  artistCampaign?: unknown
 }
 
 function isPrismaClientComplete(client: PrismaClient): boolean {
@@ -58,7 +62,11 @@ function isPrismaClientComplete(client: PrismaClient): boolean {
     typeof c.workflowStepRun !== "undefined" &&
     typeof c.youTubePackage !== "undefined" &&
     typeof c.youTubeThumbnail !== "undefined" &&
-    typeof c.releasePlan !== "undefined"
+    typeof c.releasePlan !== "undefined" &&
+    typeof c.artist !== "undefined" &&
+    typeof c.artistRelease !== "undefined" &&
+    typeof c.artistProduct !== "undefined" &&
+    typeof c.artistCampaign !== "undefined"
   )
 }
 
@@ -77,7 +85,7 @@ function createPrismaClient(): PrismaClient {
 
   if (!isPrismaClientComplete(client)) {
     throw new Error(
-      "Prisma Client is missing expected model delegates (prompt, promptRun, workflow, workflowStep, workflowRun, workflowStepRun, youTubePackage, youTubeThumbnail, releasePlan). Run `npx prisma generate` and `npm run db:migrate`, then restart the dev server.",
+      "Prisma Client is missing expected model delegates (prompt, promptRun, workflow, workflowStep, workflowRun, workflowStepRun, youTubePackage, youTubeThumbnail, releasePlan, artist, artistRelease, artistProduct, artistCampaign). Run `npx prisma generate` and `npm run db:migrate`, then restart the dev server.",
     )
   }
 
