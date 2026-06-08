@@ -519,3 +519,40 @@ model MockupPrompt {
   @@index([visualStyle])
   @@index([updatedAt])
 }
+
+// Email Campaign Generator — flat record per saved campaign
+model EmailCampaign {
+  id                   String   @id
+  campaignName         String   @default("")
+  campaignType         String   @default("")
+  businessArea         String   @default("")
+  audience             String   @default("")
+  offerOrAnnouncement  String   @default("")
+  productOrReleaseName String   @default("")
+  keyBenefits          String   @default("")
+  tone                 String   @default("")
+  callToAction         String   @default("")
+  link                 String   @default("")
+  urgency              String   @default("")
+  senderName           String   @default("")
+  completedPrompt      String   @default("")
+  aiResponse           String   @default("")
+  finalSubjectLine     String   @default("")
+  finalPreviewText     String   @default("")
+  finalEmailBody       String   @default("")
+  finalCTA             String   @default("")
+  finalFollowUpEmail   String   @default("")
+  finalResendSubject   String   @default("")
+  finalResendBody      String   @default("")
+  notes                String   @default("")
+  createdAt            DateTime
+  updatedAt            DateTime
+
+  @@index([campaignName])
+  @@index([campaignType])
+  @@index([businessArea])
+  @@index([productOrReleaseName])
+  @@index([finalSubjectLine])
+  @@index([senderName])
+  @@index([updatedAt])
+}

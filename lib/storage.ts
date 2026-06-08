@@ -320,6 +320,12 @@ export function loadEmailCampaignRecords(): EmailCampaignRecord[] {
   }
 }
 
+/**
+ * Legacy localStorage persistence for email campaign records.
+ * Email Campaign Generator now reads/writes SQLite via server actions.
+ * Kept for rollback, JSON migration, and one-time "Migrate local email campaigns" flow.
+ * TODO: Remove once all environments use the database and migration is complete.
+ */
 export function saveEmailCampaignRecords(records: EmailCampaignRecord[]): void {
   if (typeof window === "undefined") return
   localStorage.setItem(EMAIL_CAMPAIGNS_KEY, JSON.stringify(records))

@@ -32,10 +32,13 @@ import {
   loadWorkflows,
   loadYouTubePackages,
   loadYouTubeThumbnailRecords,
-  mergeById,
-  saveEmailCampaignRecords,
 } from "@/lib/storage"
-import { normalizeEmailCampaignRecord } from "@/lib/email-campaigns"
+import {
+  deleteEmailCampaignRecordById,
+  getEmailCampaignRecords,
+  importEmailCampaignRecords as importEmailCampaignRecordsToDb,
+  upsertEmailCampaignRecord,
+} from "@/lib/actions/email-campaigns"
 import {
   deleteMockupPromptRecordById,
   getMockupPromptRecords,
@@ -146,6 +149,7 @@ interface StoreContextValue {
   socialRepurposingRecordsUseDatabase: boolean
   analyticsRecordsUseDatabase: boolean
   mockupPromptRecordsUseDatabase: boolean
+  emailCampaignRecordsUseDatabase: boolean
   addPrompt: (p: Prompt) => Promise<void>
   updatePrompt: (p: Prompt) => Promise<void>
   deletePrompt: (id: string) => Promise<void>
@@ -202,10 +206,11 @@ interface StoreContextValue {
   deleteMockupPromptRecord: (id: string) => Promise<void>
   importMockupPromptRecords: (items: MockupPromptRecord[]) => Promise<void>
   reloadMockupPromptRecords: () => Promise<void>
-  addEmailCampaignRecord: (record: EmailCampaignRecord) => void
-  updateEmailCampaignRecord: (record: EmailCampaignRecord) => void
-  deleteEmailCampaignRecord: (id: string) => void
-  importEmailCampaignRecords: (items: EmailCampaignRecord[]) => void
+  addEmailCampaignRecord: (record: EmailCampaignRecord) => Promise<void>
+  updateEmailCampaignRecord: (record: EmailCampaignRecord) => Promise<void>
+  deleteEmailCampaignRecord: (id: string) => Promise<void>
+  importEmailCampaignRecords: (items: EmailCampaignRecord[]) => Promise<void>
+  reloadEmailCampaignRecords: () => Promise<void>
   addArtistRecord: (record: ArtistRecord) => Promise<void>
   updateArtistRecord: (record: ArtistRecord) => Promise<void>
   deleteArtistRecord: (id: string) => Promise<void>
@@ -278,6 +283,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [analyticsRecordsUseDatabase, setAnalyticsRecordsUseDatabase] =
     React.useState(true)
   const [mockupPromptRecordsUseDatabase, setMockupPromptRecordsUseDatabase] =
+    React.useState(true)
+  const [emailCampaignRecordsUseDatabase, setEmailCampaignRecordsUseDatabase] =
     React.useState(true)
 
   const reloadPrompts = React.useCallback(async () => {
@@ -474,6 +481,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       )
       setMockupPromptRecords(loadMockupPromptRecords())
       setMockupPromptRecordsUseDatabase(false)
+      throw error
+    }
+  }, [])
+
+  const reloadEmailCampaignRecords = React.useCallback(async () => {
+    try {
+      const next = await getEmailCampaignRecords()
+      setEmailCampaignRecords(next)
+      setEmailCampaignRecordsUseDatabase(true)
+    } catch (error) {
+      console.error(
+        "[CreatorOps] Failed to reload email campaign records from database; using localStorage.",
+        error,
+      )
+      setEmailCampaignRecords(loadEmailCampaignRecords())
+      setEmailCampaignRecordsUseDatabase(false)
       throw error
     }
   }, [])
@@ -691,7 +714,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       if (cancelled) return
 
-      setEmailCampaignRecords(loadEmailCampaignRecords())
+      try {
+        const dbEmailCampaigns = await getEmailCampaignRecords()
+        if (!cancelled) {
+          setEmailCampaignRecords(dbEmailCampaigns)
+          setEmailCampaignRecordsUseDatabase(true)
+        }
+      } catch (error) {
+        console.error(
+          "[CreatorOps] Failed to load email campaign records from database; using localStorage.",
+          error,
+        )
+        if (!cancelled) {
+          setEmailCampaignRecords(loadEmailCampaignRecords())
+          setEmailCampaignRecordsUseDatabase(false)
+        }
+      }
+
+      if (cancelled) return
 
       try {
         const dbArtists = await getArtists()
@@ -739,13 +779,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Core modules persist in SQLite — see lib/actions/*
-  // TODO: Remove localStorage save effects as each module migrates to Prisma.
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveEmailCampaignRecords(emailCampaignRecords)
-  }, [emailCampaignRecords, hydrated])
+  // All current modules persist in SQLite — see lib/actions/*
+  // lib/storage.ts localStorage helpers kept for rollback and one-time migration only.
 
   const addPrompt = React.useCallback(async (p: Prompt) => {
     const saved = await upsertPrompt(p)
@@ -1054,33 +1089,39 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   )
 
   const addEmailCampaignRecord = React.useCallback(
-    (record: EmailCampaignRecord) => {
-      setEmailCampaignRecords((prev) => [record, ...prev])
+    async (record: EmailCampaignRecord) => {
+      const saved = await upsertEmailCampaignRecord(record)
+      setEmailCampaignRecords((prev) => [
+        saved,
+        ...prev.filter((x) => x.id !== saved.id),
+      ])
+      setEmailCampaignRecordsUseDatabase(true)
     },
     [],
   )
 
   const updateEmailCampaignRecord = React.useCallback(
-    (record: EmailCampaignRecord) => {
+    async (record: EmailCampaignRecord) => {
+      const saved = await upsertEmailCampaignRecord(record)
       setEmailCampaignRecords((prev) =>
-        prev.map((x) => (x.id === record.id ? record : x)),
+        prev.map((x) => (x.id === saved.id ? saved : x)),
       )
+      setEmailCampaignRecordsUseDatabase(true)
     },
     [],
   )
 
-  const deleteEmailCampaignRecord = React.useCallback((id: string) => {
+  const deleteEmailCampaignRecord = React.useCallback(async (id: string) => {
+    await deleteEmailCampaignRecordById(id)
     setEmailCampaignRecords((prev) => prev.filter((x) => x.id !== id))
+    setEmailCampaignRecordsUseDatabase(true)
   }, [])
 
   const importEmailCampaignRecords = React.useCallback(
-    (items: EmailCampaignRecord[]) => {
-      setEmailCampaignRecords((prev) =>
-        mergeById(
-          prev,
-          items.map((item) => normalizeEmailCampaignRecord(item)),
-        ),
-      )
+    async (items: EmailCampaignRecord[]) => {
+      const merged = await importEmailCampaignRecordsToDb(items)
+      setEmailCampaignRecords(merged)
+      setEmailCampaignRecordsUseDatabase(true)
     },
     [],
   )
@@ -1176,6 +1217,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     socialRepurposingRecordsUseDatabase,
     analyticsRecordsUseDatabase,
     mockupPromptRecordsUseDatabase,
+    emailCampaignRecordsUseDatabase,
     addPrompt,
     updatePrompt,
     deletePrompt,
@@ -1236,6 +1278,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     updateEmailCampaignRecord,
     deleteEmailCampaignRecord,
     importEmailCampaignRecords,
+    reloadEmailCampaignRecords,
     addArtistRecord,
     updateArtistRecord,
     deleteArtistRecord,

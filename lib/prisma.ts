@@ -6,7 +6,7 @@ import { PrismaClient } from "@/lib/generated/prisma/client"
 /**
  * Shared Prisma client singleton for server-side data access.
  * Prisma 7+ requires a driver adapter (no bare `new PrismaClient()`).
- * TODO: Reuse this module when migrating workflows, runs, and other entities.
+ * All current CreatorOps modules use this client via lib/actions/*.
  */
 
 function resolveSqliteUrl(rawUrl: string): string {
@@ -54,6 +54,7 @@ type PrismaWithDelegates = PrismaClient & {
   socialRepurposing?: unknown
   analyticsRecord?: unknown
   mockupPrompt?: unknown
+  emailCampaign?: unknown
 }
 
 function isPrismaClientComplete(client: PrismaClient): boolean {
@@ -76,7 +77,8 @@ function isPrismaClientComplete(client: PrismaClient): boolean {
     typeof c.productListing !== "undefined" &&
     typeof c.socialRepurposing !== "undefined" &&
     typeof c.analyticsRecord !== "undefined" &&
-    typeof c.mockupPrompt !== "undefined"
+    typeof c.mockupPrompt !== "undefined" &&
+    typeof c.emailCampaign !== "undefined"
   )
 }
 
@@ -95,7 +97,7 @@ function createPrismaClient(): PrismaClient {
 
   if (!isPrismaClientComplete(client)) {
     throw new Error(
-      "Prisma Client is missing expected model delegates (prompt, promptRun, workflow, workflowStep, workflowRun, workflowStepRun, youTubePackage, youTubeThumbnail, releasePlan, artist, artistRelease, artistProduct, artistCampaign, merchIdea, productListing, socialRepurposing, analyticsRecord, mockupPrompt). Run `npx prisma generate` and `npm run db:migrate`, then restart the dev server.",
+      "Prisma Client is missing expected model delegates (prompt, promptRun, workflow, workflowStep, workflowRun, workflowStepRun, youTubePackage, youTubeThumbnail, releasePlan, artist, artistRelease, artistProduct, artistCampaign, merchIdea, productListing, socialRepurposing, analyticsRecord, mockupPrompt, emailCampaign). Run `npx prisma generate` and `npm run db:migrate`, then restart the dev server.",
     )
   }
 

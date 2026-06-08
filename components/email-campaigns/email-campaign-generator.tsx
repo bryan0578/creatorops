@@ -3,6 +3,7 @@
 import * as React from "react"
 import {
   Copy,
+  Database,
   Download,
   Search,
   Trash2,
@@ -17,7 +18,8 @@ import {
   EMAIL_CAMPAIGN_TYPES,
 } from "@/lib/types"
 import { copyToClipboard } from "@/lib/copy-to-clipboard"
-import { downloadJson } from "@/lib/storage"
+import { migrateLocalEmailCampaignRecordsToDatabase } from "@/lib/actions/email-campaigns"
+import { downloadJson, loadEmailCampaignRecords } from "@/lib/storage"
 import {
   buildEmailCampaignCompletedPrompt,
   buildFinalEmailText,
@@ -52,7 +54,6 @@ import {
 } from "@/components/ui/select"
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -151,10 +152,12 @@ export function EmailCampaignGenerator() {
   const {
     prompts,
     emailCampaignRecords,
+    emailCampaignRecordsUseDatabase,
     addEmailCampaignRecord,
     updateEmailCampaignRecord,
     deleteEmailCampaignRecord,
     importEmailCampaignRecords,
+    reloadEmailCampaignRecords,
   } = useStore()
 
   const [form, setForm] = React.useState<EmailCampaignFormValues>(
@@ -167,6 +170,7 @@ export function EmailCampaignGenerator() {
   const [editingId, setEditingId] = React.useState<string | null>(null)
 
   const [recordSearch, setRecordSearch] = React.useState("")
+  const [migrating, setMigrating] = React.useState(false)
   const [pendingDelete, setPendingDelete] =
     React.useState<EmailCampaignRecord | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
@@ -243,7 +247,7 @@ export function EmailCampaignGenerator() {
     }
   }
 
-  function handleSave() {
+  async function handleSave() {
     const now = Date.now()
     const record = normalizeEmailCampaignRecord({
       id: editingId ?? createId("email"),
@@ -258,13 +262,17 @@ export function EmailCampaignGenerator() {
       updatedAt: now,
     })
 
-    if (editingId) {
-      updateEmailCampaignRecord(record)
-      toast.success("Email campaign updated")
-    } else {
-      addEmailCampaignRecord(record)
-      setEditingId(record.id)
-      toast.success("Email campaign saved")
+    try {
+      if (editingId) {
+        await updateEmailCampaignRecord(record)
+        toast.success("Email campaign updated")
+      } else {
+        await addEmailCampaignRecord(record)
+        setEditingId(record.id)
+        toast.success("Email campaign saved")
+      }
+    } catch {
+      toast.error("Could not save email campaign to database")
     }
   }
 
@@ -292,12 +300,16 @@ export function EmailCampaignGenerator() {
     toast.success("Email campaign loaded")
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!pendingDelete) return
-    deleteEmailCampaignRecord(pendingDelete.id)
-    if (editingId === pendingDelete.id) resetForm()
-    setPendingDelete(null)
-    toast.success("Email campaign deleted")
+    try {
+      await deleteEmailCampaignRecord(pendingDelete.id)
+      if (editingId === pendingDelete.id) resetForm()
+      setPendingDelete(null)
+      toast.success("Email campaign deleted")
+    } catch {
+      toast.error("Could not delete email campaign from database")
+    }
   }
 
   function handleExport() {
@@ -309,20 +321,41 @@ export function EmailCampaignGenerator() {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const parsed = JSON.parse(String(reader.result))
         const items = (Array.isArray(parsed) ? parsed : [parsed]).map((item) =>
           normalizeEmailCampaignRecord(item as EmailCampaignRecord),
         )
-        importEmailCampaignRecords(items)
-        toast.success(`Imported ${items.length} record(s)`)
+        await importEmailCampaignRecords(items)
+        toast.success(`Imported ${items.length} record(s) to database`)
       } catch {
-        toast.error("Invalid JSON file")
+        toast.error("Invalid JSON file or import failed")
       }
     }
     reader.readAsText(file)
     e.target.value = ""
+  }
+
+  async function handleMigrateLocal() {
+    const local = loadEmailCampaignRecords()
+    if (local.length === 0) {
+      toast.error("No email campaigns found in localStorage to migrate")
+      return
+    }
+    setMigrating(true)
+    try {
+      const { migrated, total } =
+        await migrateLocalEmailCampaignRecordsToDatabase(local)
+      await reloadEmailCampaignRecords()
+      toast.success(
+        `Migrated ${migrated} local record(s). Database now has ${total} total.`,
+      )
+    } catch {
+      toast.error("Migration to database failed")
+    } finally {
+      setMigrating(false)
+    }
   }
 
   const finalEmailText = buildFinalEmailText(form.campaignName, finalEmail)
@@ -561,6 +594,9 @@ export function EmailCampaignGenerator() {
             <CardDescription>
               {emailCampaignRecords.length} saved record
               {emailCampaignRecords.length === 1 ? "" : "s"}
+              {emailCampaignRecordsUseDatabase
+                ? " · stored in SQLite"
+                : " · using localStorage fallback"}
             </CardDescription>
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
@@ -573,6 +609,16 @@ export function EmailCampaignGenerator() {
                 className="pl-8"
               />
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleMigrateLocal}
+              disabled={migrating}
+            >
+              <Database className="size-4" />
+              {migrating ? "Migrating…" : "Migrate local"}
+            </Button>
             <Button type="button" variant="outline" size="sm" onClick={handleExport}>
               <Download className="size-4" />
               Export
@@ -651,8 +697,16 @@ export function EmailCampaignGenerator() {
                           {normalized.finalSubjectLine}
                         </p>
                       ) : null}
+                      {normalized.senderName ? (
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          From: {normalized.senderName}
+                        </p>
+                      ) : null}
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {formatDate(normalized.updatedAt)}
+                        Updated {formatDate(normalized.updatedAt)}
+                        {normalized.createdAt !== normalized.updatedAt
+                          ? ` · Created ${formatDate(normalized.createdAt)}`
+                          : ""}
                       </p>
                     </button>
                     <div className="flex shrink-0 flex-wrap items-center gap-1">
@@ -737,10 +791,18 @@ export function EmailCampaignGenerator() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPendingDelete(null)}
+            >
               Cancel
-            </DialogClose>
-            <Button variant="destructive" onClick={confirmDelete}>
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDelete}
+            >
               Delete
             </Button>
           </DialogFooter>
