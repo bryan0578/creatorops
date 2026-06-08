@@ -1,5 +1,5 @@
 // CreatorOps Dashboard — Prisma schema
-// TODO: Migrate dedicated modules (youtube packages, merch ideas, etc.) using the same pattern as Prompt.
+// TODO: Migrate dedicated modules (merch ideas, product listings, etc.) using the same pattern as Prompt.
 
 generator client {
   provider = "prisma-client"
@@ -116,4 +116,39 @@ model WorkflowStepRun {
 
   @@index([workflowRunId])
   @@index([workflowStepId])
+}
+
+/// Saved YouTube metadata package from the YouTube Packaging Tool.
+model YouTubePackage {
+  id                 String   @id
+  trackTitle         String   @default("")
+  artistName         String   @default("")
+  channelName        String   @default("")
+  genre              String   @default("")
+  mood               String   @default("")
+  targetListener     String   @default("")
+  visualTheme        String   @default("")
+  primaryGoal        String   @default("")
+  merchTieIn         String   @default("")
+  streamingLink      String   @default("")
+  releaseDate        String   @default("")
+  videoType          String   @default("")
+  keywords           String   @default("")
+  notes              String   @default("")
+  completedPrompt    String   @default("")
+  aiResponse         String   @default("")
+  finalTitle         String   @default("")
+  finalDescription   String   @default("")
+  finalTags          String   @default("")
+  finalHashtags      String   @default("")
+  finalPinnedComment String   @default("")
+  finalThumbnailText String   @default("")
+  finalShortsCaption String   @default("")
+  finalCommunityPost String   @default("")
+  createdAt          DateTime
+  updatedAt          DateTime
+
+  @@index([trackTitle])
+  @@index([artistName])
+  @@index([updatedAt])
 }

@@ -41,7 +41,6 @@ import {
   saveProductListings,
   saveReleasePlans,
   saveSocialRepurposingRecords,
-  saveYouTubePackages,
   saveYouTubeThumbnailRecords,
 } from "@/lib/storage"
 import { normalizeAnalyticsRecord } from "@/lib/analytics-tracker"
@@ -52,7 +51,6 @@ import { normalizeMerchIdea } from "@/lib/merch-ideas"
 import { normalizeProductListing } from "@/lib/product-listings"
 import { normalizeReleasePlan } from "@/lib/release-planner"
 import { normalizeSocialRepurposingRecord } from "@/lib/social-repurposing"
-import { normalizeYouTubePackage } from "@/lib/youtube-packaging"
 import { normalizeYouTubeThumbnailRecord } from "@/lib/youtube-thumbnails"
 import {
   deletePromptById,
@@ -66,6 +64,12 @@ import {
   importPromptRuns as importPromptRunsToDb,
   upsertPromptRun,
 } from "@/lib/actions/prompt-runs"
+import {
+  deleteYouTubePackageById,
+  getYouTubePackages,
+  importYouTubePackages as importYouTubePackagesToDb,
+  upsertYouTubePackage,
+} from "@/lib/actions/youtube-packages"
 import {
   deleteWorkflowRunById,
   getWorkflowRuns,
@@ -101,6 +105,7 @@ interface StoreContextValue {
   workflowsUseDatabase: boolean
   runsUseDatabase: boolean
   workflowRunsUseDatabase: boolean
+  youtubePackagesUseDatabase: boolean
   addPrompt: (p: Prompt) => Promise<void>
   updatePrompt: (p: Prompt) => Promise<void>
   deletePrompt: (id: string) => Promise<void>
@@ -122,10 +127,11 @@ interface StoreContextValue {
   deleteWorkflowRun: (id: string) => Promise<void>
   importWorkflowRuns: (items: WorkflowRun[]) => Promise<void>
   reloadWorkflowRuns: () => Promise<void>
-  addYouTubePackage: (pkg: YouTubePackage) => void
-  updateYouTubePackage: (pkg: YouTubePackage) => void
-  deleteYouTubePackage: (id: string) => void
-  importYouTubePackages: (items: YouTubePackage[]) => void
+  addYouTubePackage: (pkg: YouTubePackage) => Promise<void>
+  updateYouTubePackage: (pkg: YouTubePackage) => Promise<void>
+  deleteYouTubePackage: (id: string) => Promise<void>
+  importYouTubePackages: (items: YouTubePackage[]) => Promise<void>
+  reloadYouTubePackages: () => Promise<void>
   addMerchIdea: (idea: MerchIdea) => void
   updateMerchIdea: (idea: MerchIdea) => void
   deleteMerchIdea: (id: string) => void
@@ -207,6 +213,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [runsUseDatabase, setRunsUseDatabase] = React.useState(true)
   const [workflowRunsUseDatabase, setWorkflowRunsUseDatabase] =
     React.useState(true)
+  const [youtubePackagesUseDatabase, setYoutubePackagesUseDatabase] =
+    React.useState(true)
 
   const reloadPrompts = React.useCallback(async () => {
     const next = await getPrompts()
@@ -258,6 +266,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       )
       setWorkflowRuns(loadWorkflowRuns())
       setWorkflowRunsUseDatabase(false)
+      throw error
+    }
+  }, [])
+
+  const reloadYouTubePackages = React.useCallback(async () => {
+    try {
+      const next = await getYouTubePackages()
+      setYoutubePackages(next)
+      setYoutubePackagesUseDatabase(true)
+    } catch (error) {
+      console.error(
+        "[CreatorOps] Failed to reload YouTube packages from database; using localStorage.",
+        error,
+      )
+      setYoutubePackages(loadYouTubePackages())
+      setYoutubePackagesUseDatabase(false)
       throw error
     }
   }, [])
@@ -342,7 +366,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       if (cancelled) return
 
-      setYoutubePackages(loadYouTubePackages())
+      try {
+        const dbYouTubePackages = await getYouTubePackages()
+        if (!cancelled) {
+          setYoutubePackages(dbYouTubePackages)
+          setYoutubePackagesUseDatabase(true)
+        }
+      } catch (error) {
+        console.error(
+          "[CreatorOps] Failed to load YouTube packages from database; using localStorage.",
+          error,
+        )
+        if (!cancelled) {
+          setYoutubePackages(loadYouTubePackages())
+          setYoutubePackagesUseDatabase(false)
+        }
+      }
+
+      if (cancelled) return
+
       setMerchIdeas(loadMerchIdeas())
       setProductListings(loadProductListings())
       setSocialRepurposingRecords(loadSocialRepurposingRecords())
@@ -362,13 +404,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Prompts, workflows, prompt runs, and workflow runs persist in SQLite — see lib/actions/*
+  // Core modules persist in SQLite — see lib/actions/*
   // TODO: Remove localStorage save effects as each module migrates to Prisma.
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveYouTubePackages(youtubePackages)
-  }, [youtubePackages, hydrated])
 
   React.useEffect(() => {
     if (!hydrated) return
@@ -516,26 +553,32 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setWorkflowRunsUseDatabase(true)
   }, [])
 
-  const addYouTubePackage = React.useCallback((pkg: YouTubePackage) => {
-    setYoutubePackages((prev) => [pkg, ...prev])
+  const addYouTubePackage = React.useCallback(async (pkg: YouTubePackage) => {
+    const saved = await upsertYouTubePackage(pkg)
+    setYoutubePackages((prev) => [saved, ...prev.filter((x) => x.id !== saved.id)])
+    setYoutubePackagesUseDatabase(true)
   }, [])
 
-  const updateYouTubePackage = React.useCallback((pkg: YouTubePackage) => {
-    setYoutubePackages((prev) => prev.map((x) => (x.id === pkg.id ? pkg : x)))
+  const updateYouTubePackage = React.useCallback(async (pkg: YouTubePackage) => {
+    const saved = await upsertYouTubePackage(pkg)
+    setYoutubePackages((prev) => prev.map((x) => (x.id === saved.id ? saved : x)))
+    setYoutubePackagesUseDatabase(true)
   }, [])
 
-  const deleteYouTubePackage = React.useCallback((id: string) => {
+  const deleteYouTubePackage = React.useCallback(async (id: string) => {
+    await deleteYouTubePackageById(id)
     setYoutubePackages((prev) => prev.filter((x) => x.id !== id))
+    setYoutubePackagesUseDatabase(true)
   }, [])
 
-  const importYouTubePackages = React.useCallback((items: YouTubePackage[]) => {
-    setYoutubePackages((prev) =>
-      mergeById(
-        prev,
-        items.map((item) => normalizeYouTubePackage(item)),
-      ),
-    )
-  }, [])
+  const importYouTubePackages = React.useCallback(
+    async (items: YouTubePackage[]) => {
+      const merged = await importYouTubePackagesToDb(items)
+      setYoutubePackages(merged)
+      setYoutubePackagesUseDatabase(true)
+    },
+    [],
+  )
 
   const addMerchIdea = React.useCallback((idea: MerchIdea) => {
     setMerchIdeas((prev) => [idea, ...prev])
@@ -793,6 +836,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     workflowsUseDatabase,
     runsUseDatabase,
     workflowRunsUseDatabase,
+    youtubePackagesUseDatabase,
     addPrompt,
     updatePrompt,
     deletePrompt,
@@ -818,6 +862,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     updateYouTubePackage,
     deleteYouTubePackage,
     importYouTubePackages,
+    reloadYouTubePackages,
     addMerchIdea,
     updateMerchIdea,
     deleteMerchIdea,

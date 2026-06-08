@@ -4,6 +4,7 @@ import * as React from "react"
 import { useSearchParams } from "next/navigation"
 import {
   Copy,
+  Database,
   Download,
   Eye,
   Search,
@@ -12,11 +13,12 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
+import { migrateLocalYouTubePackagesToDatabase } from "@/lib/actions/youtube-packages"
 import { useStore, createId } from "@/lib/store"
 import type { YouTubePackage, YouTubePackageFormValues } from "@/lib/types"
 import { PRIMARY_GOALS, VIDEO_TYPES } from "@/lib/types"
 import { copyToClipboard } from "@/lib/copy-to-clipboard"
-import { downloadJson } from "@/lib/storage"
+import { downloadJson, loadYouTubePackages } from "@/lib/storage"
 import {
   buildFinalPackageText,
   buildYouTubeCompletedPrompt,
@@ -50,7 +52,6 @@ import {
 } from "@/components/ui/select"
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -124,10 +125,12 @@ export function YouTubePackagingTool() {
   const {
     prompts,
     youtubePackages,
+    youtubePackagesUseDatabase,
     addYouTubePackage,
     updateYouTubePackage,
     deleteYouTubePackage,
     importYouTubePackages,
+    reloadYouTubePackages,
   } = useStore()
 
   const [form, setForm] = React.useState<YouTubePackageFormValues>(
@@ -147,6 +150,7 @@ export function YouTubePackagingTool() {
     null,
   )
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const [migrating, setMigrating] = React.useState(false)
   const prefillApplied = React.useRef(false)
   const searchParams = useSearchParams()
 
@@ -218,7 +222,7 @@ export function YouTubePackagingTool() {
     }
   }
 
-  function handleSavePackage() {
+  async function handleSavePackage() {
     const now = Date.now()
     const pkg = normalizeYouTubePackage({
       id: editingId ?? createId("ytpkg"),
@@ -232,13 +236,17 @@ export function YouTubePackagingTool() {
       updatedAt: now,
     })
 
-    if (editingId) {
-      updateYouTubePackage(pkg)
-      toast.success("Package updated")
-    } else {
-      addYouTubePackage(pkg)
-      setEditingId(pkg.id)
-      toast.success("Package saved")
+    try {
+      if (editingId) {
+        await updateYouTubePackage(pkg)
+        toast.success("Package updated")
+      } else {
+        await addYouTubePackage(pkg)
+        setEditingId(pkg.id)
+        toast.success("Package saved")
+      }
+    } catch {
+      toast.error("Could not save package to database")
     }
   }
 
@@ -310,12 +318,16 @@ export function YouTubePackagingTool() {
     toast.success("Prefilled from artist CRM")
   }, [searchParams])
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!pendingDelete) return
-    deleteYouTubePackage(pendingDelete.id)
-    if (editingId === pendingDelete.id) resetForm()
-    setPendingDelete(null)
-    toast.success("Package deleted")
+    try {
+      await deleteYouTubePackage(pendingDelete.id)
+      if (editingId === pendingDelete.id) resetForm()
+      setPendingDelete(null)
+      toast.success("Package deleted")
+    } catch {
+      toast.error("Could not delete package from database")
+    }
   }
 
   function handleExport() {
@@ -327,20 +339,41 @@ export function YouTubePackagingTool() {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const parsed = JSON.parse(String(reader.result))
         const items = (Array.isArray(parsed) ? parsed : [parsed]).map(
           (item) => normalizeYouTubePackage(item as YouTubePackage),
         )
-        importYouTubePackages(items)
-        toast.success(`Imported ${items.length} package(s)`)
+        await importYouTubePackages(items)
+        toast.success(`Imported ${items.length} package(s) to database`)
       } catch {
-        toast.error("Invalid JSON file")
+        toast.error("Invalid JSON file or import failed")
       }
     }
     reader.readAsText(file)
     e.target.value = ""
+  }
+
+  async function handleMigrateLocal() {
+    const local = loadYouTubePackages()
+    if (local.length === 0) {
+      toast.error("No YouTube packages found in localStorage to migrate")
+      return
+    }
+    setMigrating(true)
+    try {
+      const { migrated, total } =
+        await migrateLocalYouTubePackagesToDatabase(local)
+      await reloadYouTubePackages()
+      toast.success(
+        `Migrated ${migrated} local package(s). Database now has ${total} total.`,
+      )
+    } catch {
+      toast.error("Migration to database failed")
+    } finally {
+      setMigrating(false)
+    }
   }
 
   const finalPackageText = buildFinalPackageText(finalPackage)
@@ -635,6 +668,16 @@ export function YouTubePackagingTool() {
               type="button"
               variant="outline"
               size="sm"
+              onClick={handleMigrateLocal}
+              disabled={migrating}
+            >
+              <Database className="size-4" />
+              {migrating ? "Migrating…" : "Migrate local packages"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={() => fileInputRef.current?.click()}
             >
               <Upload className="size-4" />
@@ -653,6 +696,13 @@ export function YouTubePackagingTool() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {youtubePackages.length} saved package
+            {youtubePackages.length === 1 ? "" : "s"}
+            {youtubePackagesUseDatabase
+              ? " · stored in SQLite"
+              : " · using localStorage fallback"}
+          </p>
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -844,11 +894,16 @@ export function YouTubePackagingTool() {
             </div>
           ) : null}
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setViewingPackage(null)}
+            >
               Close
-            </DialogClose>
+            </Button>
             {viewingPackage?.finalCommunityPost.trim() ? (
               <Button
+                type="button"
                 onClick={() =>
                   handleCopy(
                     viewingPackage.finalCommunityPost,
@@ -878,10 +933,18 @@ export function YouTubePackagingTool() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPendingDelete(null)}
+            >
               Cancel
-            </DialogClose>
-            <Button variant="destructive" onClick={confirmDelete}>
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDelete}
+            >
               Delete
             </Button>
           </DialogFooter>

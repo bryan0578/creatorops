@@ -8,8 +8,15 @@
  * 4. Point lib/store.tsx hydration + CRUD at server actions
  * 5. Keep lib/storage.ts localStorage helpers for rollback/migration
  *
- * TODO: youtube packages, merch ideas, etc.
+ * TODO: merch ideas, product listings, etc.
  */
+
+export {
+  normalizeYouTubePackage,
+  prismaYouTubePackageToYouTubePackage,
+  youtubePackageToPrismaCreate,
+  youtubePackageToPrismaUpdate,
+} from "@/lib/data/youtube-packages"
 
 export {
   normalizeStepRun,

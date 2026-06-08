@@ -138,6 +138,12 @@ export function loadYouTubePackages(): YouTubePackage[] {
   }
 }
 
+/**
+ * Legacy localStorage persistence for YouTube packages.
+ * YouTube Packaging Tool now reads/writes SQLite via server actions.
+ * Kept for rollback, JSON migration, and one-time "Migrate local YouTube packages" flow.
+ * TODO: Remove once all environments use the database and migration is complete.
+ */
 export function saveYouTubePackages(packages: YouTubePackage[]): void {
   if (typeof window === "undefined") return
   localStorage.setItem(YOUTUBE_PACKAGES_KEY, JSON.stringify(packages))
