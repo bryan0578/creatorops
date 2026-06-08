@@ -1,0 +1,1127 @@
+export type PromptCategory =
+  | "YouTube"
+  | "Music"
+  | "Artwork"
+  | "Merch"
+  | "Marketing"
+  | "Label Ops"
+  | "Digital Products"
+  | "General"
+
+export type WorkflowStatus = "Active" | "Draft" | "Paused" | "Archived"
+
+export interface Prompt {
+  id: string
+  name: string
+  category: PromptCategory
+  description: string
+  promptText: string
+  variables: string[]
+  outputFormat: string
+  tags: string[]
+  rating: number // 0-5
+  notes: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface WorkflowStep {
+  id: string
+  title: string
+  description: string
+  promptId: string | null // reference to a Prompt
+}
+
+export interface Workflow {
+  id: string
+  name: string
+  category: PromptCategory
+  description: string
+  status: WorkflowStatus
+  estimatedTimeSaved: string // e.g. "2h / week"
+  steps: WorkflowStep[]
+  notes: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface PromptRun {
+  id: string
+  promptId: string
+  promptName: string
+  category: PromptCategory
+  inputValues: Record<string, string>
+  completedPrompt: string
+  aiResponse: string
+  notes: string
+  createdAt: number
+  updatedAt: number
+}
+
+export type StepRunStatus =
+  | "Not started"
+  | "In progress"
+  | "Complete"
+  | "Skipped"
+
+export type WorkflowRunStatus =
+  | "Not started"
+  | "In progress"
+  | "Complete"
+  | "Archived"
+
+export interface StepRun {
+  id: string
+  workflowStepId: string
+  title: string
+  description: string
+  promptId: string | null
+  promptName: string
+  status: StepRunStatus
+  notes: string
+  completedAt: number | null
+}
+
+export interface WorkflowRun {
+  id: string
+  workflowId: string
+  workflowName: string
+  category: PromptCategory
+  status: WorkflowRunStatus
+  stepRuns: StepRun[]
+  notes: string
+  startedAt: number
+  updatedAt: number
+  completedAt: number | null
+}
+
+export const PROMPT_CATEGORIES: PromptCategory[] = [
+  "YouTube",
+  "Music",
+  "Artwork",
+  "Merch",
+  "Marketing",
+  "Label Ops",
+  "Digital Products",
+  "General",
+]
+
+export const WORKFLOW_STATUSES: WorkflowStatus[] = [
+  "Active",
+  "Draft",
+  "Paused",
+  "Archived",
+]
+
+export type VideoType =
+  | "Visualizer"
+  | "Lyric Video"
+  | "Official Audio"
+  | "Music Video"
+  | "Shorts Clip"
+  | "Live Version"
+  | "Remix"
+
+export type PrimaryGoal =
+  | "Views"
+  | "Subscribers"
+  | "Streaming Saves"
+  | "Merch Sales"
+  | "Artist Awareness"
+  | "Label Awareness"
+  | "Comments/Engagement"
+
+export const VIDEO_TYPES: VideoType[] = [
+  "Visualizer",
+  "Lyric Video",
+  "Official Audio",
+  "Music Video",
+  "Shorts Clip",
+  "Live Version",
+  "Remix",
+]
+
+export const PRIMARY_GOALS: PrimaryGoal[] = [
+  "Views",
+  "Subscribers",
+  "Streaming Saves",
+  "Merch Sales",
+  "Artist Awareness",
+  "Label Awareness",
+  "Comments/Engagement",
+]
+
+export interface YouTubePackage {
+  id: string
+  trackTitle: string
+  artistName: string
+  channelName: string
+  genre: string
+  mood: string
+  targetListener: string
+  visualTheme: string
+  primaryGoal: string
+  merchTieIn: string
+  streamingLink: string
+  releaseDate: string
+  videoType: string
+  keywords: string
+  completedPrompt: string
+  aiResponse: string
+  finalTitle: string
+  finalDescription: string
+  finalTags: string
+  finalHashtags: string
+  finalPinnedComment: string
+  finalThumbnailText: string
+  finalShortsCaption: string
+  finalCommunityPost: string
+  notes: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface YouTubePackageFormValues {
+  trackTitle: string
+  artistName: string
+  channelName: string
+  genre: string
+  mood: string
+  targetListener: string
+  visualTheme: string
+  primaryGoal: string
+  merchTieIn: string
+  streamingLink: string
+  releaseDate: string
+  videoType: string
+  keywords: string
+  notes: string
+}
+
+export type MerchProductType =
+  | "T-shirt"
+  | "Hoodie"
+  | "Sweatshirt"
+  | "Mug"
+  | "Poster"
+  | "Sticker"
+  | "Hat"
+  | "Digital Download"
+  | "Planner"
+  | "Template"
+  | "Prompt Pack"
+  | "Mini Course"
+  | "Other"
+
+export type MerchStoreType =
+  | "Fourthwall"
+  | "Shopify"
+  | "WooCommerce"
+  | "Etsy"
+  | "Gumroad"
+  | "General Ecommerce"
+  | "Artist Store"
+  | "Other"
+
+export const MERCH_PRODUCT_TYPES: MerchProductType[] = [
+  "T-shirt",
+  "Hoodie",
+  "Sweatshirt",
+  "Mug",
+  "Poster",
+  "Sticker",
+  "Hat",
+  "Digital Download",
+  "Planner",
+  "Template",
+  "Prompt Pack",
+  "Mini Course",
+  "Other",
+]
+
+export const MERCH_STORE_TYPES: MerchStoreType[] = [
+  "Fourthwall",
+  "Shopify",
+  "WooCommerce",
+  "Etsy",
+  "Gumroad",
+  "General Ecommerce",
+  "Artist Store",
+  "Other",
+]
+
+export interface MerchIdea {
+  id: string
+  niche: string
+  audience: string
+  productType: string
+  tone: string
+  noun: string
+  verb: string
+  designStyle: string
+  storeType: string
+  primaryGoal: string
+  completedPrompt: string
+  aiResponse: string
+  selectedConceptName: string
+  selectedSlogan: string
+  selectedDesignDirection: string
+  selectedProductTitle: string
+  selectedProductDescription: string
+  selectedTags: string
+  selectedMockupIdea: string
+  selectedSocialCaption: string
+  notes: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface MerchIdeaFormValues {
+  niche: string
+  audience: string
+  productType: string
+  tone: string
+  noun: string
+  verb: string
+  designStyle: string
+  storeType: string
+  primaryGoal: string
+  notes: string
+}
+
+export type ProductListingProductType =
+  | "T-shirt"
+  | "Hoodie"
+  | "Sweatshirt"
+  | "Mug"
+  | "Poster"
+  | "Sticker"
+  | "Hat"
+  | "Digital Planner"
+  | "Template"
+  | "Prompt Pack"
+  | "Mini Course"
+  | "Ebook"
+  | "Notion Template"
+  | "Spreadsheet Template"
+  | "Canva Template"
+  | "Tech Resource"
+  | "Other"
+
+export const PRODUCT_LISTING_TYPES: ProductListingProductType[] = [
+  "T-shirt",
+  "Hoodie",
+  "Sweatshirt",
+  "Mug",
+  "Poster",
+  "Sticker",
+  "Hat",
+  "Digital Planner",
+  "Template",
+  "Prompt Pack",
+  "Mini Course",
+  "Ebook",
+  "Notion Template",
+  "Spreadsheet Template",
+  "Canva Template",
+  "Tech Resource",
+  "Other",
+]
+
+export interface ProductListing {
+  id: string
+  productType: string
+  niche: string
+  audience: string
+  designConcept: string
+  tone: string
+  primaryKeyword: string
+  secondaryKeywords: string
+  storeName: string
+  productBenefits: string
+  pricingNotes: string
+  completedPrompt: string
+  aiResponse: string
+  finalTitle: string
+  finalShortDescription: string
+  finalLongDescription: string
+  finalBulletPoints: string
+  finalTags: string
+  finalCollection: string
+  finalCTA: string
+  finalSocialCaption: string
+  finalEmailSubject: string
+  notes: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface ProductListingFormValues {
+  productType: string
+  niche: string
+  audience: string
+  designConcept: string
+  tone: string
+  primaryKeyword: string
+  secondaryKeywords: string
+  storeName: string
+  productBenefits: string
+  pricingNotes: string
+  notes: string
+}
+
+export type SocialContentType =
+  | "Song Release"
+  | "YouTube Video"
+  | "Merch Product"
+  | "Product Listing"
+  | "Digital Product"
+  | "Email Announcement"
+  | "Artist Update"
+  | "Label Announcement"
+  | "Blog Post"
+  | "Course/Training"
+  | "Other"
+
+export type SocialBusinessArea =
+  | "AI Music"
+  | "Record Label"
+  | "Artist Merch"
+  | "Funny Shirts"
+  | "Digital Products"
+  | "Tech Products"
+  | "Templates"
+  | "Prompt Packs"
+  | "Mini Courses"
+  | "General Ecommerce"
+  | "Other"
+
+export const SOCIAL_CONTENT_TYPES: SocialContentType[] = [
+  "Song Release",
+  "YouTube Video",
+  "Merch Product",
+  "Product Listing",
+  "Digital Product",
+  "Email Announcement",
+  "Artist Update",
+  "Label Announcement",
+  "Blog Post",
+  "Course/Training",
+  "Other",
+]
+
+export const SOCIAL_BUSINESS_AREAS: SocialBusinessArea[] = [
+  "AI Music",
+  "Record Label",
+  "Artist Merch",
+  "Funny Shirts",
+  "Digital Products",
+  "Tech Products",
+  "Templates",
+  "Prompt Packs",
+  "Mini Courses",
+  "General Ecommerce",
+  "Other",
+]
+
+export interface SocialRepurposingRecord {
+  id: string
+  campaignName: string
+  sourceContent: string
+  businessArea: string
+  goal: string
+  audience: string
+  tone: string
+  platforms: string
+  callToAction: string
+  productOrReleaseLink: string
+  contentType: string
+  completedPrompt: string
+  aiResponse: string
+  finalCoreMessage: string
+  finalTikTokCaption: string
+  finalInstagramCaption: string
+  finalXPost: string
+  finalYouTubeShortsIdea: string
+  finalYouTubeCommunityPost: string
+  finalEmailSnippet: string
+  finalHashtags: string
+  finalCTA: string
+  notes: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface SocialRepurposingFormValues {
+  sourceContent: string
+  businessArea: string
+  goal: string
+  audience: string
+  tone: string
+  platforms: string
+  callToAction: string
+  productOrReleaseLink: string
+  contentType: string
+  campaignName: string
+  notes: string
+}
+
+export type ReleasePlannerGoal =
+  | "Build Artist Awareness"
+  | "Increase YouTube Views"
+  | "Drive Streaming Saves"
+  | "Grow Subscribers"
+  | "Promote Merch"
+  | "Build Label Brand"
+  | "Test New Genre/Audience"
+  | "Other"
+
+export const RELEASE_PLANNER_GOALS: ReleasePlannerGoal[] = [
+  "Build Artist Awareness",
+  "Increase YouTube Views",
+  "Drive Streaming Saves",
+  "Grow Subscribers",
+  "Promote Merch",
+  "Build Label Brand",
+  "Test New Genre/Audience",
+  "Other",
+]
+
+export interface ReleasePlan {
+  id: string
+  artistName: string
+  songTitle: string
+  genre: string
+  mood: string
+  releaseDate: string
+  youtubeChannel: string
+  targetAudience: string
+  visualTheme: string
+  merchTieIn: string
+  streamingPlatforms: string
+  primaryGoal: string
+  completedPrompt: string
+  aiResponse: string
+  finalStrategySummary: string
+  finalTargetListener: string
+  finalPreReleasePlan: string
+  finalReleaseDayChecklist: string
+  finalPostReleasePlan: string
+  finalYouTubePackage: string
+  finalShortFormIdeas: string
+  finalSocialCaptions: string
+  finalEmailAnnouncement: string
+  finalMerchTieIns: string
+  finalPriorityTasks: string
+  finalChecklist: string
+  notes: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface ReleasePlanFormValues {
+  artistName: string
+  songTitle: string
+  genre: string
+  mood: string
+  releaseDate: string
+  youtubeChannel: string
+  targetAudience: string
+  visualTheme: string
+  merchTieIn: string
+  streamingPlatforms: string
+  primaryGoal: string
+  notes: string
+}
+
+export type AnalyticsItemType =
+  | "YouTube Video"
+  | "YouTube Short"
+  | "Music Release"
+  | "Merch Product"
+  | "Product Listing"
+  | "TikTok Post"
+  | "Instagram Post"
+  | "X Post"
+  | "Email Campaign"
+  | "Full Campaign"
+  | "Other"
+
+export type AnalyticsPlatform =
+  | "YouTube"
+  | "YouTube Shorts"
+  | "Spotify"
+  | "Apple Music"
+  | "Amazon Music"
+  | "TikTok"
+  | "Instagram"
+  | "X"
+  | "Fourthwall"
+  | "Website"
+  | "Email"
+  | "Other"
+
+export const ANALYTICS_ITEM_TYPES: AnalyticsItemType[] = [
+  "YouTube Video",
+  "YouTube Short",
+  "Music Release",
+  "Merch Product",
+  "Product Listing",
+  "TikTok Post",
+  "Instagram Post",
+  "X Post",
+  "Email Campaign",
+  "Full Campaign",
+  "Other",
+]
+
+export const ANALYTICS_PLATFORMS: AnalyticsPlatform[] = [
+  "YouTube",
+  "YouTube Shorts",
+  "Spotify",
+  "Apple Music",
+  "Amazon Music",
+  "TikTok",
+  "Instagram",
+  "X",
+  "Fourthwall",
+  "Website",
+  "Email",
+  "Other",
+]
+
+export interface AnalyticsRecord {
+  id: string
+  itemName: string
+  itemType: string
+  relatedArtist: string
+  relatedSong: string
+  relatedCampaign: string
+  platform: string
+  publishDate: string
+  url: string
+  niche: string
+  genre: string
+  mood: string
+  titleUsed: string
+  thumbnailText: string
+  descriptionNotes: string
+  tagsUsed: string
+  callToAction: string
+  views: number
+  impressions: number
+  clicks: number
+  clickThroughRate: number
+  likes: number
+  comments: number
+  shares: number
+  saves: number
+  subscribersGained: number
+  watchTimeHours: number
+  averageViewDuration: number
+  retentionNotes: string
+  revenue: number
+  sales: number
+  conversionRate: number
+  whatWorked: string
+  whatDidNotWork: string
+  improvementIdeas: string
+  nextActions: string
+  rating: number
+  notes: string
+  createdAt: number
+  updatedAt: number
+}
+
+export type MockupType =
+  | "T-Shirt Mockup"
+  | "Hoodie Mockup"
+  | "Poster Mockup"
+  | "Mug Mockup"
+  | "Sticker Mockup"
+  | "Digital Product Mockup"
+  | "Planner Mockup"
+  | "Template Mockup"
+  | "Course Cover"
+  | "YouTube Thumbnail"
+  | "Album/Single Cover"
+  | "Social Ad Creative"
+  | "Ecommerce Banner"
+  | "Other"
+
+export type MockupPlatformUse =
+  | "Fourthwall"
+  | "Shopify"
+  | "Etsy"
+  | "Website"
+  | "Instagram"
+  | "TikTok"
+  | "YouTube"
+  | "YouTube Thumbnail"
+  | "X"
+  | "Email"
+  | "General Ecommerce"
+  | "Other"
+
+export type MockupAspectRatio =
+  | "1:1 Square"
+  | "4:5 Instagram Portrait"
+  | "9:16 Vertical"
+  | "16:9 YouTube Thumbnail"
+  | "3:4 Product Mockup"
+  | "Other"
+
+export const MOCKUP_TYPES: MockupType[] = [
+  "T-Shirt Mockup",
+  "Hoodie Mockup",
+  "Poster Mockup",
+  "Mug Mockup",
+  "Sticker Mockup",
+  "Digital Product Mockup",
+  "Planner Mockup",
+  "Template Mockup",
+  "Course Cover",
+  "YouTube Thumbnail",
+  "Album/Single Cover",
+  "Social Ad Creative",
+  "Ecommerce Banner",
+  "Other",
+]
+
+export const MOCKUP_PLATFORM_USES: MockupPlatformUse[] = [
+  "Fourthwall",
+  "Shopify",
+  "Etsy",
+  "Website",
+  "Instagram",
+  "TikTok",
+  "YouTube",
+  "YouTube Thumbnail",
+  "X",
+  "Email",
+  "General Ecommerce",
+  "Other",
+]
+
+export const MOCKUP_ASPECT_RATIOS: MockupAspectRatio[] = [
+  "1:1 Square",
+  "4:5 Instagram Portrait",
+  "9:16 Vertical",
+  "16:9 YouTube Thumbnail",
+  "3:4 Product Mockup",
+  "Other",
+]
+
+export interface MockupPromptRecord {
+  id: string
+  projectName: string
+  mockupType: string
+  productType: string
+  niche: string
+  audience: string
+  designConcept: string
+  visualStyle: string
+  colors: string
+  setting: string
+  modelDescription: string
+  cameraAngle: string
+  lighting: string
+  mood: string
+  platformUse: string
+  aspectRatio: string
+  textToInclude: string
+  textToAvoid: string
+  brandNotes: string
+  completedPrompt: string
+  aiResponse: string
+  finalImagePrompt: string
+  finalNegativePrompt: string
+  finalLayoutNotes: string
+  finalTextPlacement: string
+  finalUsageNotes: string
+  notes: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface MockupPromptFormValues {
+  projectName: string
+  mockupType: string
+  productType: string
+  niche: string
+  audience: string
+  designConcept: string
+  visualStyle: string
+  colors: string
+  setting: string
+  modelDescription: string
+  cameraAngle: string
+  lighting: string
+  mood: string
+  platformUse: string
+  aspectRatio: string
+  textToInclude: string
+  textToAvoid: string
+  brandNotes: string
+  notes: string
+}
+
+export type EmailCampaignType =
+  | "Music Release Announcement"
+  | "Merch Drop"
+  | "Product Launch"
+  | "Digital Product Launch"
+  | "Newsletter"
+  | "Sale/Promo"
+  | "Follow-Up Email"
+  | "Welcome Email"
+  | "Course Launch"
+  | "Prompt Pack Launch"
+  | "Artist Update"
+  | "Label Announcement"
+  | "Other"
+
+export type EmailBusinessArea =
+  | "AI Music"
+  | "Record Label"
+  | "Artist Merch"
+  | "Funny Shirts"
+  | "Digital Products"
+  | "Tech Products"
+  | "Templates"
+  | "Prompt Packs"
+  | "Mini Courses"
+  | "General Ecommerce"
+  | "Other"
+
+export const EMAIL_CAMPAIGN_TYPES: EmailCampaignType[] = [
+  "Music Release Announcement",
+  "Merch Drop",
+  "Product Launch",
+  "Digital Product Launch",
+  "Newsletter",
+  "Sale/Promo",
+  "Follow-Up Email",
+  "Welcome Email",
+  "Course Launch",
+  "Prompt Pack Launch",
+  "Artist Update",
+  "Label Announcement",
+  "Other",
+]
+
+export const EMAIL_BUSINESS_AREAS: EmailBusinessArea[] = [
+  "AI Music",
+  "Record Label",
+  "Artist Merch",
+  "Funny Shirts",
+  "Digital Products",
+  "Tech Products",
+  "Templates",
+  "Prompt Packs",
+  "Mini Courses",
+  "General Ecommerce",
+  "Other",
+]
+
+export interface EmailCampaignRecord {
+  id: string
+  campaignName: string
+  campaignType: string
+  businessArea: string
+  audience: string
+  offerOrAnnouncement: string
+  productOrReleaseName: string
+  keyBenefits: string
+  tone: string
+  callToAction: string
+  link: string
+  urgency: string
+  senderName: string
+  completedPrompt: string
+  aiResponse: string
+  finalSubjectLine: string
+  finalPreviewText: string
+  finalEmailBody: string
+  finalCTA: string
+  finalFollowUpEmail: string
+  finalResendSubject: string
+  finalResendBody: string
+  notes: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface EmailCampaignFormValues {
+  campaignName: string
+  campaignType: string
+  businessArea: string
+  audience: string
+  offerOrAnnouncement: string
+  productOrReleaseName: string
+  keyBenefits: string
+  tone: string
+  callToAction: string
+  link: string
+  urgency: string
+  senderName: string
+  notes: string
+}
+
+export type ArtistType =
+  | "Solo Artist"
+  | "AI Artist"
+  | "Label Artist"
+  | "Producer Alias"
+  | "Compilation Brand"
+  | "Playlist Brand"
+  | "Other"
+
+export const ARTIST_TYPES: ArtistType[] = [
+  "Solo Artist",
+  "AI Artist",
+  "Label Artist",
+  "Producer Alias",
+  "Compilation Brand",
+  "Playlist Brand",
+  "Other",
+]
+
+export type ReleaseStatus =
+  | "Idea"
+  | "In Production"
+  | "Ready"
+  | "Scheduled"
+  | "Released"
+  | "Promoting"
+  | "Archived"
+
+export const RELEASE_STATUSES: ReleaseStatus[] = [
+  "Idea",
+  "In Production",
+  "Ready",
+  "Scheduled",
+  "Released",
+  "Promoting",
+  "Archived",
+]
+
+export type ArtistProductStatus =
+  | "Idea"
+  | "Designed"
+  | "Listed"
+  | "Promoting"
+  | "Sold"
+  | "Retired"
+
+export const ARTIST_PRODUCT_STATUSES: ArtistProductStatus[] = [
+  "Idea",
+  "Designed",
+  "Listed",
+  "Promoting",
+  "Sold",
+  "Retired",
+]
+
+export type ArtistCampaignStatus =
+  | "Idea"
+  | "Planning"
+  | "Active"
+  | "Complete"
+  | "Archived"
+
+export const ARTIST_CAMPAIGN_STATUSES: ArtistCampaignStatus[] = [
+  "Idea",
+  "Planning",
+  "Active",
+  "Complete",
+  "Archived",
+]
+
+export interface ArtistRelease {
+  id: string
+  songTitle: string
+  releaseDate: string
+  genre: string
+  mood: string
+  status: string
+  youtubeUrl: string
+  streamingLinks: string
+  notes: string
+  thumbnailRecordId?: string
+  youtubePackagingRecordId?: string
+  releasePlanRecordId?: string
+  analyticsRecordId?: string
+}
+
+export interface ArtistMerchProduct {
+  id: string
+  productName: string
+  productType: string
+  status: string
+  storeLink: string
+  notes: string
+}
+
+export interface ArtistCampaign {
+  id: string
+  campaignName: string
+  campaignType: string
+  status: string
+  startDate: string
+  endDate: string
+  notes: string
+}
+
+export interface ArtistRecord {
+  id: string
+  artistName: string
+  artistType: string
+  genre: string
+  subGenres: string
+  mood: string
+  brandDescription: string
+  visualIdentity: string
+  targetAudience: string
+  contentStyle: string
+  youtubeChannel: string
+  spotifyLink: string
+  appleMusicLink: string
+  amazonMusicLink: string
+  websiteLink: string
+  merchStoreLink: string
+  socialLinks: string
+  notes: string
+  releases: ArtistRelease[]
+  merchProducts: ArtistMerchProduct[]
+  campaigns: ArtistCampaign[]
+  createdAt: number
+  updatedAt: number
+}
+
+export interface ArtistFormValues {
+  artistName: string
+  artistType: string
+  genre: string
+  subGenres: string
+  mood: string
+  brandDescription: string
+  visualIdentity: string
+  targetAudience: string
+  contentStyle: string
+  youtubeChannel: string
+  spotifyLink: string
+  appleMusicLink: string
+  amazonMusicLink: string
+  websiteLink: string
+  merchStoreLink: string
+  socialLinks: string
+  notes: string
+}
+
+export type ThumbnailContentFormat =
+  | "YouTube Video Thumbnail"
+  | "YouTube Shorts Cover"
+
+export const THUMBNAIL_CONTENT_FORMATS: ThumbnailContentFormat[] = [
+  "YouTube Video Thumbnail",
+  "YouTube Shorts Cover",
+]
+
+export type ThumbnailVideoType =
+  | "Music Visualizer"
+  | "Lyric Video"
+  | "Official Audio"
+  | "Music Video"
+  | "Teaser"
+  | "Promo Clip"
+  | "Shorts Clip"
+  | "Artist Intro"
+  | "Compilation"
+  | "Other"
+
+export const THUMBNAIL_VIDEO_TYPES: ThumbnailVideoType[] = [
+  "Music Visualizer",
+  "Lyric Video",
+  "Official Audio",
+  "Music Video",
+  "Teaser",
+  "Promo Clip",
+  "Shorts Clip",
+  "Artist Intro",
+  "Compilation",
+  "Other",
+]
+
+export type ThumbnailCtaGoal =
+  | "Increase Click-Through Rate"
+  | "Increase Views"
+  | "Strengthen Branding"
+  | "Improve Curiosity"
+  | "Improve Emotional Pull"
+  | "Support Music Release"
+  | "Support Merch Promotion"
+  | "Other"
+
+export const THUMBNAIL_CTA_GOALS: ThumbnailCtaGoal[] = [
+  "Increase Click-Through Rate",
+  "Increase Views",
+  "Strengthen Branding",
+  "Improve Curiosity",
+  "Improve Emotional Pull",
+  "Support Music Release",
+  "Support Merch Promotion",
+  "Other",
+]
+
+export interface YouTubeThumbnailRecord {
+  id: string
+  trackTitle: string
+  artistName: string
+  videoTitle: string
+  contentFormat: string
+  videoType: string
+  genre: string
+  mood: string
+  targetAudience: string
+  visualTheme: string
+  hookAngle: string
+  mainSubject: string
+  textOverlay: string
+  colorDirection: string
+  brandingNotes: string
+  referenceStyle: string
+  ctaGoal: string
+  completedPrompt: string
+  aiResponse: string
+  finalConcept: string
+  finalTextOverlay: string
+  finalComposition: string
+  finalColorDirection: string
+  finalImagePrompt: string
+  finalAltVariation: string
+  finalShortsVersion: string
+  notes: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface YouTubeThumbnailFormValues {
+  trackTitle: string
+  artistName: string
+  videoTitle: string
+  contentFormat: string
+  videoType: string
+  genre: string
+  mood: string
+  targetAudience: string
+  visualTheme: string
+  hookAngle: string
+  mainSubject: string
+  textOverlay: string
+  colorDirection: string
+  brandingNotes: string
+  referenceStyle: string
+  ctaGoal: string
+  notes: string
+}
