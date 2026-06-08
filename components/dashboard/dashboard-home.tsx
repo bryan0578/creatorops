@@ -6,12 +6,11 @@ import {
   ArrowRight,
   BarChart3,
   CalendarDays,
-  Download,
   ImageIcon,
   ImagePlus,
   Library,
-  Mail,
   ListChecks,
+  Mail,
   Play,
   Plus,
   Share2,
@@ -19,14 +18,13 @@ import {
   ShoppingBag,
   Star,
   Users,
-  Workflow as WorkflowIcon,
   Video,
+  Workflow as WorkflowIcon,
 } from "lucide-react"
 import { toast } from "sonner"
 
 import { useStore } from "@/lib/store"
 import type { Prompt, Workflow } from "@/lib/types"
-import { downloadJson } from "@/lib/storage"
 
 import { PageHeader } from "@/components/app-shell"
 import {
@@ -43,7 +41,6 @@ import { cn } from "@/lib/utils"
 import { RatingStars } from "@/components/rating-stars"
 import { StatusBadge } from "@/components/workflows/status-badge"
 import { PromptFormDialog } from "@/components/prompts/prompt-form-dialog"
-import { WorkflowFormDialog } from "@/components/workflows/workflow-form-dialog"
 
 function StatCard({
   label,
@@ -57,7 +54,7 @@ function StatCard({
   hint?: string
 }) {
   return (
-    <Card>
+    <Card className="border-border/80 shadow-sm">
       <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
         <CardDescription>{label}</CardDescription>
         <Icon className="size-4 text-muted-foreground" />
@@ -89,11 +86,9 @@ export function DashboardHome() {
     artistRecords,
     youtubeThumbnailRecords,
     addPrompt,
-    addWorkflow,
   } = useStore()
 
   const [promptFormOpen, setPromptFormOpen] = React.useState(false)
-  const [workflowFormOpen, setWorkflowFormOpen] = React.useState(false)
 
   const activeWorkflows = workflows.filter((w) => w.status === "Active").length
 
@@ -122,120 +117,40 @@ export function DashboardHome() {
     [workflows],
   )
 
-  function handleExport() {
-    downloadJson("creatorops-library.json", {
-      prompts,
-      workflows,
-      exportedAt: new Date().toISOString(),
-    })
-    toast.success("Exported full library")
-  }
-
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <PageHeader
         title="Dashboard"
         description="Your command center for prompts and workflows across channels, label, merch, and digital products."
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" onClick={() => setPromptFormOpen(true)}>
+            <Button onClick={() => setPromptFormOpen(true)}>
               <Plus className="size-4" />
-              Create prompt
+              Create Prompt
             </Button>
-            <Button variant="outline" onClick={() => setWorkflowFormOpen(true)}>
-              <Plus className="size-4" />
-              Create workflow
-            </Button>
-            <Link href="/runner" className={buttonVariants({ variant: "outline" })}>
+            <Link href="/runner" className={buttonVariants({ variant: "secondary" })}>
               <Play className="size-4" />
-              Prompt Runner
+              Run Prompt
             </Link>
             <Link
               href="/workflow-runner"
               className={buttonVariants({ variant: "outline" })}
             >
               <ListChecks className="size-4" />
-              Workflow Runner
+              Start Workflow
             </Link>
             <Link
               href="/youtube-packaging"
               className={buttonVariants({ variant: "outline" })}
             >
               <Video className="size-4" />
-              YouTube Packaging
+              Create YouTube Package
             </Link>
-            <Link
-              href="/youtube-thumbnails"
-              className={buttonVariants({ variant: "outline" })}
-            >
-              <ImagePlus className="size-4" />
-              YouTube Thumbnails
-            </Link>
-            <Link
-              href="/merch-ideas"
-              className={buttonVariants({ variant: "outline" })}
-            >
-              <Shirt className="size-4" />
-              Merch Ideas
-            </Link>
-            <Link
-              href="/product-listings"
-              className={buttonVariants({ variant: "outline" })}
-            >
-              <ShoppingBag className="size-4" />
-              Product Listings
-            </Link>
-            <Link
-              href="/social-repurposing"
-              className={buttonVariants({ variant: "outline" })}
-            >
-              <Share2 className="size-4" />
-              Social Repurposing
-            </Link>
-            <Link
-              href="/release-planner"
-              className={buttonVariants({ variant: "outline" })}
-            >
-              <CalendarDays className="size-4" />
-              Release Planner
-            </Link>
-            <Link
-              href="/analytics"
-              className={buttonVariants({ variant: "outline" })}
-            >
-              <BarChart3 className="size-4" />
-              Analytics Tracker
-            </Link>
-            <Link
-              href="/mockup-prompts"
-              className={buttonVariants({ variant: "outline" })}
-            >
-              <ImageIcon className="size-4" />
-              Mockup Prompts
-            </Link>
-            <Link
-              href="/email-campaigns"
-              className={buttonVariants({ variant: "outline" })}
-            >
-              <Mail className="size-4" />
-              Email Campaigns
-            </Link>
-            <Link
-              href="/artist-crm"
-              className={buttonVariants({ variant: "outline" })}
-            >
-              <Users className="size-4" />
-              Artist CRM
-            </Link>
-            <Button onClick={handleExport}>
-              <Download className="size-4" />
-              Export library
-            </Button>
           </div>
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Total prompts"
           value={prompts.length}
@@ -628,20 +543,6 @@ export function DashboardHome() {
             toast.success("Prompt created")
           } catch {
             toast.error("Could not save prompt to database")
-          }
-        }}
-      />
-      <WorkflowFormDialog
-        open={workflowFormOpen}
-        onOpenChange={setWorkflowFormOpen}
-        initial={null}
-        prompts={prompts}
-        onSave={async (w) => {
-          try {
-            await addWorkflow(w)
-            toast.success("Workflow created")
-          } catch {
-            toast.error("Could not save workflow to database")
           }
         }}
       />

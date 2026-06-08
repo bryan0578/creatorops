@@ -624,7 +624,7 @@ export function AnalyticsTracker() {
         </div>
 
         <div className="flex flex-col gap-4">
-          <Card>
+          <Card className="border-primary/20 bg-primary/5">
             <CardHeader>
               <CardTitle className="text-base">Performance review</CardTitle>
               <CardDescription>

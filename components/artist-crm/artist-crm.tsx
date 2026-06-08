@@ -500,7 +500,7 @@ export function ArtistCrm() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-border/80">
             <CardHeader className="flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <CardTitle className="text-base">Recent artists</CardTitle>

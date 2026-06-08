@@ -15,12 +15,14 @@ import { createId } from "@/lib/store"
 
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { FormGrid, FormSection } from "@/components/module/form-layout"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -33,7 +35,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ScrollArea } from "@/components/ui/scroll-area"
 
 const PROMPT_SELECT_CONTENT_CLASS = "min-w-[320px]"
 
@@ -273,16 +274,16 @@ export function WorkflowFormDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>{initial ? "Edit workflow" : "New workflow"}</DialogTitle>
-          <DialogDescription>
-            Define a repeatable process and link each step to a prompt.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <ScrollArea className="max-h-[62vh] pr-4">
-            <div className="flex flex-col gap-4">
-              <div className="grid gap-4 sm:grid-cols-2">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <DialogHeader>
+            <DialogTitle>{initial ? "Edit workflow" : "New workflow"}</DialogTitle>
+            <DialogDescription>
+              Define a repeatable process and link each step to a prompt.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="space-y-6">
+            <FormSection title="Workflow details">
+              <FormGrid>
                 <div className="space-y-2">
                   <Label htmlFor="wf-name">Name</Label>
                   <Input
@@ -298,7 +299,7 @@ export function WorkflowFormDialog({
                     value={draft.category}
                     onValueChange={(v) => set("category", v as PromptCategory)}
                   >
-                    <SelectTrigger id="wf-category">
+                    <SelectTrigger id="wf-category" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -310,7 +311,7 @@ export function WorkflowFormDialog({
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
+              </FormGrid>
 
               <div className="space-y-2">
                 <Label htmlFor="wf-desc">Description</Label>
@@ -322,14 +323,14 @@ export function WorkflowFormDialog({
                 />
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <FormGrid>
                 <div className="space-y-2">
                   <Label htmlFor="wf-status">Status</Label>
                   <Select
                     value={draft.status}
                     onValueChange={(v) => set("status", v as WorkflowStatus)}
                   >
-                    <SelectTrigger id="wf-status">
+                    <SelectTrigger id="wf-status" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -350,55 +351,59 @@ export function WorkflowFormDialog({
                     placeholder="4h / release"
                   />
                 </div>
+              </FormGrid>
+            </FormSection>
+
+            <FormSection
+              title="Steps"
+              description="Link each step to a prompt from your library."
+            >
+              <div className="flex items-center justify-end">
+                <Button type="button" variant="outline" size="sm" onClick={addStep}>
+                  <Plus className="size-4" />
+                  Add step
+                </Button>
               </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>Steps</Label>
+              {draft.steps.length === 0 ? (
+                <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border px-3 py-6 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    No steps yet. Add your first step to build the workflow.
+                  </p>
                   <Button type="button" variant="outline" size="sm" onClick={addStep}>
                     <Plus className="size-4" />
                     Add step
                   </Button>
                 </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {draft.steps.map((step, index) => (
+                    <WorkflowStepCard
+                      key={step.id}
+                      step={step}
+                      index={index}
+                      totalSteps={draft.steps.length}
+                      prompts={prompts}
+                      onUpdate={(patch) => updateStep(step.id, patch)}
+                      onRemove={() => removeStep(step.id)}
+                      onMove={(dir) => moveStep(index, dir)}
+                      onAddBelow={() => addStepAfter(step.id)}
+                    />
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={addStep}
+                  >
+                    <Plus className="size-4" />
+                    Add step
+                  </Button>
+                </div>
+              )}
+            </FormSection>
 
-                {draft.steps.length === 0 ? (
-                  <div className="flex flex-col items-center gap-3 rounded-md border border-dashed px-3 py-6 text-center">
-                    <p className="text-sm text-muted-foreground">
-                      No steps yet. Add your first step to build the workflow.
-                    </p>
-                    <Button type="button" variant="outline" size="sm" onClick={addStep}>
-                      <Plus className="size-4" />
-                      Add step
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-3">
-                    {draft.steps.map((step, index) => (
-                      <WorkflowStepCard
-                        key={step.id}
-                        step={step}
-                        index={index}
-                        totalSteps={draft.steps.length}
-                        prompts={prompts}
-                        onUpdate={(patch) => updateStep(step.id, patch)}
-                        onRemove={() => removeStep(step.id)}
-                        onMove={(dir) => moveStep(index, dir)}
-                        onAddBelow={() => addStepAfter(step.id)}
-                      />
-                    ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full"
-                      onClick={addStep}
-                    >
-                      <Plus className="size-4" />
-                      Add step
-                    </Button>
-                  </div>
-                )}
-              </div>
-
+            <FormSection title="Notes">
               <div className="space-y-2">
                 <Label htmlFor="wf-notes">Notes</Label>
                 <Textarea
@@ -409,8 +414,8 @@ export function WorkflowFormDialog({
                   placeholder="Anything to remember about this workflow"
                 />
               </div>
-            </div>
-          </ScrollArea>
+            </FormSection>
+          </DialogBody>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel

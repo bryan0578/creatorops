@@ -7,12 +7,14 @@ import { createId } from "@/lib/store"
 
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { FormGrid, FormSection } from "@/components/module/form-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -25,7 +27,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { RatingStars } from "@/components/rating-stars"
-import { ScrollArea } from "@/components/ui/scroll-area"
 
 function emptyPrompt(): Prompt {
   const now = Date.now()
@@ -94,16 +95,16 @@ export function PromptFormDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>{initial ? "Edit prompt" : "New prompt"}</DialogTitle>
-          <DialogDescription>
-            Save a reusable prompt with variables, output format, and tags.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <ScrollArea className="max-h-[60vh] pr-4">
-            <div className="flex flex-col gap-4">
-              <div className="grid gap-4 sm:grid-cols-2">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <DialogHeader>
+            <DialogTitle>{initial ? "Edit prompt" : "New prompt"}</DialogTitle>
+            <DialogDescription>
+              Save a reusable prompt with variables, output format, and tags.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="space-y-6">
+            <FormSection title="Basics">
+              <FormGrid>
                 <div className="space-y-2">
                   <Label htmlFor="name">Name</Label>
                   <Input
@@ -119,7 +120,7 @@ export function PromptFormDialog({
                     value={draft.category}
                     onValueChange={(v) => set("category", v as PromptCategory)}
                   >
-                    <SelectTrigger id="category">
+                    <SelectTrigger id="category" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -131,8 +132,7 @@ export function PromptFormDialog({
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-
+              </FormGrid>
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Input
@@ -142,7 +142,9 @@ export function PromptFormDialog({
                   placeholder="What this prompt is for"
                 />
               </div>
+            </FormSection>
 
+            <FormSection title="Prompt content">
               <div className="space-y-2">
                 <Label htmlFor="promptText">Prompt text</Label>
                 <Textarea
@@ -153,8 +155,10 @@ export function PromptFormDialog({
                   className="min-h-36 font-mono text-xs"
                 />
               </div>
+            </FormSection>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+            <FormSection title="Metadata">
+              <FormGrid>
                 <div className="space-y-2">
                   <Label htmlFor="variables">Variables (comma separated)</Label>
                   <Input
@@ -173,8 +177,7 @@ export function PromptFormDialog({
                     placeholder="Numbered list"
                   />
                 </div>
-              </div>
-
+              </FormGrid>
               <div className="space-y-2">
                 <Label htmlFor="tags">Tags (comma separated)</Label>
                 <Input
@@ -184,7 +187,6 @@ export function PromptFormDialog({
                   placeholder="titles, growth, seo"
                 />
               </div>
-
               <div className="space-y-2">
                 <Label>Rating</Label>
                 <RatingStars
@@ -193,7 +195,6 @@ export function PromptFormDialog({
                   size={22}
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="notes">Notes</Label>
                 <Textarea
@@ -204,8 +205,8 @@ export function PromptFormDialog({
                   className="min-h-20"
                 />
               </div>
-            </div>
-          </ScrollArea>
+            </FormSection>
+          </DialogBody>
           <DialogFooter>
             <Button
               type="button"

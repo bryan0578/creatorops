@@ -565,7 +565,7 @@ export function YouTubePackagingTool() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-primary/20 bg-primary/5">
             <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
               <div>
                 <CardTitle className="text-base">Final Package</CardTitle>
