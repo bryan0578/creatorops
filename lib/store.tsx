@@ -36,13 +36,11 @@ import {
   saveAnalyticsRecords,
   saveEmailCampaignRecords,
   saveMockupPromptRecords,
-  saveProductListings,
   saveSocialRepurposingRecords,
 } from "@/lib/storage"
 import { normalizeAnalyticsRecord } from "@/lib/analytics-tracker"
 import { normalizeEmailCampaignRecord } from "@/lib/email-campaigns"
 import { normalizeMockupPromptRecord } from "@/lib/mockup-prompts"
-import { normalizeProductListing } from "@/lib/product-listings"
 import { normalizeSocialRepurposingRecord } from "@/lib/social-repurposing"
 import {
   deleteMerchIdeaById,
@@ -50,6 +48,12 @@ import {
   importMerchIdeas as importMerchIdeasToDb,
   upsertMerchIdea,
 } from "@/lib/actions/merch-ideas"
+import {
+  deleteProductListingById,
+  getProductListings,
+  importProductListings as importProductListingsToDb,
+  upsertProductListing,
+} from "@/lib/actions/product-listings"
 import {
   deleteArtistById,
   getArtists,
@@ -126,6 +130,7 @@ interface StoreContextValue {
   releasePlansUseDatabase: boolean
   artistRecordsUseDatabase: boolean
   merchIdeasUseDatabase: boolean
+  productListingsUseDatabase: boolean
   addPrompt: (p: Prompt) => Promise<void>
   updatePrompt: (p: Prompt) => Promise<void>
   deletePrompt: (id: string) => Promise<void>
@@ -157,10 +162,11 @@ interface StoreContextValue {
   deleteMerchIdea: (id: string) => Promise<void>
   importMerchIdeas: (items: MerchIdea[]) => Promise<void>
   reloadMerchIdeas: () => Promise<void>
-  addProductListing: (listing: ProductListing) => void
-  updateProductListing: (listing: ProductListing) => void
-  deleteProductListing: (id: string) => void
-  importProductListings: (items: ProductListing[]) => void
+  addProductListing: (listing: ProductListing) => Promise<void>
+  updateProductListing: (listing: ProductListing) => Promise<void>
+  deleteProductListing: (id: string) => Promise<void>
+  importProductListings: (items: ProductListing[]) => Promise<void>
+  reloadProductListings: () => Promise<void>
   addSocialRepurposingRecord: (record: SocialRepurposingRecord) => void
   updateSocialRepurposingRecord: (record: SocialRepurposingRecord) => void
   deleteSocialRepurposingRecord: (id: string) => void
@@ -246,6 +252,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [artistRecordsUseDatabase, setArtistRecordsUseDatabase] =
     React.useState(true)
   const [merchIdeasUseDatabase, setMerchIdeasUseDatabase] =
+    React.useState(true)
+  const [productListingsUseDatabase, setProductListingsUseDatabase] =
     React.useState(true)
 
   const reloadPrompts = React.useCallback(async () => {
@@ -382,6 +390,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  const reloadProductListings = React.useCallback(async () => {
+    try {
+      const next = await getProductListings()
+      setProductListings(next)
+      setProductListingsUseDatabase(true)
+    } catch (error) {
+      console.error(
+        "[CreatorOps] Failed to reload product listings from database; using localStorage.",
+        error,
+      )
+      setProductListings(loadProductListings())
+      setProductListingsUseDatabase(false)
+      throw error
+    }
+  }, [])
+
   React.useEffect(() => {
     let cancelled = false
 
@@ -500,7 +524,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       if (cancelled) return
 
-      setProductListings(loadProductListings())
+      try {
+        const dbProductListings = await getProductListings()
+        if (!cancelled) {
+          setProductListings(dbProductListings)
+          setProductListingsUseDatabase(true)
+        }
+      } catch (error) {
+        console.error(
+          "[CreatorOps] Failed to load product listings from database; using localStorage.",
+          error,
+        )
+        if (!cancelled) {
+          setProductListings(loadProductListings())
+          setProductListingsUseDatabase(false)
+        }
+      }
+
+      if (cancelled) return
+
       setSocialRepurposingRecords(loadSocialRepurposingRecords())
 
       try {
@@ -574,11 +616,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   // Core modules persist in SQLite — see lib/actions/*
   // TODO: Remove localStorage save effects as each module migrates to Prisma.
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveProductListings(productListings)
-  }, [productListings, hydrated])
 
   React.useEffect(() => {
     if (!hydrated) return
@@ -752,28 +789,32 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setMerchIdeasUseDatabase(true)
   }, [])
 
-  const addProductListing = React.useCallback((listing: ProductListing) => {
-    setProductListings((prev) => [listing, ...prev])
+  const addProductListing = React.useCallback(async (listing: ProductListing) => {
+    const saved = await upsertProductListing(listing)
+    setProductListings((prev) => [saved, ...prev.filter((x) => x.id !== saved.id)])
+    setProductListingsUseDatabase(true)
   }, [])
 
-  const updateProductListing = React.useCallback((listing: ProductListing) => {
-    setProductListings((prev) =>
-      prev.map((x) => (x.id === listing.id ? listing : x)),
-    )
+  const updateProductListing = React.useCallback(async (listing: ProductListing) => {
+    const saved = await upsertProductListing(listing)
+    setProductListings((prev) => prev.map((x) => (x.id === saved.id ? saved : x)))
+    setProductListingsUseDatabase(true)
   }, [])
 
-  const deleteProductListing = React.useCallback((id: string) => {
+  const deleteProductListing = React.useCallback(async (id: string) => {
+    await deleteProductListingById(id)
     setProductListings((prev) => prev.filter((x) => x.id !== id))
+    setProductListingsUseDatabase(true)
   }, [])
 
-  const importProductListings = React.useCallback((items: ProductListing[]) => {
-    setProductListings((prev) =>
-      mergeById(
-        prev,
-        items.map((item) => normalizeProductListing(item)),
-      ),
-    )
-  }, [])
+  const importProductListings = React.useCallback(
+    async (items: ProductListing[]) => {
+      const merged = await importProductListingsToDb(items)
+      setProductListings(merged)
+      setProductListingsUseDatabase(true)
+    },
+    [],
+  )
 
   const addSocialRepurposingRecord = React.useCallback(
     (record: SocialRepurposingRecord) => {
@@ -1005,6 +1046,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     releasePlansUseDatabase,
     artistRecordsUseDatabase,
     merchIdeasUseDatabase,
+    productListingsUseDatabase,
     addPrompt,
     updatePrompt,
     deletePrompt,
@@ -1040,6 +1082,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     updateProductListing,
     deleteProductListing,
     importProductListings,
+    reloadProductListings,
     addSocialRepurposingRecord,
     updateSocialRepurposingRecord,
     deleteSocialRepurposingRecord,

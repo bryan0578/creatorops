@@ -188,6 +188,12 @@ export function loadProductListings(): ProductListing[] {
   }
 }
 
+/**
+ * Legacy localStorage persistence for product listings.
+ * Product Listing Generator now reads/writes SQLite via server actions.
+ * Kept for rollback, JSON migration, and one-time "Migrate local product listings" flow.
+ * TODO: Remove once all environments use the database and migration is complete.
+ */
 export function saveProductListings(listings: ProductListing[]): void {
   if (typeof window === "undefined") return
   localStorage.setItem(PRODUCT_LISTINGS_KEY, JSON.stringify(listings))

@@ -351,3 +351,40 @@ model MerchIdea {
   @@index([selectedConceptName])
   @@index([updatedAt])
 }
+
+/// Saved product listing from the Product Listing Generator.
+model ProductListing {
+  id                     String   @id
+  productType            String   @default("")
+  niche                  String   @default("")
+  audience               String   @default("")
+  designConcept          String   @default("")
+  tone                   String   @default("")
+  primaryKeyword         String   @default("")
+  secondaryKeywords      String   @default("")
+  storeName              String   @default("")
+  productBenefits        String   @default("")
+  pricingNotes           String   @default("")
+  completedPrompt        String   @default("")
+  aiResponse             String   @default("")
+  finalTitle             String   @default("")
+  finalShortDescription  String   @default("")
+  finalLongDescription   String   @default("")
+  finalBulletPoints      String   @default("")
+  finalTags              String   @default("")
+  finalCollection        String   @default("")
+  finalCTA               String   @default("")
+  finalSocialCaption     String   @default("")
+  finalEmailSubject      String   @default("")
+  notes                  String   @default("")
+  createdAt              DateTime
+  updatedAt              DateTime
+
+  @@index([productType])
+  @@index([niche])
+  @@index([storeName])
+  @@index([primaryKeyword])
+  @@index([finalTitle])
+  @@index([finalCollection])
+  @@index([updatedAt])
+}
