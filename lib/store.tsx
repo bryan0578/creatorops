@@ -34,10 +34,14 @@ import {
   loadYouTubeThumbnailRecords,
   mergeById,
   saveEmailCampaignRecords,
-  saveMockupPromptRecords,
 } from "@/lib/storage"
 import { normalizeEmailCampaignRecord } from "@/lib/email-campaigns"
-import { normalizeMockupPromptRecord } from "@/lib/mockup-prompts"
+import {
+  deleteMockupPromptRecordById,
+  getMockupPromptRecords,
+  importMockupPromptRecords as importMockupPromptRecordsToDb,
+  upsertMockupPromptRecord,
+} from "@/lib/actions/mockup-prompts"
 import {
   deleteAnalyticsRecordById,
   getAnalyticsRecords,
@@ -141,6 +145,7 @@ interface StoreContextValue {
   productListingsUseDatabase: boolean
   socialRepurposingRecordsUseDatabase: boolean
   analyticsRecordsUseDatabase: boolean
+  mockupPromptRecordsUseDatabase: boolean
   addPrompt: (p: Prompt) => Promise<void>
   updatePrompt: (p: Prompt) => Promise<void>
   deletePrompt: (id: string) => Promise<void>
@@ -192,10 +197,11 @@ interface StoreContextValue {
   deleteAnalyticsRecord: (id: string) => Promise<void>
   importAnalyticsRecords: (items: AnalyticsRecord[]) => Promise<void>
   reloadAnalyticsRecords: () => Promise<void>
-  addMockupPromptRecord: (record: MockupPromptRecord) => void
-  updateMockupPromptRecord: (record: MockupPromptRecord) => void
-  deleteMockupPromptRecord: (id: string) => void
-  importMockupPromptRecords: (items: MockupPromptRecord[]) => void
+  addMockupPromptRecord: (record: MockupPromptRecord) => Promise<void>
+  updateMockupPromptRecord: (record: MockupPromptRecord) => Promise<void>
+  deleteMockupPromptRecord: (id: string) => Promise<void>
+  importMockupPromptRecords: (items: MockupPromptRecord[]) => Promise<void>
+  reloadMockupPromptRecords: () => Promise<void>
   addEmailCampaignRecord: (record: EmailCampaignRecord) => void
   updateEmailCampaignRecord: (record: EmailCampaignRecord) => void
   deleteEmailCampaignRecord: (id: string) => void
@@ -270,6 +276,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [socialRepurposingRecordsUseDatabase, setSocialRepurposingRecordsUseDatabase] =
     React.useState(true)
   const [analyticsRecordsUseDatabase, setAnalyticsRecordsUseDatabase] =
+    React.useState(true)
+  const [mockupPromptRecordsUseDatabase, setMockupPromptRecordsUseDatabase] =
     React.useState(true)
 
   const reloadPrompts = React.useCallback(async () => {
@@ -450,6 +458,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       )
       setAnalyticsRecords(loadAnalyticsRecords())
       setAnalyticsRecordsUseDatabase(false)
+      throw error
+    }
+  }, [])
+
+  const reloadMockupPromptRecords = React.useCallback(async () => {
+    try {
+      const next = await getMockupPromptRecords()
+      setMockupPromptRecords(next)
+      setMockupPromptRecordsUseDatabase(true)
+    } catch (error) {
+      console.error(
+        "[CreatorOps] Failed to reload mockup prompt records from database; using localStorage.",
+        error,
+      )
+      setMockupPromptRecords(loadMockupPromptRecords())
+      setMockupPromptRecordsUseDatabase(false)
       throw error
     }
   }, [])
@@ -648,7 +672,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       if (cancelled) return
 
-      setMockupPromptRecords(loadMockupPromptRecords())
+      try {
+        const dbMockupPrompts = await getMockupPromptRecords()
+        if (!cancelled) {
+          setMockupPromptRecords(dbMockupPrompts)
+          setMockupPromptRecordsUseDatabase(true)
+        }
+      } catch (error) {
+        console.error(
+          "[CreatorOps] Failed to load mockup prompt records from database; using localStorage.",
+          error,
+        )
+        if (!cancelled) {
+          setMockupPromptRecords(loadMockupPromptRecords())
+          setMockupPromptRecordsUseDatabase(false)
+        }
+      }
+
+      if (cancelled) return
+
       setEmailCampaignRecords(loadEmailCampaignRecords())
 
       try {
@@ -699,11 +741,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   // Core modules persist in SQLite — see lib/actions/*
   // TODO: Remove localStorage save effects as each module migrates to Prisma.
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveMockupPromptRecords(mockupPromptRecords)
-  }, [mockupPromptRecords, hydrated])
 
   React.useEffect(() => {
     if (!hydrated) return
@@ -978,31 +1015,40 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [],
   )
 
-  const addMockupPromptRecord = React.useCallback((record: MockupPromptRecord) => {
-    setMockupPromptRecords((prev) => [record, ...prev])
-  }, [])
-
-  const updateMockupPromptRecord = React.useCallback(
-    (record: MockupPromptRecord) => {
-      setMockupPromptRecords((prev) =>
-        prev.map((x) => (x.id === record.id ? record : x)),
-      )
+  const addMockupPromptRecord = React.useCallback(
+    async (record: MockupPromptRecord) => {
+      const saved = await upsertMockupPromptRecord(record)
+      setMockupPromptRecords((prev) => [
+        saved,
+        ...prev.filter((x) => x.id !== saved.id),
+      ])
+      setMockupPromptRecordsUseDatabase(true)
     },
     [],
   )
 
-  const deleteMockupPromptRecord = React.useCallback((id: string) => {
+  const updateMockupPromptRecord = React.useCallback(
+    async (record: MockupPromptRecord) => {
+      const saved = await upsertMockupPromptRecord(record)
+      setMockupPromptRecords((prev) =>
+        prev.map((x) => (x.id === saved.id ? saved : x)),
+      )
+      setMockupPromptRecordsUseDatabase(true)
+    },
+    [],
+  )
+
+  const deleteMockupPromptRecord = React.useCallback(async (id: string) => {
+    await deleteMockupPromptRecordById(id)
     setMockupPromptRecords((prev) => prev.filter((x) => x.id !== id))
+    setMockupPromptRecordsUseDatabase(true)
   }, [])
 
   const importMockupPromptRecords = React.useCallback(
-    (items: MockupPromptRecord[]) => {
-      setMockupPromptRecords((prev) =>
-        mergeById(
-          prev,
-          items.map((item) => normalizeMockupPromptRecord(item)),
-        ),
-      )
+    async (items: MockupPromptRecord[]) => {
+      const merged = await importMockupPromptRecordsToDb(items)
+      setMockupPromptRecords(merged)
+      setMockupPromptRecordsUseDatabase(true)
     },
     [],
   )
@@ -1129,6 +1175,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     productListingsUseDatabase,
     socialRepurposingRecordsUseDatabase,
     analyticsRecordsUseDatabase,
+    mockupPromptRecordsUseDatabase,
     addPrompt,
     updatePrompt,
     deletePrompt,
@@ -1184,6 +1231,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     updateMockupPromptRecord,
     deleteMockupPromptRecord,
     importMockupPromptRecords,
+    reloadMockupPromptRecords,
     addEmailCampaignRecord,
     updateEmailCampaignRecord,
     deleteEmailCampaignRecord,

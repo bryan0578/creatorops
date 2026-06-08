@@ -3,6 +3,7 @@
 import * as React from "react"
 import {
   Copy,
+  Database,
   Download,
   Search,
   Trash2,
@@ -18,7 +19,8 @@ import {
   MOCKUP_TYPES,
 } from "@/lib/types"
 import { copyToClipboard } from "@/lib/copy-to-clipboard"
-import { downloadJson } from "@/lib/storage"
+import { migrateLocalMockupPromptRecordsToDatabase } from "@/lib/actions/mockup-prompts"
+import { downloadJson, loadMockupPromptRecords } from "@/lib/storage"
 import {
   buildFinalMockupPromptText,
   buildMockupPromptCompletedPrompt,
@@ -51,7 +53,6 @@ import {
 } from "@/components/ui/select"
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -161,10 +162,12 @@ export function MockupPromptGenerator() {
   const {
     prompts,
     mockupPromptRecords,
+    mockupPromptRecordsUseDatabase,
     addMockupPromptRecord,
     updateMockupPromptRecord,
     deleteMockupPromptRecord,
     importMockupPromptRecords,
+    reloadMockupPromptRecords,
   } = useStore()
 
   const [form, setForm] = React.useState<MockupPromptFormValues>(
@@ -179,6 +182,7 @@ export function MockupPromptGenerator() {
   const [recordSearch, setRecordSearch] = React.useState("")
   const [pendingDelete, setPendingDelete] =
     React.useState<MockupPromptRecord | null>(null)
+  const [migrating, setMigrating] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   const template = React.useMemo(
@@ -252,7 +256,7 @@ export function MockupPromptGenerator() {
     }
   }
 
-  function handleSave() {
+  async function handleSave() {
     const now = Date.now()
     const record = normalizeMockupPromptRecord({
       id: editingId ?? createId("mockup"),
@@ -266,13 +270,17 @@ export function MockupPromptGenerator() {
       updatedAt: now,
     })
 
-    if (editingId) {
-      updateMockupPromptRecord(record)
-      toast.success("Mockup prompt updated")
-    } else {
-      addMockupPromptRecord(record)
-      setEditingId(record.id)
-      toast.success("Mockup prompt saved")
+    try {
+      if (editingId) {
+        await updateMockupPromptRecord(record)
+        toast.success("Mockup prompt updated")
+      } else {
+        await addMockupPromptRecord(record)
+        setEditingId(record.id)
+        toast.success("Mockup prompt saved")
+      }
+    } catch {
+      toast.error("Could not save mockup prompt to database")
     }
   }
 
@@ -306,12 +314,16 @@ export function MockupPromptGenerator() {
     toast.success("Mockup prompt loaded")
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!pendingDelete) return
-    deleteMockupPromptRecord(pendingDelete.id)
-    if (editingId === pendingDelete.id) resetForm()
-    setPendingDelete(null)
-    toast.success("Mockup prompt deleted")
+    try {
+      await deleteMockupPromptRecord(pendingDelete.id)
+      if (editingId === pendingDelete.id) resetForm()
+      setPendingDelete(null)
+      toast.success("Mockup prompt deleted")
+    } catch {
+      toast.error("Could not delete mockup prompt from database")
+    }
   }
 
   function handleExport() {
@@ -323,20 +335,41 @@ export function MockupPromptGenerator() {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const parsed = JSON.parse(String(reader.result))
         const items = (Array.isArray(parsed) ? parsed : [parsed]).map((item) =>
           normalizeMockupPromptRecord(item as MockupPromptRecord),
         )
-        importMockupPromptRecords(items)
-        toast.success(`Imported ${items.length} record(s)`)
+        await importMockupPromptRecords(items)
+        toast.success(`Imported ${items.length} record(s) to database`)
       } catch {
-        toast.error("Invalid JSON file")
+        toast.error("Invalid JSON file or import failed")
       }
     }
     reader.readAsText(file)
     e.target.value = ""
+  }
+
+  async function handleMigrateLocal() {
+    const local = loadMockupPromptRecords()
+    if (local.length === 0) {
+      toast.error("No mockup prompts found in localStorage to migrate")
+      return
+    }
+    setMigrating(true)
+    try {
+      const { migrated, total } =
+        await migrateLocalMockupPromptRecordsToDatabase(local)
+      await reloadMockupPromptRecords()
+      toast.success(
+        `Migrated ${migrated} local record(s). Database now has ${total} total.`,
+      )
+    } catch {
+      toast.error("Migration to database failed")
+    } finally {
+      setMigrating(false)
+    }
   }
 
   const finalMockupText = buildFinalMockupPromptText(
@@ -602,6 +635,9 @@ export function MockupPromptGenerator() {
             <CardDescription>
               {mockupPromptRecords.length} saved record
               {mockupPromptRecords.length === 1 ? "" : "s"}
+              {mockupPromptRecordsUseDatabase
+                ? " · stored in SQLite"
+                : " · using localStorage fallback"}
             </CardDescription>
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
@@ -614,6 +650,16 @@ export function MockupPromptGenerator() {
                 className="pl-8"
               />
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleMigrateLocal}
+              disabled={migrating}
+            >
+              <Database className="size-4" />
+              {migrating ? "Migrating…" : "Migrate local"}
+            </Button>
             <Button type="button" variant="outline" size="sm" onClick={handleExport}>
               <Download className="size-4" />
               Export
@@ -782,10 +828,18 @@ export function MockupPromptGenerator() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPendingDelete(null)}
+            >
               Cancel
-            </DialogClose>
-            <Button variant="destructive" onClick={confirmDelete}>
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDelete}
+            >
               Delete
             </Button>
           </DialogFooter>

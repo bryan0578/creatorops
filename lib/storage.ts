@@ -294,6 +294,12 @@ export function loadMockupPromptRecords(): MockupPromptRecord[] {
   }
 }
 
+/**
+ * Legacy localStorage persistence for mockup prompt records.
+ * Mockup Prompt Generator now reads/writes SQLite via server actions.
+ * Kept for rollback, JSON migration, and one-time "Migrate local mockup prompts" flow.
+ * TODO: Remove once all environments use the database and migration is complete.
+ */
 export function saveMockupPromptRecords(records: MockupPromptRecord[]): void {
   if (typeof window === "undefined") return
   localStorage.setItem(MOCKUP_PROMPTS_KEY, JSON.stringify(records))

@@ -478,3 +478,44 @@ model AnalyticsRecord {
   @@index([views])
   @@index([updatedAt])
 }
+
+/// Saved mockup prompt project from the Mockup Prompt Generator.
+model MockupPrompt {
+  id                  String   @id
+  projectName         String   @default("")
+  mockupType          String   @default("")
+  productType         String   @default("")
+  niche               String   @default("")
+  audience            String   @default("")
+  designConcept       String   @default("")
+  visualStyle         String   @default("")
+  colors              String   @default("")
+  setting             String   @default("")
+  modelDescription    String   @default("")
+  cameraAngle         String   @default("")
+  lighting            String   @default("")
+  mood                String   @default("")
+  platformUse         String   @default("")
+  aspectRatio         String   @default("")
+  textToInclude       String   @default("")
+  textToAvoid         String   @default("")
+  brandNotes          String   @default("")
+  completedPrompt     String   @default("")
+  aiResponse          String   @default("")
+  finalImagePrompt    String   @default("")
+  finalNegativePrompt String   @default("")
+  finalLayoutNotes    String   @default("")
+  finalTextPlacement  String   @default("")
+  finalUsageNotes     String   @default("")
+  notes               String   @default("")
+  createdAt           DateTime
+  updatedAt           DateTime
+
+  @@index([projectName])
+  @@index([mockupType])
+  @@index([productType])
+  @@index([niche])
+  @@index([platformUse])
+  @@index([visualStyle])
+  @@index([updatedAt])
+}

@@ -8,8 +8,15 @@
  * 4. Point lib/store.tsx hydration + CRUD at server actions
  * 5. Keep lib/storage.ts localStorage helpers for rollback/migration
  *
- * TODO: mockup prompts, etc.
+ * TODO: email campaigns, etc.
  */
+
+export {
+  normalizeMockupPromptRecord,
+  prismaMockupPromptToMockupPromptRecord,
+  mockupPromptToPrismaCreate,
+  mockupPromptToPrismaUpdate,
+} from "@/lib/data/mockup-prompts"
 
 export {
   normalizeAnalyticsRecord,
