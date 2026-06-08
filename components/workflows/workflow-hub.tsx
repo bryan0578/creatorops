@@ -1,13 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { Download, Plus, Search, Upload } from "lucide-react"
+import { Database, Download, Plus, Search, Upload } from "lucide-react"
 import { toast } from "sonner"
 
+import { migrateLocalWorkflowsToDatabase } from "@/lib/actions/workflows"
 import { useStore } from "@/lib/store"
 import type { Workflow, WorkflowStatus, PromptCategory } from "@/lib/types"
 import { PROMPT_CATEGORIES, WORKFLOW_STATUSES } from "@/lib/types"
-import { downloadJson } from "@/lib/storage"
+import { downloadJson, loadWorkflows } from "@/lib/storage"
 
 import { PageHeader } from "@/components/app-shell"
 import { Button } from "@/components/ui/button"
@@ -21,7 +22,6 @@ import {
 } from "@/components/ui/select"
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -37,10 +37,12 @@ export function WorkflowHub() {
     workflows,
     prompts,
     hydrated,
+    workflowsUseDatabase,
     addWorkflow,
     updateWorkflow,
     deleteWorkflow,
     importWorkflows,
+    reloadWorkflows,
   } = useStore()
 
   const [search, setSearch] = React.useState("")
@@ -54,6 +56,7 @@ export function WorkflowHub() {
   const [detailOpen, setDetailOpen] = React.useState(false)
 
   const [pendingDelete, setPendingDelete] = React.useState<Workflow | null>(null)
+  const [migrating, setMigrating] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   const detailWorkflow = workflows.find((w) => w.id === detailId) ?? null
@@ -88,22 +91,30 @@ export function WorkflowHub() {
     setDetailOpen(true)
   }
 
-  function handleSave(workflow: Workflow) {
-    if (workflows.some((w) => w.id === workflow.id)) {
-      updateWorkflow(workflow)
-      toast.success("Workflow updated")
-    } else {
-      addWorkflow(workflow)
-      toast.success("Workflow created")
+  async function handleSave(workflow: Workflow) {
+    try {
+      if (workflows.some((w) => w.id === workflow.id)) {
+        await updateWorkflow(workflow)
+        toast.success("Workflow updated")
+      } else {
+        await addWorkflow(workflow)
+        toast.success("Workflow created")
+      }
+    } catch {
+      toast.error("Could not save workflow to database")
     }
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!pendingDelete) return
-    deleteWorkflow(pendingDelete.id)
-    setDetailOpen(false)
-    setPendingDelete(null)
-    toast.success("Workflow deleted")
+    try {
+      await deleteWorkflow(pendingDelete.id)
+      setDetailOpen(false)
+      setPendingDelete(null)
+      toast.success("Workflow deleted")
+    } catch {
+      toast.error("Could not delete workflow from database")
+    }
   }
 
   function handleExport() {
@@ -115,18 +126,39 @@ export function WorkflowHub() {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const parsed = JSON.parse(String(reader.result))
         const items = Array.isArray(parsed) ? parsed : [parsed]
-        importWorkflows(items as Workflow[])
-        toast.success(`Imported ${items.length} workflow(s)`)
+        await importWorkflows(items as Workflow[])
+        toast.success(`Imported ${items.length} workflow(s) to database`)
       } catch {
-        toast.error("Invalid JSON file")
+        toast.error("Invalid JSON file or import failed")
       }
     }
     reader.readAsText(file)
     e.target.value = ""
+  }
+
+  async function handleMigrateLocal() {
+    const local = loadWorkflows()
+    if (local.length === 0) {
+      toast.error("No workflows found in localStorage to migrate")
+      return
+    }
+    setMigrating(true)
+    try {
+      const { migrated, total } =
+        await migrateLocalWorkflowsToDatabase(local)
+      await reloadWorkflows()
+      toast.success(
+        `Migrated ${migrated} local workflow(s). Database now has ${total} total.`,
+      )
+    } catch {
+      toast.error("Migration to database failed")
+    } finally {
+      setMigrating(false)
+    }
   }
 
   return (
@@ -143,6 +175,14 @@ export function WorkflowHub() {
               className="hidden"
               onChange={handleImportFile}
             />
+            <Button
+              variant="outline"
+              onClick={handleMigrateLocal}
+              disabled={migrating}
+            >
+              <Database className="size-4" />
+              {migrating ? "Migrating…" : "Migrate local workflows"}
+            </Button>
             <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
               <Upload className="size-4" />
               Import JSON
@@ -199,6 +239,9 @@ export function WorkflowHub() {
 
       <p className="text-sm text-muted-foreground">
         {filtered.length} of {workflows.length} workflows
+        {workflowsUseDatabase
+          ? " · stored in SQLite"
+          : " · using localStorage fallback"}
       </p>
 
       {hydrated && filtered.length === 0 ? (
@@ -255,10 +298,14 @@ export function WorkflowHub() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DialogClose>
-            <Button variant="destructive" onClick={confirmDelete}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPendingDelete(null)}
+            >
+              Cancel
+            </Button>
+            <Button type="button" variant="destructive" onClick={confirmDelete}>
               Delete
             </Button>
           </DialogFooter>

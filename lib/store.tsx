@@ -43,7 +43,6 @@ import {
   saveRuns,
   saveSocialRepurposingRecords,
   saveWorkflowRuns,
-  saveWorkflows,
   saveYouTubePackages,
   saveYouTubeThumbnailRecords,
 } from "@/lib/storage"
@@ -63,6 +62,12 @@ import {
   importPrompts as importPromptsToDb,
   upsertPrompt,
 } from "@/lib/actions/prompts"
+import {
+  deleteWorkflowById,
+  getWorkflows,
+  importWorkflows as importWorkflowsToDb,
+  upsertWorkflow,
+} from "@/lib/actions/workflows"
 
 export { createId } from "@/lib/storage"
 
@@ -83,15 +88,17 @@ interface StoreContextValue {
   youtubeThumbnailRecords: YouTubeThumbnailRecord[]
   hydrated: boolean
   promptsUseDatabase: boolean
+  workflowsUseDatabase: boolean
   addPrompt: (p: Prompt) => Promise<void>
   updatePrompt: (p: Prompt) => Promise<void>
   deletePrompt: (id: string) => Promise<void>
   importPrompts: (items: Prompt[]) => Promise<void>
   reloadPrompts: () => Promise<void>
-  addWorkflow: (w: Workflow) => void
-  updateWorkflow: (w: Workflow) => void
-  deleteWorkflow: (id: string) => void
-  importWorkflows: (items: Workflow[]) => void
+  addWorkflow: (w: Workflow) => Promise<void>
+  updateWorkflow: (w: Workflow) => Promise<void>
+  deleteWorkflow: (id: string) => Promise<void>
+  importWorkflows: (items: Workflow[]) => Promise<void>
+  reloadWorkflows: () => Promise<void>
   getPrompt: (id: string | null) => Prompt | undefined
   addRun: (run: PromptRun) => void
   updateRun: (run: PromptRun) => void
@@ -182,11 +189,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   >([])
   const [hydrated, setHydrated] = React.useState(false)
   const [promptsUseDatabase, setPromptsUseDatabase] = React.useState(true)
+  const [workflowsUseDatabase, setWorkflowsUseDatabase] = React.useState(true)
 
   const reloadPrompts = React.useCallback(async () => {
     const next = await getPrompts()
     setPrompts(next)
     setPromptsUseDatabase(true)
+  }, [])
+
+  const reloadWorkflows = React.useCallback(async () => {
+    try {
+      const next = await getWorkflows()
+      setWorkflows(next)
+      setWorkflowsUseDatabase(true)
+    } catch (error) {
+      console.error(
+        "[CreatorOps] Failed to reload workflows from database; using localStorage.",
+        error,
+      )
+      setWorkflows(loadWorkflows())
+      setWorkflowsUseDatabase(false)
+      throw error
+    }
   }, [])
 
   React.useEffect(() => {
@@ -212,7 +236,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       if (cancelled) return
 
-      setWorkflows(loadWorkflows())
+      try {
+        const dbWorkflows = await getWorkflows()
+        if (!cancelled) {
+          setWorkflows(dbWorkflows)
+          setWorkflowsUseDatabase(true)
+        }
+      } catch (error) {
+        console.error(
+          "[CreatorOps] Failed to load workflows from database; using localStorage.",
+          error,
+        )
+        if (!cancelled) {
+          setWorkflows(loadWorkflows())
+          setWorkflowsUseDatabase(false)
+        }
+      }
+
+      if (cancelled) return
+
       setRuns(loadRuns())
       setWorkflowRuns(loadWorkflowRuns())
       setYoutubePackages(loadYouTubePackages())
@@ -235,13 +277,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Prompts persist in SQLite — see lib/actions/prompts.ts
+  // Prompts and workflows persist in SQLite — see lib/actions/prompts.ts, lib/actions/workflows.ts
   // TODO: Remove localStorage save effects as each module migrates to Prisma.
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveWorkflows(workflows)
-  }, [workflows, hydrated])
 
   React.useEffect(() => {
     if (!hydrated) return
@@ -327,20 +364,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setPromptsUseDatabase(true)
   }, [])
 
-  const importWorkflows = React.useCallback((items: Workflow[]) => {
-    setWorkflows((prev) => mergeById(prev, items))
+  const importWorkflows = React.useCallback(async (items: Workflow[]) => {
+    const merged = await importWorkflowsToDb(items)
+    setWorkflows(merged)
+    setWorkflowsUseDatabase(true)
   }, [])
 
-  const addWorkflow = React.useCallback((w: Workflow) => {
-    setWorkflows((prev) => [w, ...prev])
+  const addWorkflow = React.useCallback(async (w: Workflow) => {
+    const saved = await upsertWorkflow(w)
+    setWorkflows((prev) => [saved, ...prev.filter((x) => x.id !== saved.id)])
+    setWorkflowsUseDatabase(true)
   }, [])
 
-  const updateWorkflow = React.useCallback((w: Workflow) => {
-    setWorkflows((prev) => prev.map((x) => (x.id === w.id ? w : x)))
+  const updateWorkflow = React.useCallback(async (w: Workflow) => {
+    const saved = await upsertWorkflow(w)
+    setWorkflows((prev) => prev.map((x) => (x.id === saved.id ? saved : x)))
+    setWorkflowsUseDatabase(true)
   }, [])
 
-  const deleteWorkflow = React.useCallback((id: string) => {
+  const deleteWorkflow = React.useCallback(async (id: string) => {
+    await deleteWorkflowById(id)
     setWorkflows((prev) => prev.filter((x) => x.id !== id))
+    setWorkflowsUseDatabase(true)
   }, [])
 
   const getPrompt = React.useCallback(
@@ -654,6 +699,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     youtubeThumbnailRecords,
     hydrated,
     promptsUseDatabase,
+    workflowsUseDatabase,
     addPrompt,
     updatePrompt,
     deletePrompt,
@@ -663,6 +709,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     updateWorkflow,
     deleteWorkflow,
     importWorkflows,
+    reloadWorkflows,
     getPrompt,
     addRun,
     updateRun,

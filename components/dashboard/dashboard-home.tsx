@@ -636,9 +636,13 @@ export function DashboardHome() {
         onOpenChange={setWorkflowFormOpen}
         initial={null}
         prompts={prompts}
-        onSave={(w) => {
-          addWorkflow(w)
-          toast.success("Workflow created")
+        onSave={async (w) => {
+          try {
+            await addWorkflow(w)
+            toast.success("Workflow created")
+          } catch {
+            toast.error("Could not save workflow to database")
+          }
         }}
       />
     </div>

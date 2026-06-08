@@ -35,22 +35,54 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
+type PrismaWithDelegates = PrismaClient & {
+  prompt?: unknown
+  workflow?: unknown
+  workflowStep?: unknown
+}
+
+function isPrismaClientComplete(client: PrismaClient): boolean {
+  const c = client as PrismaWithDelegates
+  return (
+    typeof c.prompt !== "undefined" &&
+    typeof c.workflow !== "undefined" &&
+    typeof c.workflowStep !== "undefined"
+  )
+}
+
 function createPrismaClient(): PrismaClient {
   const adapter = new PrismaBetterSqlite3({
     url: getDatabaseUrl(),
   })
 
-  return new PrismaClient({
+  const client = new PrismaClient({
     adapter,
     log:
       process.env.NODE_ENV === "development"
         ? ["query", "error", "warn"]
         : ["error"],
   })
+
+  if (!isPrismaClientComplete(client)) {
+    throw new Error(
+      "Prisma Client is missing expected model delegates (prompt, workflow, workflowStep). Run `npx prisma generate` and `npm run db:migrate`, then restart the dev server.",
+    )
+  }
+
+  return client
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient()
+function getPrismaClient(): PrismaClient {
+  const cached = globalForPrisma.prisma
+  if (cached && isPrismaClientComplete(cached)) {
+    return cached
+  }
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma
+  const client = createPrismaClient()
+  if (process.env.NODE_ENV !== "production") {
+    globalForPrisma.prisma = client
+  }
+  return client
 }
+
+export const prisma = getPrismaClient()

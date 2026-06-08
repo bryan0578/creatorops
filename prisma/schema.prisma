@@ -30,3 +30,35 @@ model Prompt {
   @@index([category])
   @@index([updatedAt])
 }
+
+/// Multi-step repeatable processes in Workflow Hub.
+model Workflow {
+  id                 String         @id
+  name               String
+  category           String
+  description        String         @default("")
+  status             String
+  estimatedTimeSaved String         @default("")
+  notes              String         @default("")
+  createdAt          DateTime
+  updatedAt          DateTime
+  steps              WorkflowStep[]
+
+  @@index([category])
+  @@index([status])
+  @@index([updatedAt])
+}
+
+/// Ordered step within a workflow; promptId references Prompt.id (soft link).
+model WorkflowStep {
+  id          String   @id
+  workflowId  String
+  sortOrder   Int
+  title       String
+  description String   @default("")
+  promptId    String?
+  workflow    Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([promptId])
+}
