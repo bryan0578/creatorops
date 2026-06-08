@@ -1,0 +1,32 @@
+// CreatorOps Dashboard — Prisma schema
+// TODO: Migrate Workflow, PromptRun, and other modules using the same pattern as Prompt.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+/// Reusable prompt templates for the Prompt Library and Prompt Runner.
+model Prompt {
+  id           String   @id
+  name         String
+  category     String
+  description  String   @default("")
+  promptText   String
+  /// JSON string[] — variable names used in the template
+  variables    String   @default("[]")
+  outputFormat String   @default("")
+  /// JSON string[]
+  tags         String   @default("[]")
+  rating       Int      @default(0)
+  notes        String   @default("")
+  createdAt    DateTime
+  updatedAt    DateTime
+
+  @@index([category])
+  @@index([updatedAt])
+}

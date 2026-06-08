@@ -1,13 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { Download, Plus, Search, Upload } from "lucide-react"
+import { Download, Database, Plus, Search, Upload } from "lucide-react"
 import { toast } from "sonner"
 
 import { useStore } from "@/lib/store"
 import type { Prompt, PromptCategory } from "@/lib/types"
 import { PROMPT_CATEGORIES } from "@/lib/types"
-import { downloadJson } from "@/lib/storage"
+import { downloadJson, loadPrompts } from "@/lib/storage"
+import { migrateLocalPromptsToDatabase } from "@/lib/actions/prompts"
 
 import { PageHeader } from "@/components/app-shell"
 import { Button } from "@/components/ui/button"
@@ -36,15 +37,18 @@ export function PromptLibrary() {
   const {
     prompts,
     hydrated,
+    promptsUseDatabase,
     addPrompt,
     updatePrompt,
     deletePrompt,
     importPrompts,
+    reloadPrompts,
   } = useStore()
 
   const [search, setSearch] = React.useState("")
   const [category, setCategory] = React.useState<"all" | PromptCategory>("all")
   const [minRating, setMinRating] = React.useState<string>("all")
+  const [migrating, setMigrating] = React.useState(false)
 
   const [formOpen, setFormOpen] = React.useState(false)
   const [editing, setEditing] = React.useState<Prompt | null>(null)
@@ -88,22 +92,30 @@ export function PromptLibrary() {
     setDetailOpen(true)
   }
 
-  function handleSave(prompt: Prompt) {
-    if (prompts.some((p) => p.id === prompt.id)) {
-      updatePrompt(prompt)
-      toast.success("Prompt updated")
-    } else {
-      addPrompt(prompt)
-      toast.success("Prompt created")
+  async function handleSave(prompt: Prompt) {
+    try {
+      if (prompts.some((p) => p.id === prompt.id)) {
+        await updatePrompt(prompt)
+        toast.success("Prompt updated")
+      } else {
+        await addPrompt(prompt)
+        toast.success("Prompt created")
+      }
+    } catch {
+      toast.error("Could not save prompt to database")
     }
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!pendingDelete) return
-    deletePrompt(pendingDelete.id)
-    setDetailOpen(false)
-    setPendingDelete(null)
-    toast.success("Prompt deleted")
+    try {
+      await deletePrompt(pendingDelete.id)
+      setDetailOpen(false)
+      setPendingDelete(null)
+      toast.success("Prompt deleted")
+    } catch {
+      toast.error("Could not delete prompt from database")
+    }
   }
 
   function handleExport() {
@@ -115,18 +127,39 @@ export function PromptLibrary() {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const parsed = JSON.parse(String(reader.result))
         const items = Array.isArray(parsed) ? parsed : [parsed]
-        importPrompts(items as Prompt[])
-        toast.success(`Imported ${items.length} prompt(s)`)
+        await importPrompts(items as Prompt[])
+        toast.success(`Imported ${items.length} prompt(s) to database`)
       } catch {
-        toast.error("Invalid JSON file")
+        toast.error("Invalid JSON file or import failed")
       }
     }
     reader.readAsText(file)
     e.target.value = ""
+  }
+
+  async function handleMigrateLocal() {
+    const local = loadPrompts()
+    if (local.length === 0) {
+      toast.error("No prompts found in localStorage to migrate")
+      return
+    }
+    setMigrating(true)
+    try {
+      const { migrated, total } =
+        await migrateLocalPromptsToDatabase(local)
+      await reloadPrompts()
+      toast.success(
+        `Migrated ${migrated} local prompt(s). Database now has ${total} total.`,
+      )
+    } catch {
+      toast.error("Migration to database failed")
+    } finally {
+      setMigrating(false)
+    }
   }
 
   return (
@@ -143,6 +176,14 @@ export function PromptLibrary() {
               className="hidden"
               onChange={handleImportFile}
             />
+            <Button
+              variant="outline"
+              onClick={handleMigrateLocal}
+              disabled={migrating}
+            >
+              <Database className="size-4" />
+              {migrating ? "Migrating…" : "Migrate local prompts"}
+            </Button>
             <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
               <Upload className="size-4" />
               Import JSON
@@ -198,6 +239,7 @@ export function PromptLibrary() {
 
       <p className="text-sm text-muted-foreground">
         {filtered.length} of {prompts.length} prompts
+        {promptsUseDatabase ? " · stored in SQLite" : " · using localStorage fallback"}
       </p>
 
       {hydrated && filtered.length === 0 ? (

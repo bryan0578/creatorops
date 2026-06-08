@@ -51,6 +51,12 @@ export function loadPrompts(): Prompt[] {
   }
 }
 
+/**
+ * Legacy localStorage persistence for prompts.
+ * Prompt Library now reads/writes SQLite via server actions.
+ * Kept for rollback, JSON migration, and one-time "Migrate local prompts" flow.
+ * TODO: Remove once all environments use the database and migration is complete.
+ */
 export function savePrompts(prompts: Prompt[]): void {
   if (typeof window === "undefined") return
   localStorage.setItem(PROMPTS_KEY, JSON.stringify(prompts))

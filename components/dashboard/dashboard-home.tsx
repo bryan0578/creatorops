@@ -622,9 +622,13 @@ export function DashboardHome() {
         open={promptFormOpen}
         onOpenChange={setPromptFormOpen}
         initial={null}
-        onSave={(p) => {
-          addPrompt(p)
-          toast.success("Prompt created")
+        onSave={async (p) => {
+          try {
+            await addPrompt(p)
+            toast.success("Prompt created")
+          } catch {
+            toast.error("Could not save prompt to database")
+          }
         }}
       />
       <WorkflowFormDialog

@@ -39,7 +39,6 @@ import {
   saveMerchIdeas,
   saveMockupPromptRecords,
   saveProductListings,
-  savePrompts,
   saveReleasePlans,
   saveRuns,
   saveSocialRepurposingRecords,
@@ -58,6 +57,12 @@ import { normalizeReleasePlan } from "@/lib/release-planner"
 import { normalizeSocialRepurposingRecord } from "@/lib/social-repurposing"
 import { normalizeYouTubePackage } from "@/lib/youtube-packaging"
 import { normalizeYouTubeThumbnailRecord } from "@/lib/youtube-thumbnails"
+import {
+  deletePromptById,
+  getPrompts,
+  importPrompts as importPromptsToDb,
+  upsertPrompt,
+} from "@/lib/actions/prompts"
 
 export { createId } from "@/lib/storage"
 
@@ -77,10 +82,12 @@ interface StoreContextValue {
   artistRecords: ArtistRecord[]
   youtubeThumbnailRecords: YouTubeThumbnailRecord[]
   hydrated: boolean
-  addPrompt: (p: Prompt) => void
-  updatePrompt: (p: Prompt) => void
-  deletePrompt: (id: string) => void
-  importPrompts: (items: Prompt[]) => void
+  promptsUseDatabase: boolean
+  addPrompt: (p: Prompt) => Promise<void>
+  updatePrompt: (p: Prompt) => Promise<void>
+  deletePrompt: (id: string) => Promise<void>
+  importPrompts: (items: Prompt[]) => Promise<void>
+  reloadPrompts: () => Promise<void>
   addWorkflow: (w: Workflow) => void
   updateWorkflow: (w: Workflow) => void
   deleteWorkflow: (id: string) => void
@@ -174,29 +181,62 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     YouTubeThumbnailRecord[]
   >([])
   const [hydrated, setHydrated] = React.useState(false)
+  const [promptsUseDatabase, setPromptsUseDatabase] = React.useState(true)
 
-  React.useEffect(() => {
-    setPrompts(loadPrompts())
-    setWorkflows(loadWorkflows())
-    setRuns(loadRuns())
-    setWorkflowRuns(loadWorkflowRuns())
-    setYoutubePackages(loadYouTubePackages())
-    setMerchIdeas(loadMerchIdeas())
-    setProductListings(loadProductListings())
-    setSocialRepurposingRecords(loadSocialRepurposingRecords())
-    setReleasePlans(loadReleasePlans())
-    setAnalyticsRecords(loadAnalyticsRecords())
-    setMockupPromptRecords(loadMockupPromptRecords())
-    setEmailCampaignRecords(loadEmailCampaignRecords())
-    setArtistRecords(loadArtistRecords())
-    setYoutubeThumbnailRecords(loadYouTubeThumbnailRecords())
-    setHydrated(true)
+  const reloadPrompts = React.useCallback(async () => {
+    const next = await getPrompts()
+    setPrompts(next)
+    setPromptsUseDatabase(true)
   }, [])
 
   React.useEffect(() => {
-    if (!hydrated) return
-    savePrompts(prompts)
-  }, [prompts, hydrated])
+    let cancelled = false
+
+    async function hydrateStore() {
+      try {
+        const dbPrompts = await getPrompts()
+        if (!cancelled) {
+          setPrompts(dbPrompts)
+          setPromptsUseDatabase(true)
+        }
+      } catch (error) {
+        console.error(
+          "[CreatorOps] Failed to load prompts from database; using localStorage.",
+          error,
+        )
+        if (!cancelled) {
+          setPrompts(loadPrompts())
+          setPromptsUseDatabase(false)
+        }
+      }
+
+      if (cancelled) return
+
+      setWorkflows(loadWorkflows())
+      setRuns(loadRuns())
+      setWorkflowRuns(loadWorkflowRuns())
+      setYoutubePackages(loadYouTubePackages())
+      setMerchIdeas(loadMerchIdeas())
+      setProductListings(loadProductListings())
+      setSocialRepurposingRecords(loadSocialRepurposingRecords())
+      setReleasePlans(loadReleasePlans())
+      setAnalyticsRecords(loadAnalyticsRecords())
+      setMockupPromptRecords(loadMockupPromptRecords())
+      setEmailCampaignRecords(loadEmailCampaignRecords())
+      setArtistRecords(loadArtistRecords())
+      setYoutubeThumbnailRecords(loadYouTubeThumbnailRecords())
+      setHydrated(true)
+    }
+
+    hydrateStore()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Prompts persist in SQLite — see lib/actions/prompts.ts
+  // TODO: Remove localStorage save effects as each module migrates to Prisma.
 
   React.useEffect(() => {
     if (!hydrated) return
@@ -263,20 +303,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     saveYouTubeThumbnailRecords(youtubeThumbnailRecords)
   }, [youtubeThumbnailRecords, hydrated])
 
-  const addPrompt = React.useCallback((p: Prompt) => {
-    setPrompts((prev) => [p, ...prev])
+  const addPrompt = React.useCallback(async (p: Prompt) => {
+    const saved = await upsertPrompt(p)
+    setPrompts((prev) => [saved, ...prev.filter((x) => x.id !== saved.id)])
+    setPromptsUseDatabase(true)
   }, [])
 
-  const updatePrompt = React.useCallback((p: Prompt) => {
-    setPrompts((prev) => prev.map((x) => (x.id === p.id ? p : x)))
+  const updatePrompt = React.useCallback(async (p: Prompt) => {
+    const saved = await upsertPrompt(p)
+    setPrompts((prev) => prev.map((x) => (x.id === saved.id ? saved : x)))
+    setPromptsUseDatabase(true)
   }, [])
 
-  const deletePrompt = React.useCallback((id: string) => {
+  const deletePrompt = React.useCallback(async (id: string) => {
+    await deletePromptById(id)
     setPrompts((prev) => prev.filter((x) => x.id !== id))
+    setPromptsUseDatabase(true)
   }, [])
 
-  const importPrompts = React.useCallback((items: Prompt[]) => {
-    setPrompts((prev) => mergeById(prev, items))
+  const importPrompts = React.useCallback(async (items: Prompt[]) => {
+    const merged = await importPromptsToDb(items)
+    setPrompts(merged)
+    setPromptsUseDatabase(true)
   }, [])
 
   const importWorkflows = React.useCallback((items: Workflow[]) => {
@@ -605,10 +653,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     artistRecords,
     youtubeThumbnailRecords,
     hydrated,
+    promptsUseDatabase,
     addPrompt,
     updatePrompt,
     deletePrompt,
     importPrompts,
+    reloadPrompts,
     addWorkflow,
     updateWorkflow,
     deleteWorkflow,
