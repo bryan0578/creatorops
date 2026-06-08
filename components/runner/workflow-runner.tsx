@@ -4,6 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import {
   Copy,
+  Database,
   Download,
   ExternalLink,
   Eye,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
+import { migrateLocalWorkflowRunsToDatabase } from "@/lib/actions/workflow-runs"
 import { useStore } from "@/lib/store"
 import type {
   Prompt,
@@ -23,7 +25,7 @@ import type {
   WorkflowRun,
 } from "@/lib/types"
 import { copyToClipboard } from "@/lib/copy-to-clipboard"
-import { downloadJson } from "@/lib/storage"
+import { downloadJson, loadWorkflowRuns } from "@/lib/storage"
 import {
   allStepsFinished,
   computeStepProgress,
@@ -56,7 +58,6 @@ import {
 } from "@/components/runner/step-run-status-badge"
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -78,11 +79,13 @@ export function WorkflowRunner() {
     prompts,
     workflowRuns,
     hydrated,
+    workflowRunsUseDatabase,
     getPrompt,
     addWorkflowRun,
     updateWorkflowRun,
     deleteWorkflowRun,
     importWorkflowRuns,
+    reloadWorkflowRuns,
   } = useStore()
 
   const [workflowSearch, setWorkflowSearch] = React.useState("")
@@ -97,6 +100,7 @@ export function WorkflowRunner() {
     null,
   )
   const [viewingPrompt, setViewingPrompt] = React.useState<Prompt | null>(null)
+  const [migrating, setMigrating] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   const selectedWorkflow =
@@ -137,44 +141,52 @@ export function WorkflowRunner() {
     setActiveRun(null)
   }
 
-  function startNewRun() {
+  async function startNewRun() {
     if (!selectedWorkflow) return
     if (selectedWorkflow.steps.length === 0) {
       toast.error("This workflow has no steps")
       return
     }
     const run = createWorkflowRunFromWorkflow(selectedWorkflow, prompts)
-    addWorkflowRun(run)
-    setActiveRun(run)
-    toast.success("Workflow run started")
+    try {
+      await addWorkflowRun(run)
+      setActiveRun(run)
+      toast.success("Workflow run started")
+    } catch {
+      toast.error("Could not save workflow run to database")
+    }
   }
 
-  function persistRun(run: WorkflowRun) {
-    updateWorkflowRun(run)
+  async function persistRun(run: WorkflowRun) {
     setActiveRun(run)
+    try {
+      await updateWorkflowRun(run)
+    } catch {
+      toast.error("Could not save workflow run to database")
+    }
   }
 
-  function setStepStatus(stepRunId: string, status: StepRunStatus) {
+  async function setStepStatus(stepRunId: string, status: StepRunStatus) {
     if (!activeRun) return
     const updated = updateStepRunStatus(activeRun, stepRunId, status)
-    persistRun(updated)
+    await persistRun(updated)
     toast.success(`Step marked ${status.toLowerCase()}`)
   }
 
   function setStepNotes(stepRunId: string, notes: string) {
     if (!activeRun) return
-    persistRun(updateStepRunNotes(activeRun, stepRunId, notes))
+    void persistRun(updateStepRunNotes(activeRun, stepRunId, notes))
   }
 
   function handleRunNotesChange(notes: string) {
     if (!activeRun) return
-    persistRun(updateWorkflowRunNotes(activeRun, notes))
+    void persistRun(updateWorkflowRunNotes(activeRun, notes))
   }
 
-  function handleMarkComplete() {
+  async function handleMarkComplete() {
     if (!activeRun) return
     const updated = markWorkflowRunComplete(activeRun)
-    persistRun(updated)
+    await persistRun(updated)
     toast.success("Workflow run marked complete")
   }
 
@@ -194,12 +206,16 @@ export function WorkflowRunner() {
     }
   }
 
-  function confirmDeleteRun() {
+  async function confirmDeleteRun() {
     if (!pendingDelete) return
-    deleteWorkflowRun(pendingDelete.id)
-    if (activeRun?.id === pendingDelete.id) setActiveRun(null)
-    setPendingDelete(null)
-    toast.success("Workflow run deleted")
+    try {
+      await deleteWorkflowRun(pendingDelete.id)
+      if (activeRun?.id === pendingDelete.id) setActiveRun(null)
+      setPendingDelete(null)
+      toast.success("Workflow run deleted")
+    } catch {
+      toast.error("Could not delete workflow run from database")
+    }
   }
 
   function handleExportRuns() {
@@ -211,18 +227,39 @@ export function WorkflowRunner() {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const parsed = JSON.parse(String(reader.result))
         const items = Array.isArray(parsed) ? parsed : [parsed]
-        importWorkflowRuns(items as WorkflowRun[])
-        toast.success(`Imported ${items.length} workflow run(s)`)
+        await importWorkflowRuns(items as WorkflowRun[])
+        toast.success(`Imported ${items.length} workflow run(s) to database`)
       } catch {
-        toast.error("Invalid JSON file")
+        toast.error("Invalid JSON file or import failed")
       }
     }
     reader.readAsText(file)
     e.target.value = ""
+  }
+
+  async function handleMigrateLocal() {
+    const local = loadWorkflowRuns()
+    if (local.length === 0) {
+      toast.error("No workflow runs found in localStorage to migrate")
+      return
+    }
+    setMigrating(true)
+    try {
+      const { migrated, total } =
+        await migrateLocalWorkflowRunsToDatabase(local)
+      await reloadWorkflowRuns()
+      toast.success(
+        `Migrated ${migrated} local workflow run(s). Database now has ${total} total.`,
+      )
+    } catch {
+      toast.error("Migration to database failed")
+    } finally {
+      setMigrating(false)
+    }
   }
 
   if (hydrated && workflows.length === 0) {
@@ -575,6 +612,16 @@ export function WorkflowRunner() {
               type="button"
               variant="outline"
               size="sm"
+              onClick={handleMigrateLocal}
+              disabled={migrating}
+            >
+              <Database className="size-4" />
+              {migrating ? "Migrating…" : "Migrate local runs"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={() => fileInputRef.current?.click()}
             >
               <Upload className="size-4" />
@@ -593,6 +640,13 @@ export function WorkflowRunner() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {workflowRuns.length} saved run
+            {workflowRuns.length === 1 ? "" : "s"}
+            {workflowRunsUseDatabase
+              ? " · stored in SQLite"
+              : " · using localStorage fallback"}
+          </p>
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -682,9 +736,13 @@ export function WorkflowRunner() {
             {viewingPrompt?.promptText || "—"}
           </pre>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setViewingPrompt(null)}
+            >
               Close
-            </DialogClose>
+            </Button>
             {viewingPrompt ? (
               <Button onClick={() => handleCopyPrompt(viewingPrompt)}>
                 <Copy className="size-4" />
@@ -710,10 +768,18 @@ export function WorkflowRunner() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPendingDelete(null)}
+            >
               Cancel
-            </DialogClose>
-            <Button variant="destructive" onClick={confirmDeleteRun}>
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDeleteRun}
+            >
               Delete
             </Button>
           </DialogFooter>

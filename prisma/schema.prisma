@@ -1,5 +1,5 @@
 // CreatorOps Dashboard — Prisma schema
-// TODO: Migrate workflow runs and other modules using the same pattern as Prompt.
+// TODO: Migrate dedicated modules (youtube packages, merch ideas, etc.) using the same pattern as Prompt.
 
 generator client {
   provider = "prisma-client"
@@ -79,4 +79,41 @@ model PromptRun {
 
   @@index([promptId])
   @@index([updatedAt])
+}
+
+/// Saved execution of a workflow in Workflow Runner.
+model WorkflowRun {
+  id           String            @id
+  workflowId   String
+  workflowName String
+  category     String
+  status       String
+  notes        String            @default("")
+  startedAt    DateTime
+  updatedAt    DateTime
+  completedAt  DateTime?
+  stepRuns     WorkflowStepRun[]
+
+  @@index([workflowId])
+  @@index([status])
+  @@index([updatedAt])
+}
+
+/// Step progress within a workflow run.
+model WorkflowStepRun {
+  id             String      @id
+  workflowRunId  String
+  sortOrder      Int
+  workflowStepId String
+  title          String
+  description    String      @default("")
+  promptId       String?
+  promptName     String      @default("")
+  status         String
+  notes          String      @default("")
+  completedAt    DateTime?
+  workflowRun    WorkflowRun @relation(fields: [workflowRunId], references: [id], onDelete: Cascade)
+
+  @@index([workflowRunId])
+  @@index([workflowStepId])
 }

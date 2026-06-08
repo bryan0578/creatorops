@@ -8,8 +8,18 @@
  * 4. Point lib/store.tsx hydration + CRUD at server actions
  * 5. Keep lib/storage.ts localStorage helpers for rollback/migration
  *
- * TODO: workflow runs, youtube packages, etc.
+ * TODO: youtube packages, merch ideas, etc.
  */
+
+export {
+  normalizeStepRun,
+  normalizeWorkflowRun,
+  prismaWorkflowRunToWorkflowRun,
+  stepRunsToNestedCreate,
+  stepRunsToPrismaCreate,
+  workflowRunToPrismaCreate,
+  workflowRunToPrismaUpdate,
+} from "@/lib/data/workflow-runs"
 
 export {
   normalizePromptRun,

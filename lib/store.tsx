@@ -41,7 +41,6 @@ import {
   saveProductListings,
   saveReleasePlans,
   saveSocialRepurposingRecords,
-  saveWorkflowRuns,
   saveYouTubePackages,
   saveYouTubeThumbnailRecords,
 } from "@/lib/storage"
@@ -67,6 +66,12 @@ import {
   importPromptRuns as importPromptRunsToDb,
   upsertPromptRun,
 } from "@/lib/actions/prompt-runs"
+import {
+  deleteWorkflowRunById,
+  getWorkflowRuns,
+  importWorkflowRuns as importWorkflowRunsToDb,
+  upsertWorkflowRun,
+} from "@/lib/actions/workflow-runs"
 import {
   deleteWorkflowById,
   getWorkflows,
@@ -95,6 +100,7 @@ interface StoreContextValue {
   promptsUseDatabase: boolean
   workflowsUseDatabase: boolean
   runsUseDatabase: boolean
+  workflowRunsUseDatabase: boolean
   addPrompt: (p: Prompt) => Promise<void>
   updatePrompt: (p: Prompt) => Promise<void>
   deletePrompt: (id: string) => Promise<void>
@@ -111,10 +117,11 @@ interface StoreContextValue {
   deleteRun: (id: string) => Promise<void>
   importRuns: (items: PromptRun[]) => Promise<void>
   reloadRuns: () => Promise<void>
-  addWorkflowRun: (run: WorkflowRun) => void
-  updateWorkflowRun: (run: WorkflowRun) => void
-  deleteWorkflowRun: (id: string) => void
-  importWorkflowRuns: (items: WorkflowRun[]) => void
+  addWorkflowRun: (run: WorkflowRun) => Promise<void>
+  updateWorkflowRun: (run: WorkflowRun) => Promise<void>
+  deleteWorkflowRun: (id: string) => Promise<void>
+  importWorkflowRuns: (items: WorkflowRun[]) => Promise<void>
+  reloadWorkflowRuns: () => Promise<void>
   addYouTubePackage: (pkg: YouTubePackage) => void
   updateYouTubePackage: (pkg: YouTubePackage) => void
   deleteYouTubePackage: (id: string) => void
@@ -198,6 +205,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [promptsUseDatabase, setPromptsUseDatabase] = React.useState(true)
   const [workflowsUseDatabase, setWorkflowsUseDatabase] = React.useState(true)
   const [runsUseDatabase, setRunsUseDatabase] = React.useState(true)
+  const [workflowRunsUseDatabase, setWorkflowRunsUseDatabase] =
+    React.useState(true)
 
   const reloadPrompts = React.useCallback(async () => {
     const next = await getPrompts()
@@ -233,6 +242,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       )
       setRuns(loadRuns())
       setRunsUseDatabase(false)
+      throw error
+    }
+  }, [])
+
+  const reloadWorkflowRuns = React.useCallback(async () => {
+    try {
+      const next = await getWorkflowRuns()
+      setWorkflowRuns(next)
+      setWorkflowRunsUseDatabase(true)
+    } catch (error) {
+      console.error(
+        "[CreatorOps] Failed to reload workflow runs from database; using localStorage.",
+        error,
+      )
+      setWorkflowRuns(loadWorkflowRuns())
+      setWorkflowRunsUseDatabase(false)
       throw error
     }
   }, [])
@@ -298,7 +323,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       if (cancelled) return
 
-      setWorkflowRuns(loadWorkflowRuns())
+      try {
+        const dbWorkflowRuns = await getWorkflowRuns()
+        if (!cancelled) {
+          setWorkflowRuns(dbWorkflowRuns)
+          setWorkflowRunsUseDatabase(true)
+        }
+      } catch (error) {
+        console.error(
+          "[CreatorOps] Failed to load workflow runs from database; using localStorage.",
+          error,
+        )
+        if (!cancelled) {
+          setWorkflowRuns(loadWorkflowRuns())
+          setWorkflowRunsUseDatabase(false)
+        }
+      }
+
+      if (cancelled) return
+
       setYoutubePackages(loadYouTubePackages())
       setMerchIdeas(loadMerchIdeas())
       setProductListings(loadProductListings())
@@ -319,13 +362,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Prompts, workflows, and prompt runs persist in SQLite — see lib/actions/*
+  // Prompts, workflows, prompt runs, and workflow runs persist in SQLite — see lib/actions/*
   // TODO: Remove localStorage save effects as each module migrates to Prisma.
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveWorkflowRuns(workflowRuns)
-  }, [workflowRuns, hydrated])
 
   React.useEffect(() => {
     if (!hydrated) return
@@ -454,20 +492,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setRunsUseDatabase(true)
   }, [])
 
-  const addWorkflowRun = React.useCallback((run: WorkflowRun) => {
-    setWorkflowRuns((prev) => [run, ...prev])
+  const addWorkflowRun = React.useCallback(async (run: WorkflowRun) => {
+    const saved = await upsertWorkflowRun(run)
+    setWorkflowRuns((prev) => [saved, ...prev.filter((x) => x.id !== saved.id)])
+    setWorkflowRunsUseDatabase(true)
   }, [])
 
-  const updateWorkflowRun = React.useCallback((run: WorkflowRun) => {
-    setWorkflowRuns((prev) => prev.map((x) => (x.id === run.id ? run : x)))
+  const updateWorkflowRun = React.useCallback(async (run: WorkflowRun) => {
+    const saved = await upsertWorkflowRun(run)
+    setWorkflowRuns((prev) => prev.map((x) => (x.id === saved.id ? saved : x)))
+    setWorkflowRunsUseDatabase(true)
   }, [])
 
-  const deleteWorkflowRun = React.useCallback((id: string) => {
+  const deleteWorkflowRun = React.useCallback(async (id: string) => {
+    await deleteWorkflowRunById(id)
     setWorkflowRuns((prev) => prev.filter((x) => x.id !== id))
+    setWorkflowRunsUseDatabase(true)
   }, [])
 
-  const importWorkflowRuns = React.useCallback((items: WorkflowRun[]) => {
-    setWorkflowRuns((prev) => mergeById(prev, items))
+  const importWorkflowRuns = React.useCallback(async (items: WorkflowRun[]) => {
+    const merged = await importWorkflowRunsToDb(items)
+    setWorkflowRuns(merged)
+    setWorkflowRunsUseDatabase(true)
   }, [])
 
   const addYouTubePackage = React.useCallback((pkg: YouTubePackage) => {
@@ -746,6 +792,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     promptsUseDatabase,
     workflowsUseDatabase,
     runsUseDatabase,
+    workflowRunsUseDatabase,
     addPrompt,
     updatePrompt,
     deletePrompt,
@@ -766,6 +813,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     updateWorkflowRun,
     deleteWorkflowRun,
     importWorkflowRuns,
+    reloadWorkflowRuns,
     addYouTubePackage,
     updateYouTubePackage,
     deleteYouTubePackage,

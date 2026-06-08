@@ -114,6 +114,12 @@ export function loadWorkflowRuns(): WorkflowRun[] {
   }
 }
 
+/**
+ * Legacy localStorage persistence for workflow runs.
+ * Workflow Runner now reads/writes SQLite via server actions.
+ * Kept for rollback, JSON migration, and one-time "Migrate local workflow runs" flow.
+ * TODO: Remove once all environments use the database and migration is complete.
+ */
 export function saveWorkflowRuns(runs: WorkflowRun[]): void {
   if (typeof window === "undefined") return
   localStorage.setItem(WORKFLOW_RUNS_KEY, JSON.stringify(runs))
