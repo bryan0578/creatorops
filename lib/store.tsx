@@ -33,13 +33,17 @@ import {
   loadYouTubePackages,
   loadYouTubeThumbnailRecords,
   mergeById,
-  saveAnalyticsRecords,
   saveEmailCampaignRecords,
   saveMockupPromptRecords,
 } from "@/lib/storage"
-import { normalizeAnalyticsRecord } from "@/lib/analytics-tracker"
 import { normalizeEmailCampaignRecord } from "@/lib/email-campaigns"
 import { normalizeMockupPromptRecord } from "@/lib/mockup-prompts"
+import {
+  deleteAnalyticsRecordById,
+  getAnalyticsRecords,
+  importAnalyticsRecords as importAnalyticsRecordsToDb,
+  upsertAnalyticsRecord,
+} from "@/lib/actions/analytics-records"
 import {
   deleteSocialRepurposingRecordById,
   getSocialRepurposingRecords,
@@ -136,6 +140,7 @@ interface StoreContextValue {
   merchIdeasUseDatabase: boolean
   productListingsUseDatabase: boolean
   socialRepurposingRecordsUseDatabase: boolean
+  analyticsRecordsUseDatabase: boolean
   addPrompt: (p: Prompt) => Promise<void>
   updatePrompt: (p: Prompt) => Promise<void>
   deletePrompt: (id: string) => Promise<void>
@@ -182,10 +187,11 @@ interface StoreContextValue {
   deleteReleasePlan: (id: string) => Promise<void>
   importReleasePlans: (items: ReleasePlan[]) => Promise<void>
   reloadReleasePlans: () => Promise<void>
-  addAnalyticsRecord: (record: AnalyticsRecord) => void
-  updateAnalyticsRecord: (record: AnalyticsRecord) => void
-  deleteAnalyticsRecord: (id: string) => void
-  importAnalyticsRecords: (items: AnalyticsRecord[]) => void
+  addAnalyticsRecord: (record: AnalyticsRecord) => Promise<void>
+  updateAnalyticsRecord: (record: AnalyticsRecord) => Promise<void>
+  deleteAnalyticsRecord: (id: string) => Promise<void>
+  importAnalyticsRecords: (items: AnalyticsRecord[]) => Promise<void>
+  reloadAnalyticsRecords: () => Promise<void>
   addMockupPromptRecord: (record: MockupPromptRecord) => void
   updateMockupPromptRecord: (record: MockupPromptRecord) => void
   deleteMockupPromptRecord: (id: string) => void
@@ -262,6 +268,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [productListingsUseDatabase, setProductListingsUseDatabase] =
     React.useState(true)
   const [socialRepurposingRecordsUseDatabase, setSocialRepurposingRecordsUseDatabase] =
+    React.useState(true)
+  const [analyticsRecordsUseDatabase, setAnalyticsRecordsUseDatabase] =
     React.useState(true)
 
   const reloadPrompts = React.useCallback(async () => {
@@ -426,6 +434,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       )
       setSocialRepurposingRecords(loadSocialRepurposingRecords())
       setSocialRepurposingRecordsUseDatabase(false)
+      throw error
+    }
+  }, [])
+
+  const reloadAnalyticsRecords = React.useCallback(async () => {
+    try {
+      const next = await getAnalyticsRecords()
+      setAnalyticsRecords(next)
+      setAnalyticsRecordsUseDatabase(true)
+    } catch (error) {
+      console.error(
+        "[CreatorOps] Failed to reload analytics records from database; using localStorage.",
+        error,
+      )
+      setAnalyticsRecords(loadAnalyticsRecords())
+      setAnalyticsRecordsUseDatabase(false)
       throw error
     }
   }, [])
@@ -605,7 +629,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       if (cancelled) return
 
-      setAnalyticsRecords(loadAnalyticsRecords())
+      try {
+        const dbAnalytics = await getAnalyticsRecords()
+        if (!cancelled) {
+          setAnalyticsRecords(dbAnalytics)
+          setAnalyticsRecordsUseDatabase(true)
+        }
+      } catch (error) {
+        console.error(
+          "[CreatorOps] Failed to load analytics records from database; using localStorage.",
+          error,
+        )
+        if (!cancelled) {
+          setAnalyticsRecords(loadAnalyticsRecords())
+          setAnalyticsRecordsUseDatabase(false)
+        }
+      }
+
+      if (cancelled) return
+
       setMockupPromptRecords(loadMockupPromptRecords())
       setEmailCampaignRecords(loadEmailCampaignRecords())
 
@@ -657,11 +699,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   // Core modules persist in SQLite — see lib/actions/*
   // TODO: Remove localStorage save effects as each module migrates to Prisma.
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveAnalyticsRecords(analyticsRecords)
-  }, [analyticsRecords, hydrated])
 
   React.useEffect(() => {
     if (!hydrated) return
@@ -914,28 +951,29 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setReleasePlansUseDatabase(true)
   }, [])
 
-  const addAnalyticsRecord = React.useCallback((record: AnalyticsRecord) => {
-    setAnalyticsRecords((prev) => [record, ...prev])
+  const addAnalyticsRecord = React.useCallback(async (record: AnalyticsRecord) => {
+    const saved = await upsertAnalyticsRecord(record)
+    setAnalyticsRecords((prev) => [saved, ...prev.filter((x) => x.id !== saved.id)])
+    setAnalyticsRecordsUseDatabase(true)
   }, [])
 
-  const updateAnalyticsRecord = React.useCallback((record: AnalyticsRecord) => {
-    setAnalyticsRecords((prev) =>
-      prev.map((x) => (x.id === record.id ? record : x)),
-    )
+  const updateAnalyticsRecord = React.useCallback(async (record: AnalyticsRecord) => {
+    const saved = await upsertAnalyticsRecord(record)
+    setAnalyticsRecords((prev) => prev.map((x) => (x.id === saved.id ? saved : x)))
+    setAnalyticsRecordsUseDatabase(true)
   }, [])
 
-  const deleteAnalyticsRecord = React.useCallback((id: string) => {
+  const deleteAnalyticsRecord = React.useCallback(async (id: string) => {
+    await deleteAnalyticsRecordById(id)
     setAnalyticsRecords((prev) => prev.filter((x) => x.id !== id))
+    setAnalyticsRecordsUseDatabase(true)
   }, [])
 
   const importAnalyticsRecords = React.useCallback(
-    (items: AnalyticsRecord[]) => {
-      setAnalyticsRecords((prev) =>
-        mergeById(
-          prev,
-          items.map((item) => normalizeAnalyticsRecord(item)),
-        ),
-      )
+    async (items: AnalyticsRecord[]) => {
+      const merged = await importAnalyticsRecordsToDb(items)
+      setAnalyticsRecords(merged)
+      setAnalyticsRecordsUseDatabase(true)
     },
     [],
   )
@@ -1090,6 +1128,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     merchIdeasUseDatabase,
     productListingsUseDatabase,
     socialRepurposingRecordsUseDatabase,
+    analyticsRecordsUseDatabase,
     addPrompt,
     updatePrompt,
     deletePrompt,
@@ -1140,6 +1179,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     updateAnalyticsRecord,
     deleteAnalyticsRecord,
     importAnalyticsRecords,
+    reloadAnalyticsRecords,
     addMockupPromptRecord,
     updateMockupPromptRecord,
     deleteMockupPromptRecord,

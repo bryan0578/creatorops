@@ -8,8 +8,15 @@
  * 4. Point lib/store.tsx hydration + CRUD at server actions
  * 5. Keep lib/storage.ts localStorage helpers for rollback/migration
  *
- * TODO: analytics, etc.
+ * TODO: mockup prompts, etc.
  */
+
+export {
+  normalizeAnalyticsRecord,
+  prismaAnalyticsRecordToAnalyticsRecord,
+  analyticsRecordToPrismaCreate,
+  analyticsRecordToPrismaUpdate,
+} from "@/lib/data/analytics-records"
 
 export {
   normalizeSocialRepurposingRecord,

@@ -268,6 +268,12 @@ export function loadAnalyticsRecords(): AnalyticsRecord[] {
   }
 }
 
+/**
+ * Legacy localStorage persistence for analytics records.
+ * Analytics Tracker now reads/writes SQLite via server actions.
+ * Kept for rollback, JSON migration, and one-time "Migrate local analytics" flow.
+ * TODO: Remove once all environments use the database and migration is complete.
+ */
 export function saveAnalyticsRecords(records: AnalyticsRecord[]): void {
   if (typeof window === "undefined") return
   localStorage.setItem(ANALYTICS_KEY, JSON.stringify(records))

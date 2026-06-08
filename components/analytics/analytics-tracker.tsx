@@ -8,6 +8,7 @@ import {
   ArrowUpDown,
   BarChart3,
   Copy,
+  Database,
   Download,
   Search,
   Trash2,
@@ -19,7 +20,8 @@ import { useStore, createId } from "@/lib/store"
 import type { AnalyticsRecord } from "@/lib/types"
 import { ANALYTICS_ITEM_TYPES, ANALYTICS_PLATFORMS } from "@/lib/types"
 import { copyToClipboard } from "@/lib/copy-to-clipboard"
-import { downloadJson } from "@/lib/storage"
+import { migrateLocalAnalyticsRecordsToDatabase } from "@/lib/actions/analytics-records"
+import { downloadJson, loadAnalyticsRecords } from "@/lib/storage"
 import {
   buildInsightsPrompt,
   computeAnalyticsSummary,
@@ -61,7 +63,6 @@ import {
 } from "@/components/ui/table"
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -174,10 +175,12 @@ function SummaryCard({
 export function AnalyticsTracker() {
   const {
     analyticsRecords,
+    analyticsRecordsUseDatabase,
     addAnalyticsRecord,
     updateAnalyticsRecord,
     deleteAnalyticsRecord,
     importAnalyticsRecords,
+    reloadAnalyticsRecords,
   } = useStore()
 
   const [form, setForm] = React.useState<AnalyticsFormState>(
@@ -194,6 +197,7 @@ export function AnalyticsTracker() {
   const [pendingDelete, setPendingDelete] = React.useState<AnalyticsRecord | null>(
     null,
   )
+  const [migrating, setMigrating] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const prefillApplied = React.useRef(false)
   const searchParams = useSearchParams()
@@ -307,7 +311,7 @@ export function AnalyticsTracker() {
     toast.success("Prefilled from artist CRM")
   }, [searchParams])
 
-  function handleSave() {
+  async function handleSave() {
     const now = Date.now()
     const record = normalizeAnalyticsRecord({
       id: editingId ?? createId("analytics"),
@@ -318,27 +322,35 @@ export function AnalyticsTracker() {
       updatedAt: now,
     })
 
-    if (editingId) {
-      updateAnalyticsRecord(record)
-      toast.success("Analytics record updated")
-    } else {
-      addAnalyticsRecord(record)
-      setEditingId(record.id)
-      toast.success("Analytics record saved")
+    try {
+      if (editingId) {
+        await updateAnalyticsRecord(record)
+        toast.success("Analytics record updated")
+      } else {
+        await addAnalyticsRecord(record)
+        setEditingId(record.id)
+        toast.success("Analytics record saved")
+      }
+    } catch {
+      toast.error("Could not save analytics record to database")
     }
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!pendingDelete) return
-    deleteAnalyticsRecord(pendingDelete.id)
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      next.delete(pendingDelete.id)
-      return next
-    })
-    if (editingId === pendingDelete.id) resetForm()
-    setPendingDelete(null)
-    toast.success("Analytics record deleted")
+    try {
+      await deleteAnalyticsRecord(pendingDelete.id)
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        next.delete(pendingDelete.id)
+        return next
+      })
+      if (editingId === pendingDelete.id) resetForm()
+      setPendingDelete(null)
+      toast.success("Analytics record deleted")
+    } catch {
+      toast.error("Could not delete analytics record from database")
+    }
   }
 
   function handleExport() {
@@ -350,20 +362,41 @@ export function AnalyticsTracker() {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const parsed = JSON.parse(String(reader.result))
         const items = (Array.isArray(parsed) ? parsed : [parsed]).map((item) =>
           normalizeAnalyticsRecord(item as AnalyticsRecord),
         )
-        importAnalyticsRecords(items)
-        toast.success(`Imported ${items.length} record(s)`)
+        await importAnalyticsRecords(items)
+        toast.success(`Imported ${items.length} record(s) to database`)
       } catch {
-        toast.error("Invalid JSON file")
+        toast.error("Invalid JSON file or import failed")
       }
     }
     reader.readAsText(file)
     e.target.value = ""
+  }
+
+  async function handleMigrateLocal() {
+    const local = loadAnalyticsRecords()
+    if (local.length === 0) {
+      toast.error("No analytics records found in localStorage to migrate")
+      return
+    }
+    setMigrating(true)
+    try {
+      const { migrated, total } =
+        await migrateLocalAnalyticsRecordsToDatabase(local)
+      await reloadAnalyticsRecords()
+      toast.success(
+        `Migrated ${migrated} local record(s). Database now has ${total} total.`,
+      )
+    } catch {
+      toast.error("Migration to database failed")
+    } finally {
+      setMigrating(false)
+    }
   }
 
   async function handleCopy(text: string, label: string) {
@@ -671,6 +704,9 @@ export function AnalyticsTracker() {
             <CardDescription>
               {analyticsRecords.length} saved record
               {analyticsRecords.length === 1 ? "" : "s"}
+              {analyticsRecordsUseDatabase
+                ? " · stored in SQLite"
+                : " · using localStorage fallback"}
             </CardDescription>
           </div>
           <div className="flex w-full flex-col gap-2 lg:w-auto lg:flex-row lg:flex-wrap lg:items-center">
@@ -713,6 +749,16 @@ export function AnalyticsTracker() {
                 ))}
               </SelectContent>
             </Select>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleMigrateLocal}
+              disabled={migrating}
+            >
+              <Database className="size-4" />
+              {migrating ? "Migrating…" : "Migrate local"}
+            </Button>
             <Button type="button" variant="outline" size="sm" onClick={handleExport}>
               <Download className="size-4" />
               Export
@@ -901,10 +947,18 @@ export function AnalyticsTracker() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPendingDelete(null)}
+            >
               Cancel
-            </DialogClose>
-            <Button variant="destructive" onClick={confirmDelete}>
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDelete}
+            >
               Delete
             </Button>
           </DialogFooter>
