@@ -13,6 +13,7 @@ import {
   Play,
   Plus,
   Search,
+  ShieldCheck,
   Sparkles,
   Share2,
   ShoppingBag,
@@ -334,6 +335,12 @@ export function DashboardHome() {
           value={analyticsRecords.length}
           icon={BarChart3}
           href="/analytics"
+        />
+        <CompactStatCard
+          label="Data health"
+          value="Scan"
+          icon={ShieldCheck}
+          href="/data-health"
         />
       </section>
 

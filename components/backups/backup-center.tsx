@@ -1,12 +1,14 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import {
   AlertTriangle,
   Database,
   Download,
   HardDrive,
   Loader2,
+  ShieldCheck,
   Upload,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -25,7 +27,7 @@ import { downloadJson } from "@/lib/storage"
 import { useStore } from "@/lib/store"
 import { ModulePageHeader } from "@/components/app-shell"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -289,6 +291,24 @@ export function BackupCenter() {
           icon={HardDrive}
         />
       </div>
+
+      <Card className="border-border/80">
+        <CardHeader className="flex-row items-start justify-between gap-4 space-y-0">
+          <div className="space-y-1">
+            <CardTitle className="text-base">Data Health</CardTitle>
+            <CardDescription>
+              Scan for broken campaign links, missing assets, duplicates, and JSON issues before
+              your database grows.
+            </CardDescription>
+          </div>
+          <ShieldCheck className="size-5 shrink-0 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <Link href="/data-health" className={buttonVariants({ variant: "outline", size: "sm" })}>
+            Open Data Health
+          </Link>
+        </CardContent>
+      </Card>
 
       <DemoTestingSection onDataChanged={reloadAllStoreData} />
 
