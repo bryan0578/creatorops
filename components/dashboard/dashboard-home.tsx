@@ -13,6 +13,7 @@ import {
   Mail,
   Play,
   Plus,
+  Search,
   Share2,
   Shirt,
   ShoppingBag,
@@ -146,6 +147,10 @@ export function DashboardHome() {
               <Video className="size-4" />
               Create YouTube Package
             </Link>
+            <Link href="/search" className={buttonVariants({ variant: "outline" })}>
+              <Search className="size-4" />
+              Global Search
+            </Link>
           </div>
         }
       />
@@ -163,6 +168,20 @@ export function DashboardHome() {
           icon={WorkflowIcon}
           hint={`${workflows.length} total workflows`}
         />
+        <Link href="/search" className="block transition-opacity hover:opacity-90">
+          <Card className="h-full border-border/80 shadow-sm">
+            <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
+              <CardDescription>Global Search</CardDescription>
+              <Search className="size-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-semibold tracking-tight">Find</div>
+              <p className="mt-1 text-xs text-muted-foreground text-pretty">
+                Search prompts, campaigns, releases, and analytics
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
         <Link href="/runner" className="block transition-opacity hover:opacity-90">
           <Card className="h-full">
             <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">

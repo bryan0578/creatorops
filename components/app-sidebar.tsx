@@ -15,6 +15,7 @@ import {
   ListChecks,
   Music2,
   Play,
+  Search,
   Share2,
   ShoppingBag,
   Shirt,
@@ -60,6 +61,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Core",
     items: [
       { title: "Dashboard", href: "/", icon: LayoutDashboard },
+      { title: "Global Search", href: "/search", icon: Search },
       { title: "Prompt Library", href: "/prompts", icon: Library },
       { title: "Workflow Hub", href: "/workflows", icon: WorkflowIcon },
       { title: "Prompt Runner", href: "/runner", icon: Play },
