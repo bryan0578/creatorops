@@ -48,6 +48,7 @@ import {
 import { ModulePageHeader } from "@/components/app-shell"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
+import { RelationshipPanel } from "@/components/relationships/relationship-panel"
 import {
   ANALYTICS_WORKFLOW_TABS,
   ModuleTabPanel,
@@ -774,6 +775,21 @@ export function AnalyticsTracker() {
               </Button>
             </CardContent>
           </Card>
+        </ModuleTabPanel>
+
+        <ModuleTabPanel value="related">
+          <RelationshipPanel
+            input={{
+              currentType: "analytics",
+              currentId: editingId,
+              campaignId: campaignPrefill.campaignId,
+              relatedCampaign: form.relatedCampaign,
+              artistName: form.relatedArtist,
+              songTitle: form.relatedSong,
+              itemName: form.itemName,
+              titleUsed: form.titleUsed,
+            }}
+          />
         </ModuleTabPanel>
 
         <ModuleTabPanel value="saved">

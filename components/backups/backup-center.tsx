@@ -57,6 +57,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { DemoTestingSection } from "@/components/backups/demo-testing-section"
+import { EmptyState } from "@/components/empty-state"
 
 function formatDate(ts: number | null) {
   if (!ts) return "—"
@@ -287,6 +289,8 @@ export function BackupCenter() {
         />
       </div>
 
+      <DemoTestingSection onDataChanged={reloadAllStoreData} />
+
       <Card className="border-border/80">
         <CardHeader>
           <CardTitle className="text-base">Import backup</CardTitle>
@@ -356,6 +360,14 @@ export function BackupCenter() {
               <Loader2 className="size-4 animate-spin" />
               Loading module summary…
             </div>
+          ) : summary && summary.totalRecords === 0 ? (
+            <EmptyState
+              icon={Database}
+              title="No records in your database yet"
+              description="Create records in any module or seed the PrettyWise demo to explore backups and exports."
+              primaryActionLabel="Seed PrettyWise demo"
+              primaryActionHref="/backups"
+            />
           ) : (
             <Table>
               <TableHeader>

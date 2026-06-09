@@ -99,6 +99,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
+import { RelationshipPanel } from "@/components/relationships/relationship-panel"
+import { EmptyState } from "@/components/empty-state"
 
 function formatDate(ts: number) {
   return new Date(ts).toLocaleString(undefined, {
@@ -1205,9 +1207,13 @@ export function ArtistCrm() {
                 </CardHeader>
                 <CardContent>
                   {relatedThumbnails.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No related thumbnails yet
-                    </p>
+                    <EmptyState
+                      className="py-4"
+                      title="No related thumbnails yet"
+                      description="Thumbnails linked by artist name, song title, or release assignment will appear here."
+                      primaryActionLabel="Create YouTube Thumbnail"
+                      primaryActionHref={buildArtistThumbnailHref(form, primaryRelease)}
+                    />
                   ) : (
                     <div className="flex flex-col gap-2">
                       {relatedThumbnails.map((thumbnail) => {
@@ -1292,6 +1298,17 @@ export function ArtistCrm() {
                   )}
                 </CardContent>
               </Card>
+
+              <RelationshipPanel
+                title="Connections"
+                description="Campaigns, releases, assets, and analytics linked by artist name"
+                className="border-border/80"
+                input={{
+                  currentType: "artist-crm",
+                  currentId: editingId,
+                  artistName: form.artistName,
+                }}
+              />
 
               <Card>
                 <CardHeader>
@@ -1524,11 +1541,21 @@ export function ArtistCrm() {
             </CardHeader>
             <CardContent>
               {filteredRecords.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">
-                  {artistRecords.length === 0
-                    ? "No artists saved yet. Fill in the profile and save your first artist."
-                    : "No records match your search."}
-                </p>
+                artistRecords.length === 0 ? (
+                  <EmptyState
+                    title="No artists saved yet"
+                    description="Fill in the profile and save your first artist, or seed the PrettyWise demo to explore related campaigns and assets."
+                    primaryActionLabel="Seed PrettyWise demo"
+                    primaryActionHref="/backups"
+                    secondaryActionLabel="Create campaign"
+                    secondaryActionHref="/campaigns"
+                  />
+                ) : (
+                  <EmptyState
+                    title="No records match your search"
+                    description="Try a different artist name, genre, or keyword."
+                  />
+                )
               ) : (
                 <div className="flex flex-col gap-2">
                   {filteredRecords.map((record) => {

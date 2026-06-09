@@ -46,6 +46,7 @@ import {
 import { ModulePageHeader } from "@/components/app-shell"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
+import { RelationshipPanel } from "@/components/relationships/relationship-panel"
 import {
   FormSection,
   GENERATOR_WORKFLOW_TABS,
@@ -725,6 +726,19 @@ export function YouTubePackagingTool() {
                 </p>
               )}
           </OutputSection>
+        </ModuleTabPanel>
+
+        <ModuleTabPanel value="related">
+          <RelationshipPanel
+            input={{
+              currentType: "youtube-packaging",
+              currentId: editingId,
+              campaignId: campaignPrefill.campaignId,
+              campaignName: campaignPrefill.campaignName ?? undefined,
+              artistName: form.artistName,
+              trackTitle: form.trackTitle,
+            }}
+          />
         </ModuleTabPanel>
 
         <ModuleTabPanel value="saved">

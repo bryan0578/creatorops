@@ -44,6 +44,7 @@ import {
 import { ModulePageHeader } from "@/components/app-shell"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
+import { RelationshipPanel } from "@/components/relationships/relationship-panel"
 import {
   FormSection,
   GENERATOR_WORKFLOW_TABS,
@@ -665,6 +666,21 @@ export function MerchIdeaGenerator() {
                 </Button>
               ) : null}
           </OutputSection>
+        </ModuleTabPanel>
+
+        <ModuleTabPanel value="related">
+          <RelationshipPanel
+            input={{
+              currentType: "merch-idea",
+              currentId: editingId,
+              campaignId: campaignPrefill.campaignId,
+              campaignName: campaignPrefill.campaignName ?? undefined,
+              niche: form.niche,
+              productName: form.productType,
+              selectedConceptName: selectedConcept.selectedConceptName,
+              selectedProductTitle: selectedConcept.selectedProductTitle,
+            }}
+          />
         </ModuleTabPanel>
 
         <ModuleTabPanel value="saved">

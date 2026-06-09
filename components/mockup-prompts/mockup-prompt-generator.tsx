@@ -48,6 +48,7 @@ import {
 import { ModulePageHeader } from "@/components/app-shell"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
+import { RelationshipPanel } from "@/components/relationships/relationship-panel"
 import {
   FormSection,
   GENERATOR_WORKFLOW_TABS,
@@ -722,6 +723,21 @@ export function MockupPromptGenerator() {
                 </p>
               )}
           </OutputSection>
+        </ModuleTabPanel>
+
+        <ModuleTabPanel value="related">
+          <RelationshipPanel
+            input={{
+              currentType: "mockup-prompt",
+              currentId: editingId,
+              campaignId: campaignPrefill.campaignId,
+              campaignName: campaignPrefill.campaignName ?? undefined,
+              projectName: form.projectName,
+              niche: form.niche,
+              mockupType: form.mockupType,
+              designConcept: form.designConcept,
+            }}
+          />
         </ModuleTabPanel>
 
         <ModuleTabPanel value="saved">

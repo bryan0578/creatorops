@@ -44,6 +44,7 @@ import {
 import { ModulePageHeader } from "@/components/app-shell"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
+import { RelationshipPanel } from "@/components/relationships/relationship-panel"
 import {
   FormSection,
   GENERATOR_WORKFLOW_TABS,
@@ -737,6 +738,19 @@ export function ReleasePlannerTool() {
                 </Button>
               ) : null}
           </OutputSection>
+        </ModuleTabPanel>
+
+        <ModuleTabPanel value="related">
+          <RelationshipPanel
+            input={{
+              currentType: "release-plan",
+              currentId: editingId,
+              campaignId: campaignPrefill.campaignId,
+              campaignName: campaignPrefill.campaignName ?? undefined,
+              artistName: form.artistName,
+              songTitle: form.songTitle,
+            }}
+          />
         </ModuleTabPanel>
 
         <ModuleTabPanel value="saved">

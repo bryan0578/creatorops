@@ -12,6 +12,7 @@ import type {
   GlobalSearchResult,
 } from "@/lib/data/global-search"
 import { ModulePageHeader } from "@/components/app-shell"
+import { EmptyState } from "@/components/empty-state"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -236,26 +237,18 @@ export function GlobalSearchPage() {
       </Card>
 
       {!query.trim() && !searched ? (
-        <Card className="border-dashed border-border/80">
-          <CardContent className="py-12 text-center">
-            <Search className="mx-auto mb-3 size-8 text-muted-foreground/70" />
-            <p className="text-sm text-muted-foreground text-balance">
-              Search across your prompts, workflows, campaigns, releases, products,
-              and analytics.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Search}
+          title="Search your CreatorOps workspace"
+          description="Search across campaigns, artists, prompts, workflows, YouTube assets, products, analytics, and presets."
+        />
       ) : null}
 
       {searched && !loading && totalResults === 0 ? (
-        <Card className="border-border/80">
-          <CardContent className="py-12 text-center">
-            <p className="font-medium">No matching records found.</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Try a different keyword or broaden your filter.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          title="No matching records found"
+          description="Try a different keyword or broaden your filter."
+        />
       ) : null}
 
       {totalResults > 0 ? (

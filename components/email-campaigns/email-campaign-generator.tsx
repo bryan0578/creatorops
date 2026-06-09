@@ -49,6 +49,7 @@ import {
 import { ModulePageHeader } from "@/components/app-shell"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
+import { RelationshipPanel } from "@/components/relationships/relationship-panel"
 import {
   FormSection,
   GENERATOR_WORKFLOW_TABS,
@@ -683,6 +684,18 @@ export function EmailCampaignGenerator() {
                 </p>
               )}
           </OutputSection>
+        </ModuleTabPanel>
+
+        <ModuleTabPanel value="related">
+          <RelationshipPanel
+            input={{
+              currentType: "email-campaign",
+              currentId: editingId,
+              campaignId: campaignPrefill.campaignId,
+              campaignName: form.campaignName || campaignPrefill.campaignName || undefined,
+              productOrReleaseName: form.productOrReleaseName,
+            }}
+          />
         </ModuleTabPanel>
 
         <ModuleTabPanel value="saved">

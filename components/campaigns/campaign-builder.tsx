@@ -6,14 +6,12 @@ import { useSearchParams } from "next/navigation"
 import {
   Copy,
   Download,
-  ExternalLink,
   Loader2,
   Plus,
   Save,
   Search,
   Trash2,
   Upload,
-  X,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -37,6 +35,7 @@ import {
   presetPrefillToastMessage,
   tryConsumePresetPrefill,
 } from "@/lib/preset-prefill"
+import { ModulePageHeader } from "@/components/app-shell"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
 import {
   buildCampaignRecordFromForm,
@@ -52,7 +51,8 @@ import {
 } from "@/lib/campaigns"
 import { downloadJson, loadCampaigns } from "@/lib/storage"
 import { migrateLocalCampaignsToDatabase } from "@/lib/actions/campaigns"
-import { ModulePageHeader } from "@/components/app-shell"
+import { CampaignLinkedRecordsGroups } from "@/components/relationships/campaign-linked-records-groups"
+import { EmptyState } from "@/components/empty-state"
 import {
   CAMPAIGN_BUILDER_TABS,
   FormGrid,
@@ -696,50 +696,12 @@ export function CampaignBuilder() {
               </Button>
 
               <div className="space-y-3">
-                {linkedRecords.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No linked records yet. Use the picker above to attach module records.
-                  </p>
-                ) : (
-                  linkedRecords.map((record) => (
-                    <div
-                      key={`${record.type}-${record.id}`}
-                      className="flex flex-col gap-3 rounded-xl border border-border/80 p-4 sm:flex-row sm:items-start sm:justify-between"
-                    >
-                      <div className="min-w-0 space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant="secondary">
-                            {CAMPAIGN_LINK_TYPE_LABELS[record.type]}
-                          </Badge>
-                          <span className="font-medium">{record.title}</span>
-                        </div>
-                        {record.notes ? (
-                          <p className="text-sm text-muted-foreground">{record.notes}</p>
-                        ) : null}
-                      </div>
-                      <div className="flex shrink-0 flex-wrap gap-2">
-                        <Link
-                          href={record.href}
-                          className={buttonVariants({ variant: "outline", size: "sm" })}
-                        >
-                          <ExternalLink className="size-4" />
-                          Open
-                        </Link>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            handleRemoveLinkedRecord(record.id, record.type)
-                          }
-                        >
-                          <X className="size-4" />
-                          Remove
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                )}
+                <CampaignLinkedRecordsGroups
+                  linkedRecords={linkedRecords}
+                  campaignId={recordId}
+                  form={form}
+                  onRemove={handleRemoveLinkedRecord}
+                />
               </div>
             </CardContent>
           </Card>
@@ -761,7 +723,12 @@ export function CampaignBuilder() {
             </CardHeader>
             <CardContent className="space-y-4">
               {tasks.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No tasks yet.</p>
+                <EmptyState
+                  title="No tasks yet"
+                  description="Add launch to-dos with due dates and optional links to related records."
+                  primaryActionLabel="Add first task"
+                  primaryActionOnClick={handleAddTask}
+                />
               ) : (
                 tasks.map((task, index) => (
                   <div
@@ -851,9 +818,10 @@ export function CampaignBuilder() {
             </CardHeader>
             <CardContent className="space-y-3">
               {timeline.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Add start, launch, or end dates — or task due dates — to build a timeline.
-                </p>
+                <EmptyState
+                  title="No timeline events yet"
+                  description="Add start, launch, or end dates — or task due dates — to build a chronological timeline."
+                />
               ) : (
                 timeline.map((event) => (
                   <div
@@ -965,7 +933,14 @@ export function CampaignBuilder() {
               </div>
 
               {filteredCampaigns.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No saved campaigns yet.</p>
+                <EmptyState
+                  title="No saved campaigns yet"
+                  description="Save a campaign draft or seed the PrettyWise demo launch to explore linked records and tasks."
+                  primaryActionLabel="Seed PrettyWise demo"
+                  primaryActionHref="/backups"
+                  secondaryActionLabel="New campaign"
+                  secondaryActionHref="/campaigns"
+                />
               ) : (
                 <div className="space-y-3">
                   {filteredCampaigns.map((campaign) => (

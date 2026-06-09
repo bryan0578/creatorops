@@ -37,6 +37,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { EmptyState } from "@/components/empty-state"
 
 const ACTIVITY_ICONS: Record<ActivityType, LucideIcon> = {
   prompt: Library,
@@ -236,14 +237,14 @@ export function RecentActivityTimeline({
             Loading activity…
           </div>
         ) : items.length === 0 ? (
-          <p
-            className={cn(
-              "text-center text-sm text-muted-foreground text-pretty",
-              compact ? "py-4" : "py-8",
-            )}
-          >
-            No activity yet. Create or update records to see activity here.
-          </p>
+          <EmptyState
+            className={compact ? "py-4" : undefined}
+            icon={Activity}
+            title="No activity yet"
+            description="Create or update records to see activity here."
+            primaryActionLabel="Seed PrettyWise demo"
+            primaryActionHref="/backups"
+          />
         ) : (
           items.map((item) => (
             <ActivityRow

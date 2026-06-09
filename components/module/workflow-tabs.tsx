@@ -10,6 +10,7 @@ export const GENERATOR_WORKFLOW_TABS = [
   { value: "prompt", label: "Prompt" },
   { value: "ai-response", label: "AI Response" },
   { value: "final", label: "Final Output" },
+  { value: "related", label: "Related" },
   { value: "saved", label: "Saved Records" },
 ] as const
 
@@ -18,6 +19,7 @@ export const ANALYTICS_WORKFLOW_TABS = [
   { value: "metrics", label: "Metrics" },
   { value: "review", label: "Review" },
   { value: "insights", label: "Insights" },
+  { value: "related", label: "Related" },
   { value: "saved", label: "Saved Records" },
 ] as const
 
