@@ -17,6 +17,7 @@ import {
   Share2,
   Shirt,
   ShoppingBag,
+  HardDrive,
   Star,
   Users,
   Video,
@@ -151,6 +152,10 @@ export function DashboardHome() {
               <Search className="size-4" />
               Global Search
             </Link>
+            <Link href="/backups" className={buttonVariants({ variant: "outline" })}>
+              <HardDrive className="size-4" />
+              Backup Center
+            </Link>
           </div>
         }
       />
@@ -178,6 +183,20 @@ export function DashboardHome() {
               <div className="text-2xl font-semibold tracking-tight">Find</div>
               <p className="mt-1 text-xs text-muted-foreground text-pretty">
                 Search prompts, campaigns, releases, and analytics
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/backups" className="block transition-opacity hover:opacity-90">
+          <Card className="h-full border-border/80 shadow-sm">
+            <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
+              <CardDescription>Backup Center</CardDescription>
+              <HardDrive className="size-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-semibold tracking-tight">Export</div>
+              <p className="mt-1 text-xs text-muted-foreground text-pretty">
+                Full backup and per-module JSON import/export
               </p>
             </CardContent>
           </Card>

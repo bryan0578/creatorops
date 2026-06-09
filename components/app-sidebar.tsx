@@ -22,6 +22,7 @@ import {
   Users,
   Video,
   Workflow as WorkflowIcon,
+  HardDrive,
   type LucideIcon,
 } from "lucide-react"
 
@@ -104,6 +105,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { title: "Analytics Tracker", href: "/analytics", icon: BarChart3 },
       { title: "Artist CRM", href: "/artist-crm", icon: Users },
+      { title: "Backup Center", href: "/backups", icon: HardDrive },
     ],
   },
 ]
