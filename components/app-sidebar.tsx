@@ -251,6 +251,17 @@ export function AppSidebar() {
         })}
       </SidebarContent>
       <SidebarFooter className="mt-auto shrink-0 gap-2.5 border-t border-sidebar-border/80 px-3 pb-4 pt-3">
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          Press{" "}
+          <kbd className="rounded border border-sidebar-border bg-sidebar px-1 py-0.5 font-mono text-[10px]">
+            ⌘K
+          </kbd>{" "}
+          /{" "}
+          <kbd className="rounded border border-sidebar-border bg-sidebar px-1 py-0.5 font-mono text-[10px]">
+            Ctrl+K
+          </kbd>{" "}
+          for quick navigation
+        </p>
         <ThemeToggle />
         <p className="text-[11px] leading-relaxed text-muted-foreground">
           {campaignsUseDatabase ? "SQLite database" : "Browser storage"}
