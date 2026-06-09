@@ -29,7 +29,16 @@ import {
   type ReleasePlanFinalFields,
 } from "@/lib/release-planner"
 
-import { PageHeader } from "@/components/app-shell"
+import { ModulePageHeader } from "@/components/app-shell"
+import {
+  FormSection,
+  GENERATOR_WORKFLOW_TABS,
+  ModuleTabPanel,
+  ModuleWorkflowTabs,
+  OutputSection,
+  PromptPreviewBlock,
+  RECENT_RECORDS_CARD_CLASS,
+} from "@/components/module/form-layout"
 import {
   Card,
   CardContent,
@@ -441,28 +450,32 @@ export function ReleasePlannerTool() {
   )
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
+    <div className="flex flex-col gap-8">
+      <ModulePageHeader
         title="AI Music Release Planner"
         description="Plan, save, and organize AI music releases across YouTube, streaming, social, email, merch, and post-release tracking."
         action={
-          editingId ? (
-            <Button type="button" variant="outline" onClick={resetForm}>
-              New plan
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" onClick={handleSavePlan}>
+              {editingId ? "Update release plan" : "Save release plan"}
             </Button>
-          ) : null
+            {editingId ? (
+              <Button type="button" variant="outline" onClick={resetForm}>
+                New plan
+              </Button>
+            ) : null}
+          </div>
         }
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Release details</CardTitle>
-            <CardDescription>
-              Fill in track and campaign info to build your release plan prompt
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      <ModuleWorkflowTabs defaultTab="details" tabs={GENERATOR_WORKFLOW_TABS}>
+        <ModuleTabPanel value="details">
+          <Card>
+            <CardContent className="pt-6">
+              <FormSection
+                title="Release details"
+                description="Fill in track and campaign info to build your release plan prompt"
+              >
             {FORM_FIELD_ORDER.map((field) => {
               const id = `release-${field}`
               const label = FIELD_LABELS[field]
@@ -521,20 +534,20 @@ export function ReleasePlannerTool() {
                 </div>
               )
             })}
-          </CardContent>
-        </Card>
+              </FormSection>
+            </CardContent>
+          </Card>
+        </ModuleTabPanel>
 
-        <div className="flex flex-col gap-4">
-          <Card>
-            <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
-              <div>
-                <CardTitle className="text-base">Completed prompt</CardTitle>
-                <CardDescription>
-                  {usingSavedTemplate
-                    ? "Using AI Music Release Planner from library"
-                    : "Using built-in fallback template"}
-                </CardDescription>
-              </div>
+        <ModuleTabPanel value="prompt">
+          <OutputSection
+            title="Completed prompt"
+            description={
+              usingSavedTemplate
+                ? "Using AI Music Release Planner from library"
+                : "Using built-in fallback template"
+            }
+            action={
               <Button
                 type="button"
                 size="sm"
@@ -544,51 +557,43 @@ export function ReleasePlannerTool() {
                 <Copy className="size-4" />
                 Copy prompt
               </Button>
-            </CardHeader>
-            <CardContent>
-              <pre className="max-h-80 overflow-y-auto whitespace-pre-wrap rounded-md border bg-muted/40 p-3 font-mono text-xs leading-relaxed">
-                {completedPrompt || "Fill in the form to preview your prompt."}
-              </pre>
-            </CardContent>
-          </Card>
+            }
+          >
+            <PromptPreviewBlock value={completedPrompt} />
+          </OutputSection>
+        </ModuleTabPanel>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">AI response</CardTitle>
-              <CardDescription>
-                Paste the response from ChatGPT or your AI tool
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Textarea
-                id="release-ai-response"
-                value={aiResponse}
-                onChange={(e) => setAiResponse(e.target.value)}
-                placeholder="Paste AI response here..."
-                className="min-h-40 w-full font-mono text-xs"
-              />
-              {aiResponse.trim() ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleCopy(aiResponse, "AI response")}
-                >
-                  <Copy className="size-4" />
-                  Copy AI response
-                </Button>
-              ) : null}
-            </CardContent>
-          </Card>
+        <ModuleTabPanel value="ai-response">
+          <OutputSection
+            title="AI response"
+            description="Paste the response from ChatGPT or your AI tool"
+          >
+            <Textarea
+              id="release-ai-response"
+              value={aiResponse}
+              onChange={(e) => setAiResponse(e.target.value)}
+              placeholder="Paste AI response here..."
+              className="min-h-40 w-full font-mono text-xs"
+            />
+            {aiResponse.trim() ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleCopy(aiResponse, "AI response")}
+              >
+                <Copy className="size-4" />
+                Copy AI response
+              </Button>
+            ) : null}
+          </OutputSection>
+        </ModuleTabPanel>
 
-          <Card>
-            <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
-              <div>
-                <CardTitle className="text-base">Final Release Plan</CardTitle>
-                <CardDescription>
-                  Paste or edit your chosen release plan
-                </CardDescription>
-              </div>
+        <ModuleTabPanel value="final">
+          <OutputSection
+            title="Final Release Plan"
+            description="Paste or edit your chosen release plan"
+            action={
               <Button
                 type="button"
                 variant="outline"
@@ -597,8 +602,8 @@ export function ReleasePlannerTool() {
               >
                 Clear final release plan
               </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            }
+          >
               {FINAL_RELEASE_PLAN_FIELDS.map(
                 ({ key, label, multiline, copyLabel }) => {
                   const value = finalPlan[key]
@@ -656,18 +661,11 @@ export function ReleasePlannerTool() {
                   Copy final release plan
                 </Button>
               ) : null}
-            </CardContent>
-          </Card>
+          </OutputSection>
+        </ModuleTabPanel>
 
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" onClick={handleSavePlan}>
-              {editingId ? "Update release plan" : "Save release plan"}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <Card>
+        <ModuleTabPanel value="saved">
+          <Card className={RECENT_RECORDS_CARD_CLASS}>
         <CardHeader className="flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <CardTitle className="text-base">Recent release plans</CardTitle>
@@ -852,7 +850,9 @@ export function ReleasePlannerTool() {
             </div>
           )}
         </CardContent>
-      </Card>
+          </Card>
+        </ModuleTabPanel>
+      </ModuleWorkflowTabs>
 
       <Dialog
         open={!!pendingDelete}

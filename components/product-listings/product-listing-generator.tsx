@@ -28,7 +28,16 @@ import {
   type ProductListingFinalFields,
 } from "@/lib/product-listings"
 
-import { PageHeader } from "@/components/app-shell"
+import { ModulePageHeader } from "@/components/app-shell"
+import {
+  FormSection,
+  GENERATOR_WORKFLOW_TABS,
+  ModuleTabPanel,
+  ModuleWorkflowTabs,
+  OutputSection,
+  PromptPreviewBlock,
+  RECENT_RECORDS_CARD_CLASS,
+} from "@/components/module/form-layout"
 import {
   Card,
   CardContent,
@@ -372,28 +381,32 @@ export function ProductListingGenerator() {
   const finalListingText = buildFinalListingText(finalListing)
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
+    <div className="flex flex-col gap-8">
+      <ModulePageHeader
         title="Product Listing Generator"
         description="Generate, save, and organize ecommerce listings for merch, digital products, templates, and tech resources."
         action={
-          editingId ? (
-            <Button type="button" variant="outline" onClick={resetForm}>
-              New listing
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" onClick={handleSaveListing}>
+              {editingId ? "Update product listing" : "Save product listing"}
             </Button>
-          ) : null
+            {editingId ? (
+              <Button type="button" variant="outline" onClick={resetForm}>
+                New listing
+              </Button>
+            ) : null}
+          </div>
         }
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Product details</CardTitle>
-            <CardDescription>
-              Describe the product to build your listing prompt
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      <ModuleWorkflowTabs defaultTab="details" tabs={GENERATOR_WORKFLOW_TABS}>
+        <ModuleTabPanel value="details">
+          <Card>
+            <CardContent className="pt-6">
+              <FormSection
+                title="Product details"
+                description="Describe the product to build your listing prompt"
+              >
             {FORM_FIELD_ORDER.map((field) => {
               const id = `listing-${field}`
               const label = FIELD_LABELS[field]
@@ -449,20 +462,20 @@ export function ProductListingGenerator() {
                 </div>
               )
             })}
+            </FormSection>
           </CardContent>
         </Card>
+        </ModuleTabPanel>
 
-        <div className="flex flex-col gap-4">
-          <Card>
-            <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
-              <div>
-                <CardTitle className="text-base">Completed prompt</CardTitle>
-                <CardDescription>
-                  {usingSavedTemplate
-                    ? "Using Product Listing Generator from library"
-                    : "Using built-in fallback template"}
-                </CardDescription>
-              </div>
+        <ModuleTabPanel value="prompt">
+          <OutputSection
+            title="Completed prompt"
+            description={
+              usingSavedTemplate
+                ? "Using Product Listing Generator from library"
+                : "Using built-in fallback template"
+            }
+            action={
               <Button
                 type="button"
                 size="sm"
@@ -472,51 +485,43 @@ export function ProductListingGenerator() {
                 <Copy className="size-4" />
                 Copy prompt
               </Button>
-            </CardHeader>
-            <CardContent>
-              <pre className="max-h-80 overflow-y-auto whitespace-pre-wrap rounded-md border bg-muted/40 p-3 font-mono text-xs leading-relaxed">
-                {completedPrompt || "Fill in the form to preview your prompt."}
-              </pre>
-            </CardContent>
-          </Card>
+            }
+          >
+            <PromptPreviewBlock value={completedPrompt} />
+          </OutputSection>
+        </ModuleTabPanel>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">AI response</CardTitle>
-              <CardDescription>
-                Paste the response from ChatGPT or your AI tool
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Textarea
-                id="listing-ai-response"
-                value={aiResponse}
-                onChange={(e) => setAiResponse(e.target.value)}
-                placeholder="Paste AI response here..."
-                className="min-h-40 w-full font-mono text-xs"
-              />
-              {aiResponse.trim() ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleCopy(aiResponse, "AI response")}
-                >
-                  <Copy className="size-4" />
-                  Copy AI response
-                </Button>
-              ) : null}
-            </CardContent>
-          </Card>
+        <ModuleTabPanel value="ai-response">
+          <OutputSection
+            title="AI response"
+            description="Paste the response from ChatGPT or your AI tool"
+          >
+            <Textarea
+              id="listing-ai-response"
+              value={aiResponse}
+              onChange={(e) => setAiResponse(e.target.value)}
+              placeholder="Paste AI response here..."
+              className="min-h-40 w-full font-mono text-xs"
+            />
+            {aiResponse.trim() ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleCopy(aiResponse, "AI response")}
+              >
+                <Copy className="size-4" />
+                Copy AI response
+              </Button>
+            ) : null}
+          </OutputSection>
+        </ModuleTabPanel>
 
-          <Card>
-            <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
-              <div>
-                <CardTitle className="text-base">Final Listing</CardTitle>
-                <CardDescription>
-                  Paste or edit your chosen product listing copy
-                </CardDescription>
-              </div>
+        <ModuleTabPanel value="final">
+          <OutputSection
+            title="Final Listing"
+            description="Paste or edit your chosen product listing copy"
+            action={
               <Button
                 type="button"
                 variant="outline"
@@ -525,8 +530,8 @@ export function ProductListingGenerator() {
               >
                 Clear final listing
               </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            }
+          >
               {FINAL_LISTING_FIELDS.map(({ key, label, multiline, copyLabel }) => {
                 const value = finalListing[key]
                 const id = `final-${key}`
@@ -582,18 +587,11 @@ export function ProductListingGenerator() {
                   Copy final listing
                 </Button>
               ) : null}
-            </CardContent>
-          </Card>
+          </OutputSection>
+        </ModuleTabPanel>
 
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" onClick={handleSaveListing}>
-              {editingId ? "Update product listing" : "Save product listing"}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <Card>
+        <ModuleTabPanel value="saved">
+      <Card className={RECENT_RECORDS_CARD_CLASS}>
         <CardHeader className="flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <CardTitle className="text-base">Recent product listings</CardTitle>
@@ -773,6 +771,8 @@ export function ProductListingGenerator() {
           )}
         </CardContent>
       </Card>
+        </ModuleTabPanel>
+      </ModuleWorkflowTabs>
 
       <Dialog
         open={!!pendingDelete}

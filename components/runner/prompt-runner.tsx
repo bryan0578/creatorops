@@ -30,7 +30,14 @@ import {
   variableToLabel,
 } from "@/lib/prompt-variables"
 
-import { PageHeader } from "@/components/app-shell"
+import { ModulePageHeader } from "@/components/app-shell"
+import {
+  FormSection,
+  OutputSection,
+  PromptPreviewBlock,
+  RECENT_RECORDS_CARD_CLASS,
+  StickyActionBar,
+} from "@/components/module/form-layout"
 import {
   Card,
   CardContent,
@@ -292,8 +299,8 @@ export function PromptRunner() {
 
   if (hydrated && prompts.length === 0) {
     return (
-      <div className="flex flex-col gap-6">
-        <PageHeader
+      <div className="flex flex-col gap-8">
+        <ModulePageHeader
           title="Prompt Runner"
           description="Fill in prompt variables, generate a completed prompt, paste your AI response, and save runs locally."
         />
@@ -311,23 +318,20 @@ export function PromptRunner() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
+    <div className="flex flex-col gap-8">
+      <ModulePageHeader
         title="Prompt Runner"
         description="Select a prompt, fill variables, copy the completed prompt, paste your AI response, and save the run."
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Left column */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Select prompt</CardTitle>
-              <CardDescription>
-                Choose a saved prompt from your library
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="pt-6">
+              <FormSection
+                title="Select prompt"
+                description="Choose a saved prompt from your library"
+              >
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -387,24 +391,24 @@ export function PromptRunner() {
                   Select a prompt to begin.
                 </p>
               )}
+              </FormSection>
             </CardContent>
           </Card>
 
           {selectedPrompt && variables.length > 0 ? (
             <Card>
-              <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
-                <div>
-                  <CardTitle className="text-base">Variables</CardTitle>
-                  <CardDescription>
-                    Fill in values to build your completed prompt
-                  </CardDescription>
+              <CardContent className="pt-6">
+                <FormSection
+                  title="Variables"
+                  description="Fill in values to build your completed prompt"
+                  className="space-y-4"
+                >
+                <div className="flex justify-end">
+                  <Button type="button" variant="outline" size="sm" onClick={clearFields}>
+                    <X className="size-4" />
+                    Clear fields
+                  </Button>
                 </div>
-                <Button type="button" variant="outline" size="sm" onClick={clearFields}>
-                  <X className="size-4" />
-                  Clear fields
-                </Button>
-              </CardHeader>
-              <CardContent className="space-y-4">
                 {variables.map((variable) => {
                   const fieldId = `var-${variable}`
                   const label = variableToLabel(variable)
@@ -431,26 +435,28 @@ export function PromptRunner() {
                     </div>
                   )
                 })}
+                </FormSection>
               </CardContent>
             </Card>
           ) : selectedPrompt ? (
             <Card>
-              <CardContent className="py-6 text-center text-sm text-muted-foreground">
-                This prompt has no variables. The preview will use the raw prompt
-                text.
+              <CardContent className="pt-6">
+                <FormSection>
+                  <p className="text-center text-sm text-muted-foreground">
+                    This prompt has no variables. The preview will use the raw prompt
+                    text.
+                  </p>
+                </FormSection>
               </CardContent>
             </Card>
           ) : null}
         </div>
 
-        {/* Right column */}
-        <div className="flex flex-col gap-4">
-          <Card className="flex flex-col">
-            <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
-              <div>
-                <CardTitle className="text-base">Completed prompt</CardTitle>
-                <CardDescription>Live preview with your values</CardDescription>
-              </div>
+        <div className="flex flex-col gap-6">
+          <OutputSection
+            title="Completed prompt"
+            description="Live preview with your values"
+            action={
               <Button
                 type="button"
                 size="sm"
@@ -460,8 +466,8 @@ export function PromptRunner() {
                 <Copy className="size-4" />
                 Copy completed prompt
               </Button>
-            </CardHeader>
-            <CardContent className="space-y-3">
+            }
+          >
               {missingVariables.length > 0 ? (
                 <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm">
                   <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600" />
@@ -480,22 +486,20 @@ export function PromptRunner() {
                 </Badge>
               ) : null}
 
-              <pre className="max-h-80 overflow-y-auto whitespace-pre-wrap rounded-md border bg-muted/40 p-3 font-mono text-xs leading-relaxed">
-                {selectedPrompt
-                  ? completedPrompt || "—"
-                  : "Select a prompt to see the preview."}
-              </pre>
-            </CardContent>
-          </Card>
+              <PromptPreviewBlock
+                value={selectedPrompt ? completedPrompt : ""}
+                emptyMessage={
+                  selectedPrompt
+                    ? "—"
+                    : "Select a prompt to see the preview."
+                }
+              />
+          </OutputSection>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">AI response & notes</CardTitle>
-              <CardDescription>
-                Paste the response from ChatGPT or your AI tool, then save the run
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <OutputSection
+            title="AI response & notes"
+            description="Paste the response from ChatGPT or your AI tool, then save the run"
+          >
               <div className="space-y-2">
                 <Label htmlFor="ai-response" className="text-sm font-medium">
                   AI response
@@ -520,21 +524,21 @@ export function PromptRunner() {
                   className="min-h-20 w-full"
                 />
               </div>
-              <Button
-                type="button"
-                className="w-full"
-                disabled={!selectedPrompt}
-                onClick={handleSaveRun}
-              >
-                {editingRunId ? "Update run" : "Save run"}
-              </Button>
-            </CardContent>
-          </Card>
+          </OutputSection>
+
+          <StickyActionBar>
+            <Button
+              type="button"
+              disabled={!selectedPrompt}
+              onClick={handleSaveRun}
+            >
+              {editingRunId ? "Update run" : "Save run"}
+            </Button>
+          </StickyActionBar>
         </div>
       </div>
 
-      {/* Recent runs */}
-      <Card>
+      <Card className={RECENT_RECORDS_CARD_CLASS}>
         <CardHeader className="flex-row flex-wrap items-start justify-between gap-3 space-y-0">
           <div>
             <CardTitle className="text-base">Recent runs</CardTitle>

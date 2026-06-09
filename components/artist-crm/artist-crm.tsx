@@ -65,7 +65,13 @@ import {
   youtubePackageLabel,
 } from "@/lib/artist-crm"
 
-import { PageHeader } from "@/components/app-shell"
+import {
+  ARTIST_CRM_WORKFLOW_TABS,
+  ModulePageHeader,
+  ModuleTabPanel,
+  ModuleWorkflowTabs,
+  RECENT_RECORDS_CARD_CLASS,
+} from "@/components/module/form-layout"
 import {
   Card,
   CardContent,
@@ -184,6 +190,19 @@ function LinkRow({ label, href }: { label: string; href: string }) {
         <ExternalLink className="size-3" />
       </a>
     </div>
+  )
+}
+
+const DETAIL_TAB_EMPTY_MESSAGE =
+  "Save an artist or select one from Saved Artists to manage releases, products, and related records."
+
+function DetailTabEmptyState() {
+  return (
+    <Card>
+      <CardContent className="py-12 text-center text-sm text-muted-foreground">
+        {DETAIL_TAB_EMPTY_MESSAGE}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -417,21 +436,26 @@ export function ArtistCrm() {
   })
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
+    <div className="flex flex-col gap-8">
+      <ModulePageHeader
         title="Artist / Label CRM"
         description="Manage artists, songs, releases, brand details, platform links, merch ideas, and campaigns for your AI music label."
         action={
-          editingId ? (
-            <Button type="button" variant="outline" onClick={resetForm}>
-              New artist
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" onClick={handleSave}>
+              {editingId ? "Update artist" : "Save artist"}
             </Button>
-          ) : null
+            {editingId ? (
+              <Button type="button" variant="outline" onClick={resetForm}>
+                New artist
+              </Button>
+            ) : null}
+          </div>
         }
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="flex flex-col gap-6">
+      <ModuleWorkflowTabs defaultTab="profile" tabs={ARTIST_CRM_WORKFLOW_TABS}>
+        <ModuleTabPanel value="profile">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Artist profile</CardTitle>
@@ -493,161 +517,596 @@ export function ArtistCrm() {
                   </div>
                 )
               })}
-
-              <Button type="button" onClick={handleSave} className="w-full">
-                {editingId ? "Update artist" : "Save artist"}
-              </Button>
             </CardContent>
           </Card>
+        </ModuleTabPanel>
 
-          <Card className="border-border/80">
-            <CardHeader className="flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <CardTitle className="text-base">Recent artists</CardTitle>
-                <CardDescription>
-                  {artistRecords.length} saved artist
-                  {artistRecords.length === 1 ? "" : "s"}
-                  {artistRecordsUseDatabase
-                    ? " · stored in SQLite"
-                    : " · using localStorage fallback"}
-                </CardDescription>
-              </div>
-              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                <div className="relative w-full sm:w-56">
-                  <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={recordSearch}
-                    onChange={(e) => setRecordSearch(e.target.value)}
-                    placeholder="Search artists..."
-                    className="pl-8"
-                  />
+        <ModuleTabPanel value="releases">
+          {showDetail ? (
+            <Card>
+              <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
+                <div>
+                  <CardTitle className="text-base">Songs / releases</CardTitle>
+                  <CardDescription>
+                    Track releases and production status
+                  </CardDescription>
                 </div>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={handleMigrateLocal}
-                  disabled={migrating}
+                  onClick={() =>
+                    setReleases((prev) => [...prev, emptyArtistRelease()])
+                  }
                 >
-                  <Database className="size-4" />
-                  {migrating ? "Migrating…" : "Migrate local"}
+                  <Plus className="size-4" />
+                  Add release
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExport}
-                >
-                  <Download className="size-4" />
-                  Export
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="size-4" />
-                  Import
-                </Button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="application/json,.json"
-                  className="hidden"
-                  onChange={handleImport}
-                />
-              </div>
-            </CardHeader>
-            <CardContent>
-              {filteredRecords.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">
-                  {artistRecords.length === 0
-                    ? "No artists saved yet. Fill in the profile and save your first artist."
-                    : "No records match your search."}
-                </p>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  {filteredRecords.map((record) => {
-                    const normalized = normalizeArtistRecord(record)
-                    return (
-                      <div
-                        key={normalized.id}
-                        className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <button
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {releases.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No releases added yet.
+                  </p>
+                ) : (
+                  releases.map((release) => (
+                    <div
+                      key={release.id}
+                      className="space-y-3 rounded-md border p-3"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <Label className="text-sm font-medium">Release</Label>
+                        <Button
                           type="button"
-                          onClick={() => openRecord(normalized)}
-                          className="min-w-0 flex-1 text-left"
+                          variant="ghost"
+                          size="icon"
+                          className="size-7 text-destructive hover:text-destructive"
+                          onClick={() =>
+                            setReleases((prev) =>
+                              prev.filter((r) => r.id !== release.id),
+                            )
+                          }
+                          aria-label="Remove release"
                         >
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-medium">
-                              {normalized.artistName || "Untitled artist"}
-                            </p>
-                            {normalized.artistType ? (
-                              <Badge variant="secondary">
-                                {normalized.artistType}
-                              </Badge>
-                            ) : null}
-                            {normalized.genre ? (
-                              <Badge variant="outline">{normalized.genre}</Badge>
-                            ) : null}
-                            {editingId === normalized.id ? (
-                              <Badge variant="outline" className="text-xs">
-                                Editing
-                              </Badge>
-                            ) : null}
-                          </div>
-                          {normalized.mood ? (
-                            <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">
-                              {normalized.mood}
-                            </p>
-                          ) : null}
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {formatDate(normalized.updatedAt)}
-                            {normalized.releases.length
-                              ? ` · ${normalized.releases.length} release(s)`
-                              : ""}
-                          </p>
-                        </button>
-                        <div className="flex shrink-0 flex-wrap items-center gap-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openRecord(normalized)}
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label>Song title</Label>
+                          <Input
+                            value={release.songTitle}
+                            onChange={(e) =>
+                              updateRelease(release.id, {
+                                songTitle: e.target.value,
+                              })
+                            }
+                            placeholder="Song title..."
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Release date</Label>
+                          <Input
+                            value={release.releaseDate}
+                            onChange={(e) =>
+                              updateRelease(release.id, {
+                                releaseDate: e.target.value,
+                              })
+                            }
+                            placeholder="YYYY-MM-DD"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Status</Label>
+                          <Select
+                            value={release.status}
+                            onValueChange={(v) =>
+                              updateRelease(release.id, { status: v })
+                            }
                           >
-                            Open
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-8 text-destructive hover:text-destructive"
-                            onClick={() => setPendingDelete(normalized)}
-                            aria-label="Delete artist"
+                            <SelectTrigger className="w-full">
+                              <span className="truncate">{release.status}</span>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {RELEASE_STATUSES.map((status) => (
+                                <SelectItem key={status} value={status}>
+                                  {status}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Genre</Label>
+                          <Input
+                            value={release.genre}
+                            onChange={(e) =>
+                              updateRelease(release.id, {
+                                genre: e.target.value,
+                              })
+                            }
+                            placeholder="Genre..."
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Mood</Label>
+                          <Input
+                            value={release.mood}
+                            onChange={(e) =>
+                              updateRelease(release.id, {
+                                mood: e.target.value,
+                              })
+                            }
+                            placeholder="Mood..."
+                          />
+                        </div>
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label>YouTube URL</Label>
+                          <Input
+                            value={release.youtubeUrl}
+                            onChange={(e) =>
+                              updateRelease(release.id, {
+                                youtubeUrl: e.target.value,
+                              })
+                            }
+                            placeholder="https://..."
+                          />
+                        </div>
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label>Streaming links</Label>
+                          <Textarea
+                            value={release.streamingLinks}
+                            onChange={(e) =>
+                              updateRelease(release.id, {
+                                streamingLinks: e.target.value,
+                              })
+                            }
+                            className="min-h-16"
+                            placeholder="Spotify, Apple Music, etc."
+                          />
+                        </div>
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label>Notes</Label>
+                          <Textarea
+                            value={release.notes}
+                            onChange={(e) =>
+                              updateRelease(release.id, {
+                                notes: e.target.value,
+                              })
+                            }
+                            className="min-h-16"
+                          />
+                        </div>
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label>Linked thumbnail</Label>
+                          <Select
+                            value={release.thumbnailRecordId || "none"}
+                            onValueChange={(v) =>
+                              updateRelease(release.id, {
+                                thumbnailRecordId: v === "none" ? "" : v,
+                              })
+                            }
                           >
-                            <Trash2 className="size-4" />
-                          </Button>
+                            <SelectTrigger className="w-full">
+                              <span className="truncate">
+                                {(() => {
+                                  if (!release.thumbnailRecordId) {
+                                    return "None linked"
+                                  }
+                                  const linked = youtubeThumbnailRecords.find(
+                                    (t) => t.id === release.thumbnailRecordId,
+                                  )
+                                  return linked
+                                    ? thumbnailRecordLabel(linked)
+                                    : "Missing thumbnail record"
+                                })()}
+                              </span>
+                            </SelectTrigger>
+                            <SelectContent className="min-w-[280px]">
+                              <SelectItem value="none">None linked</SelectItem>
+                              {youtubeThumbnailRecords.map((record) => (
+                                <SelectItem key={record.id} value={record.id}>
+                                  {thumbnailRecordLabel(record)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label>Linked YouTube packaging</Label>
+                          <Select
+                            value={release.youtubePackagingRecordId || "none"}
+                            onValueChange={(v) =>
+                              updateRelease(release.id, {
+                                youtubePackagingRecordId:
+                                  v === "none" ? "" : v,
+                              })
+                            }
+                          >
+                            <SelectTrigger className="w-full">
+                              <span className="truncate">
+                                {(() => {
+                                  if (!release.youtubePackagingRecordId) {
+                                    return "None linked"
+                                  }
+                                  const linked = youtubePackages.find(
+                                    (p) =>
+                                      p.id === release.youtubePackagingRecordId,
+                                  )
+                                  return linked
+                                    ? youtubePackageLabel(linked)
+                                    : "Missing packaging record"
+                                })()}
+                              </span>
+                            </SelectTrigger>
+                            <SelectContent className="min-w-[280px]">
+                              <SelectItem value="none">None linked</SelectItem>
+                              {youtubePackages.map((record) => (
+                                <SelectItem key={record.id} value={record.id}>
+                                  {youtubePackageLabel(record)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label>Linked release plan</Label>
+                          <Select
+                            value={release.releasePlanRecordId || "none"}
+                            onValueChange={(v) =>
+                              updateRelease(release.id, {
+                                releasePlanRecordId: v === "none" ? "" : v,
+                              })
+                            }
+                          >
+                            <SelectTrigger className="w-full">
+                              <span className="truncate">
+                                {(() => {
+                                  if (!release.releasePlanRecordId) {
+                                    return "None linked"
+                                  }
+                                  const linked = releasePlans.find(
+                                    (p) => p.id === release.releasePlanRecordId,
+                                  )
+                                  return linked
+                                    ? releasePlanLabel(linked)
+                                    : "Missing release plan"
+                                })()}
+                              </span>
+                            </SelectTrigger>
+                            <SelectContent className="min-w-[280px]">
+                              <SelectItem value="none">None linked</SelectItem>
+                              {releasePlans.map((record) => (
+                                <SelectItem key={record.id} value={record.id}>
+                                  {releasePlanLabel(record)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label>Linked analytics record</Label>
+                          <Select
+                            value={release.analyticsRecordId || "none"}
+                            onValueChange={(v) =>
+                              updateRelease(release.id, {
+                                analyticsRecordId: v === "none" ? "" : v,
+                              })
+                            }
+                          >
+                            <SelectTrigger className="w-full">
+                              <span className="truncate">
+                                {(() => {
+                                  if (!release.analyticsRecordId) {
+                                    return "None linked"
+                                  }
+                                  const linked = analyticsRecords.find(
+                                    (a) => a.id === release.analyticsRecordId,
+                                  )
+                                  return linked
+                                    ? analyticsRecordLabel(linked)
+                                    : "Missing analytics record"
+                                })()}
+                              </span>
+                            </SelectTrigger>
+                            <SelectContent className="min-w-[280px]">
+                              <SelectItem value="none">None linked</SelectItem>
+                              {analyticsRecords.map((record) => (
+                                <SelectItem key={record.id} value={record.id}>
+                                  {analyticsRecordLabel(record)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
-                    )
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="flex flex-col gap-4">
-          {!showDetail ? (
-            <Card>
-              <CardContent className="py-12 text-center text-sm text-muted-foreground">
-                Save an artist or select one from the list to view details,
-                related records, and quick actions.
+                    </div>
+                  ))
+                )}
               </CardContent>
             </Card>
           ) : (
+            <DetailTabEmptyState />
+          )}
+        </ModuleTabPanel>
+
+        <ModuleTabPanel value="products">
+          {showDetail ? (
+            <Card>
+              <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
+                <div>
+                  <CardTitle className="text-base">Merch / products</CardTitle>
+                  <CardDescription>
+                    Related merch and product ideas
+                  </CardDescription>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setMerchProducts((prev) => [
+                      ...prev,
+                      emptyArtistMerchProduct(),
+                    ])
+                  }
+                >
+                  <Plus className="size-4" />
+                  Add product
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {merchProducts.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No merch or products added yet.
+                  </p>
+                ) : (
+                  merchProducts.map((product) => (
+                    <div
+                      key={product.id}
+                      className="space-y-3 rounded-md border p-3"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <Label className="text-sm font-medium">Product</Label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-7 text-destructive hover:text-destructive"
+                          onClick={() =>
+                            setMerchProducts((prev) =>
+                              prev.filter((p) => p.id !== product.id),
+                            )
+                          }
+                          aria-label="Remove product"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label>Product name</Label>
+                          <Input
+                            value={product.productName}
+                            onChange={(e) =>
+                              updateMerch(product.id, {
+                                productName: e.target.value,
+                              })
+                            }
+                            placeholder="Product name..."
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Product type</Label>
+                          <Input
+                            value={product.productType}
+                            onChange={(e) =>
+                              updateMerch(product.id, {
+                                productType: e.target.value,
+                              })
+                            }
+                            placeholder="T-shirt, hoodie, etc."
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Status</Label>
+                          <Select
+                            value={product.status}
+                            onValueChange={(v) =>
+                              updateMerch(product.id, { status: v })
+                            }
+                          >
+                            <SelectTrigger className="w-full">
+                              <span className="truncate">{product.status}</span>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ARTIST_PRODUCT_STATUSES.map((status) => (
+                                <SelectItem key={status} value={status}>
+                                  {status}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label>Store link</Label>
+                          <Input
+                            value={product.storeLink}
+                            onChange={(e) =>
+                              updateMerch(product.id, {
+                                storeLink: e.target.value,
+                              })
+                            }
+                            placeholder="https://..."
+                          />
+                        </div>
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label>Notes</Label>
+                          <Textarea
+                            value={product.notes}
+                            onChange={(e) =>
+                              updateMerch(product.id, {
+                                notes: e.target.value,
+                              })
+                            }
+                            className="min-h-16"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <DetailTabEmptyState />
+          )}
+        </ModuleTabPanel>
+
+        <ModuleTabPanel value="campaigns">
+          {showDetail ? (
+            <Card>
+              <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
+                <div>
+                  <CardTitle className="text-base">Campaigns</CardTitle>
+                  <CardDescription>
+                    Marketing and promo campaigns for this artist
+                  </CardDescription>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setCampaigns((prev) => [...prev, emptyArtistCampaign()])
+                  }
+                >
+                  <Plus className="size-4" />
+                  Add campaign
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {campaigns.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No campaigns added yet.
+                  </p>
+                ) : (
+                  campaigns.map((campaign) => (
+                    <div
+                      key={campaign.id}
+                      className="space-y-3 rounded-md border p-3"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <Label className="text-sm font-medium">Campaign</Label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-7 text-destructive hover:text-destructive"
+                          onClick={() =>
+                            setCampaigns((prev) =>
+                              prev.filter((c) => c.id !== campaign.id),
+                            )
+                          }
+                          aria-label="Remove campaign"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label>Campaign name</Label>
+                          <Input
+                            value={campaign.campaignName}
+                            onChange={(e) =>
+                              updateCampaign(campaign.id, {
+                                campaignName: e.target.value,
+                              })
+                            }
+                            placeholder="Campaign name..."
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Campaign type</Label>
+                          <Input
+                            value={campaign.campaignType}
+                            onChange={(e) =>
+                              updateCampaign(campaign.id, {
+                                campaignType: e.target.value,
+                              })
+                            }
+                            placeholder="Release, merch drop, etc."
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Status</Label>
+                          <Select
+                            value={campaign.status}
+                            onValueChange={(v) =>
+                              updateCampaign(campaign.id, { status: v })
+                            }
+                          >
+                            <SelectTrigger className="w-full">
+                              <span className="truncate">{campaign.status}</span>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ARTIST_CAMPAIGN_STATUSES.map((status) => (
+                                <SelectItem key={status} value={status}>
+                                  {status}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Start date</Label>
+                          <Input
+                            value={campaign.startDate}
+                            onChange={(e) =>
+                              updateCampaign(campaign.id, {
+                                startDate: e.target.value,
+                              })
+                            }
+                            placeholder="YYYY-MM-DD"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>End date</Label>
+                          <Input
+                            value={campaign.endDate}
+                            onChange={(e) =>
+                              updateCampaign(campaign.id, {
+                                endDate: e.target.value,
+                              })
+                            }
+                            placeholder="YYYY-MM-DD"
+                          />
+                        </div>
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label>Notes</Label>
+                          <Textarea
+                            value={campaign.notes}
+                            onChange={(e) =>
+                              updateCampaign(campaign.id, {
+                                notes: e.target.value,
+                              })
+                            }
+                            className="min-h-16"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <DetailTabEmptyState />
+          )}
+        </ModuleTabPanel>
+
+        <ModuleTabPanel value="related">
+          {showDetail ? (
             <>
               <Card>
                 <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
@@ -733,318 +1192,6 @@ export function ArtistCrm() {
                   {form.notes.trim() ? (
                     <DetailSection title="Notes">{form.notes}</DetailSection>
                   ) : null}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
-                  <div>
-                    <CardTitle className="text-base">
-                      Songs / releases
-                    </CardTitle>
-                    <CardDescription>
-                      Track releases and production status
-                    </CardDescription>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setReleases((prev) => [...prev, emptyArtistRelease()])
-                    }
-                  >
-                    <Plus className="size-4" />
-                    Add release
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {releases.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No releases added yet.
-                    </p>
-                  ) : (
-                    releases.map((release) => (
-                      <div
-                        key={release.id}
-                        className="space-y-3 rounded-md border p-3"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <Label className="text-sm font-medium">
-                            Release
-                          </Label>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-7 text-destructive hover:text-destructive"
-                            onClick={() =>
-                              setReleases((prev) =>
-                                prev.filter((r) => r.id !== release.id),
-                              )
-                            }
-                            aria-label="Remove release"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        </div>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <div className="space-y-2 sm:col-span-2">
-                            <Label>Song title</Label>
-                            <Input
-                              value={release.songTitle}
-                              onChange={(e) =>
-                                updateRelease(release.id, {
-                                  songTitle: e.target.value,
-                                })
-                              }
-                              placeholder="Song title..."
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Release date</Label>
-                            <Input
-                              value={release.releaseDate}
-                              onChange={(e) =>
-                                updateRelease(release.id, {
-                                  releaseDate: e.target.value,
-                                })
-                              }
-                              placeholder="YYYY-MM-DD"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Status</Label>
-                            <Select
-                              value={release.status}
-                              onValueChange={(v) =>
-                                updateRelease(release.id, { status: v })
-                              }
-                            >
-                              <SelectTrigger className="w-full">
-                                <span className="truncate">
-                                  {release.status}
-                                </span>
-                              </SelectTrigger>
-                              <SelectContent>
-                                {RELEASE_STATUSES.map((status) => (
-                                  <SelectItem key={status} value={status}>
-                                    {status}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Genre</Label>
-                            <Input
-                              value={release.genre}
-                              onChange={(e) =>
-                                updateRelease(release.id, {
-                                  genre: e.target.value,
-                                })
-                              }
-                              placeholder="Genre..."
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Mood</Label>
-                            <Input
-                              value={release.mood}
-                              onChange={(e) =>
-                                updateRelease(release.id, {
-                                  mood: e.target.value,
-                                })
-                              }
-                              placeholder="Mood..."
-                            />
-                          </div>
-                          <div className="space-y-2 sm:col-span-2">
-                            <Label>YouTube URL</Label>
-                            <Input
-                              value={release.youtubeUrl}
-                              onChange={(e) =>
-                                updateRelease(release.id, {
-                                  youtubeUrl: e.target.value,
-                                })
-                              }
-                              placeholder="https://..."
-                            />
-                          </div>
-                          <div className="space-y-2 sm:col-span-2">
-                            <Label>Streaming links</Label>
-                            <Textarea
-                              value={release.streamingLinks}
-                              onChange={(e) =>
-                                updateRelease(release.id, {
-                                  streamingLinks: e.target.value,
-                                })
-                              }
-                              className="min-h-16"
-                              placeholder="Spotify, Apple Music, etc."
-                            />
-                          </div>
-                          <div className="space-y-2 sm:col-span-2">
-                            <Label>Notes</Label>
-                            <Textarea
-                              value={release.notes}
-                              onChange={(e) =>
-                                updateRelease(release.id, {
-                                  notes: e.target.value,
-                                })
-                              }
-                              className="min-h-16"
-                            />
-                          </div>
-                          <div className="space-y-2 sm:col-span-2">
-                            <Label>Linked thumbnail</Label>
-                            <Select
-                              value={release.thumbnailRecordId || "none"}
-                              onValueChange={(v) =>
-                                updateRelease(release.id, {
-                                  thumbnailRecordId: v === "none" ? "" : v,
-                                })
-                              }
-                            >
-                              <SelectTrigger className="w-full">
-                                <span className="truncate">
-                                  {(() => {
-                                    if (!release.thumbnailRecordId) {
-                                      return "None linked"
-                                    }
-                                    const linked = youtubeThumbnailRecords.find(
-                                      (t) =>
-                                        t.id === release.thumbnailRecordId,
-                                    )
-                                    return linked
-                                      ? thumbnailRecordLabel(linked)
-                                      : "Missing thumbnail record"
-                                  })()}
-                                </span>
-                              </SelectTrigger>
-                              <SelectContent className="min-w-[280px]">
-                                <SelectItem value="none">None linked</SelectItem>
-                                {youtubeThumbnailRecords.map((record) => (
-                                  <SelectItem key={record.id} value={record.id}>
-                                    {thumbnailRecordLabel(record)}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2 sm:col-span-2">
-                            <Label>Linked YouTube packaging</Label>
-                            <Select
-                              value={release.youtubePackagingRecordId || "none"}
-                              onValueChange={(v) =>
-                                updateRelease(release.id, {
-                                  youtubePackagingRecordId:
-                                    v === "none" ? "" : v,
-                                })
-                              }
-                            >
-                              <SelectTrigger className="w-full">
-                                <span className="truncate">
-                                  {(() => {
-                                    if (!release.youtubePackagingRecordId) {
-                                      return "None linked"
-                                    }
-                                    const linked = youtubePackages.find(
-                                      (p) =>
-                                        p.id ===
-                                        release.youtubePackagingRecordId,
-                                    )
-                                    return linked
-                                      ? youtubePackageLabel(linked)
-                                      : "Missing packaging record"
-                                  })()}
-                                </span>
-                              </SelectTrigger>
-                              <SelectContent className="min-w-[280px]">
-                                <SelectItem value="none">None linked</SelectItem>
-                                {youtubePackages.map((record) => (
-                                  <SelectItem key={record.id} value={record.id}>
-                                    {youtubePackageLabel(record)}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2 sm:col-span-2">
-                            <Label>Linked release plan</Label>
-                            <Select
-                              value={release.releasePlanRecordId || "none"}
-                              onValueChange={(v) =>
-                                updateRelease(release.id, {
-                                  releasePlanRecordId: v === "none" ? "" : v,
-                                })
-                              }
-                            >
-                              <SelectTrigger className="w-full">
-                                <span className="truncate">
-                                  {(() => {
-                                    if (!release.releasePlanRecordId) {
-                                      return "None linked"
-                                    }
-                                    const linked = releasePlans.find(
-                                      (p) =>
-                                        p.id === release.releasePlanRecordId,
-                                    )
-                                    return linked
-                                      ? releasePlanLabel(linked)
-                                      : "Missing release plan"
-                                  })()}
-                                </span>
-                              </SelectTrigger>
-                              <SelectContent className="min-w-[280px]">
-                                <SelectItem value="none">None linked</SelectItem>
-                                {releasePlans.map((record) => (
-                                  <SelectItem key={record.id} value={record.id}>
-                                    {releasePlanLabel(record)}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2 sm:col-span-2">
-                            <Label>Linked analytics record</Label>
-                            <Select
-                              value={release.analyticsRecordId || "none"}
-                              onValueChange={(v) =>
-                                updateRelease(release.id, {
-                                  analyticsRecordId: v === "none" ? "" : v,
-                                })
-                              }
-                            >
-                              <SelectTrigger className="w-full">
-                                <span className="truncate">
-                                  {(() => {
-                                    if (!release.analyticsRecordId) {
-                                      return "None linked"
-                                    }
-                                    const linked = analyticsRecords.find(
-                                      (a) => a.id === release.analyticsRecordId,
-                                    )
-                                    return linked
-                                      ? analyticsRecordLabel(linked)
-                                      : "Missing analytics record"
-                                  })()}
-                                </span>
-                              </SelectTrigger>
-                              <SelectContent className="min-w-[280px]">
-                                <SelectItem value="none">None linked</SelectItem>
-                                {analyticsRecords.map((record) => (
-                                  <SelectItem key={record.id} value={record.id}>
-                                    {analyticsRecordLabel(record)}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
                 </CardContent>
               </Card>
 
@@ -1142,277 +1289,6 @@ export function ArtistCrm() {
                         )
                       })}
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
-                  <div>
-                    <CardTitle className="text-base">
-                      Merch / products
-                    </CardTitle>
-                    <CardDescription>
-                      Related merch and product ideas
-                    </CardDescription>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setMerchProducts((prev) => [
-                        ...prev,
-                        emptyArtistMerchProduct(),
-                      ])
-                    }
-                  >
-                    <Plus className="size-4" />
-                    Add product
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {merchProducts.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No merch or products added yet.
-                    </p>
-                  ) : (
-                    merchProducts.map((product) => (
-                      <div
-                        key={product.id}
-                        className="space-y-3 rounded-md border p-3"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <Label className="text-sm font-medium">Product</Label>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-7 text-destructive hover:text-destructive"
-                            onClick={() =>
-                              setMerchProducts((prev) =>
-                                prev.filter((p) => p.id !== product.id),
-                              )
-                            }
-                            aria-label="Remove product"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        </div>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <div className="space-y-2 sm:col-span-2">
-                            <Label>Product name</Label>
-                            <Input
-                              value={product.productName}
-                              onChange={(e) =>
-                                updateMerch(product.id, {
-                                  productName: e.target.value,
-                                })
-                              }
-                              placeholder="Product name..."
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Product type</Label>
-                            <Input
-                              value={product.productType}
-                              onChange={(e) =>
-                                updateMerch(product.id, {
-                                  productType: e.target.value,
-                                })
-                              }
-                              placeholder="T-shirt, hoodie, etc."
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Status</Label>
-                            <Select
-                              value={product.status}
-                              onValueChange={(v) =>
-                                updateMerch(product.id, { status: v })
-                              }
-                            >
-                              <SelectTrigger className="w-full">
-                                <span className="truncate">
-                                  {product.status}
-                                </span>
-                              </SelectTrigger>
-                              <SelectContent>
-                                {ARTIST_PRODUCT_STATUSES.map((status) => (
-                                  <SelectItem key={status} value={status}>
-                                    {status}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2 sm:col-span-2">
-                            <Label>Store link</Label>
-                            <Input
-                              value={product.storeLink}
-                              onChange={(e) =>
-                                updateMerch(product.id, {
-                                  storeLink: e.target.value,
-                                })
-                              }
-                              placeholder="https://..."
-                            />
-                          </div>
-                          <div className="space-y-2 sm:col-span-2">
-                            <Label>Notes</Label>
-                            <Textarea
-                              value={product.notes}
-                              onChange={(e) =>
-                                updateMerch(product.id, {
-                                  notes: e.target.value,
-                                })
-                              }
-                              className="min-h-16"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
-                  <div>
-                    <CardTitle className="text-base">Campaigns</CardTitle>
-                    <CardDescription>
-                      Marketing and promo campaigns for this artist
-                    </CardDescription>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setCampaigns((prev) => [...prev, emptyArtistCampaign()])
-                    }
-                  >
-                    <Plus className="size-4" />
-                    Add campaign
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {campaigns.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No campaigns added yet.
-                    </p>
-                  ) : (
-                    campaigns.map((campaign) => (
-                      <div
-                        key={campaign.id}
-                        className="space-y-3 rounded-md border p-3"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <Label className="text-sm font-medium">
-                            Campaign
-                          </Label>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-7 text-destructive hover:text-destructive"
-                            onClick={() =>
-                              setCampaigns((prev) =>
-                                prev.filter((c) => c.id !== campaign.id),
-                              )
-                            }
-                            aria-label="Remove campaign"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        </div>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <div className="space-y-2 sm:col-span-2">
-                            <Label>Campaign name</Label>
-                            <Input
-                              value={campaign.campaignName}
-                              onChange={(e) =>
-                                updateCampaign(campaign.id, {
-                                  campaignName: e.target.value,
-                                })
-                              }
-                              placeholder="Campaign name..."
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Campaign type</Label>
-                            <Input
-                              value={campaign.campaignType}
-                              onChange={(e) =>
-                                updateCampaign(campaign.id, {
-                                  campaignType: e.target.value,
-                                })
-                              }
-                              placeholder="Release, merch drop, etc."
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Status</Label>
-                            <Select
-                              value={campaign.status}
-                              onValueChange={(v) =>
-                                updateCampaign(campaign.id, { status: v })
-                              }
-                            >
-                              <SelectTrigger className="w-full">
-                                <span className="truncate">
-                                  {campaign.status}
-                                </span>
-                              </SelectTrigger>
-                              <SelectContent>
-                                {ARTIST_CAMPAIGN_STATUSES.map((status) => (
-                                  <SelectItem key={status} value={status}>
-                                    {status}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Start date</Label>
-                            <Input
-                              value={campaign.startDate}
-                              onChange={(e) =>
-                                updateCampaign(campaign.id, {
-                                  startDate: e.target.value,
-                                })
-                              }
-                              placeholder="YYYY-MM-DD"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>End date</Label>
-                            <Input
-                              value={campaign.endDate}
-                              onChange={(e) =>
-                                updateCampaign(campaign.id, {
-                                  endDate: e.target.value,
-                                })
-                              }
-                              placeholder="YYYY-MM-DD"
-                            />
-                          </div>
-                          <div className="space-y-2 sm:col-span-2">
-                            <Label>Notes</Label>
-                            <Textarea
-                              value={campaign.notes}
-                              onChange={(e) =>
-                                updateCampaign(campaign.id, {
-                                  notes: e.target.value,
-                                })
-                              }
-                              className="min-h-16"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))
                   )}
                 </CardContent>
               </Card>
@@ -1580,14 +1456,152 @@ export function ArtistCrm() {
                   </Link>
                 </CardContent>
               </Card>
-
-              <Button type="button" onClick={handleSave} className="w-full">
-                {editingId ? "Update artist" : "Save artist"}
-              </Button>
             </>
+          ) : (
+            <DetailTabEmptyState />
           )}
-        </div>
-      </div>
+        </ModuleTabPanel>
+
+        <ModuleTabPanel value="saved">
+          <Card className={RECENT_RECORDS_CARD_CLASS}>
+            <CardHeader className="flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <CardTitle className="text-base">Recent artists</CardTitle>
+                <CardDescription>
+                  {artistRecords.length} saved artist
+                  {artistRecords.length === 1 ? "" : "s"}
+                  {artistRecordsUseDatabase
+                    ? " · stored in SQLite"
+                    : " · using localStorage fallback"}
+                </CardDescription>
+              </div>
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                <div className="relative w-full sm:w-56">
+                  <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={recordSearch}
+                    onChange={(e) => setRecordSearch(e.target.value)}
+                    placeholder="Search artists..."
+                    className="pl-8"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleMigrateLocal}
+                  disabled={migrating}
+                >
+                  <Database className="size-4" />
+                  {migrating ? "Migrating…" : "Migrate local"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExport}
+                >
+                  <Download className="size-4" />
+                  Export
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="size-4" />
+                  Import
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="application/json,.json"
+                  className="hidden"
+                  onChange={handleImport}
+                />
+              </div>
+            </CardHeader>
+            <CardContent>
+              {filteredRecords.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  {artistRecords.length === 0
+                    ? "No artists saved yet. Fill in the profile and save your first artist."
+                    : "No records match your search."}
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {filteredRecords.map((record) => {
+                    const normalized = normalizeArtistRecord(record)
+                    return (
+                      <div
+                        key={normalized.id}
+                        className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => openRecord(normalized)}
+                          className="min-w-0 flex-1 text-left"
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-medium">
+                              {normalized.artistName || "Untitled artist"}
+                            </p>
+                            {normalized.artistType ? (
+                              <Badge variant="secondary">
+                                {normalized.artistType}
+                              </Badge>
+                            ) : null}
+                            {normalized.genre ? (
+                              <Badge variant="outline">{normalized.genre}</Badge>
+                            ) : null}
+                            {editingId === normalized.id ? (
+                              <Badge variant="outline" className="text-xs">
+                                Editing
+                              </Badge>
+                            ) : null}
+                          </div>
+                          {normalized.mood ? (
+                            <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">
+                              {normalized.mood}
+                            </p>
+                          ) : null}
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {formatDate(normalized.updatedAt)}
+                            {normalized.releases.length
+                              ? ` · ${normalized.releases.length} release(s)`
+                              : ""}
+                          </p>
+                        </button>
+                        <div className="flex shrink-0 flex-wrap items-center gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openRecord(normalized)}
+                          >
+                            Open
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 text-destructive hover:text-destructive"
+                            onClick={() => setPendingDelete(normalized)}
+                            aria-label="Delete artist"
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </ModuleTabPanel>
+      </ModuleWorkflowTabs>
 
       <Dialog
         open={!!pendingDelete}

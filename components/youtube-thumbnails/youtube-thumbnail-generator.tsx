@@ -38,7 +38,16 @@ import {
   type YouTubeThumbnailFinalFields,
 } from "@/lib/youtube-thumbnails"
 
-import { PageHeader } from "@/components/app-shell"
+import { ModulePageHeader } from "@/components/app-shell"
+import {
+  FormSection,
+  GENERATOR_WORKFLOW_TABS,
+  ModuleTabPanel,
+  ModuleWorkflowTabs,
+  OutputSection,
+  PromptPreviewBlock,
+  RECENT_RECORDS_CARD_CLASS,
+} from "@/components/module/form-layout"
 import {
   Card,
   CardContent,
@@ -439,28 +448,32 @@ export function YouTubeThumbnailGenerator() {
   )
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
+    <div className="flex flex-col gap-8">
+      <ModulePageHeader
         title="YouTube Thumbnail Generator"
         description="Generate, save, and organize thumbnail concepts for standard YouTube videos and Shorts covers."
         action={
-          editingId ? (
-            <Button type="button" variant="outline" onClick={resetForm}>
-              New thumbnail
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" onClick={handleSave}>
+              {editingId ? "Update thumbnail" : "Save thumbnail"}
             </Button>
-          ) : null
+            {editingId ? (
+              <Button type="button" variant="outline" onClick={resetForm}>
+                New thumbnail
+              </Button>
+            ) : null}
+          </div>
         }
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Thumbnail details</CardTitle>
-            <CardDescription>
-              Describe the video, visual direction, and thumbnail goals
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      <ModuleWorkflowTabs defaultTab="details" tabs={GENERATOR_WORKFLOW_TABS}>
+        <ModuleTabPanel value="details">
+          <Card>
+            <CardContent className="space-y-4 pt-6">
+              <FormSection
+                title="Thumbnail details"
+                description="Describe the video, visual direction, and thumbnail goals"
+              >
             {FORM_FIELD_ORDER.map((field) => {
               const id = `thumbnail-${field}`
               const label = FIELD_LABELS[field]
@@ -560,20 +573,20 @@ export function YouTubeThumbnailGenerator() {
                 </div>
               )
             })}
+            </FormSection>
           </CardContent>
         </Card>
+        </ModuleTabPanel>
 
-        <div className="flex flex-col gap-4">
-          <Card>
-            <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
-              <div>
-                <CardTitle className="text-base">Completed prompt</CardTitle>
-                <CardDescription>
-                  {usingSavedTemplate
-                    ? "Using YouTube Thumbnail Generator from library"
-                    : "Using built-in fallback template"}
-                </CardDescription>
-              </div>
+        <ModuleTabPanel value="prompt">
+          <OutputSection
+            title="Completed prompt"
+            description={
+              usingSavedTemplate
+                ? "Using YouTube Thumbnail Generator from library"
+                : "Using built-in fallback template"
+            }
+            action={
               <Button
                 type="button"
                 size="sm"
@@ -583,52 +596,47 @@ export function YouTubeThumbnailGenerator() {
                 <Copy className="size-4" />
                 Copy prompt
               </Button>
-            </CardHeader>
-            <CardContent>
-              <pre className="max-h-80 overflow-y-auto whitespace-pre-wrap rounded-md border bg-muted/40 p-3 font-mono text-xs leading-relaxed">
-                {completedPrompt || "Fill in the form to preview your prompt."}
-              </pre>
-            </CardContent>
-          </Card>
+            }
+          >
+            <PromptPreviewBlock value={completedPrompt} />
+          </OutputSection>
+        </ModuleTabPanel>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">AI response</CardTitle>
-              <CardDescription>
-                Paste the response from ChatGPT or your AI tool
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Textarea
-                id="thumbnail-ai-response"
-                value={aiResponse}
-                onChange={(e) => setAiResponse(e.target.value)}
-                placeholder="Paste AI response here..."
-                className="min-h-40 w-full font-mono text-xs"
-              />
-              {aiResponse.trim() ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleCopy(aiResponse, "AI response")}
-                >
-                  <Copy className="size-4" />
-                  Copy AI response
-                </Button>
-              ) : null}
-            </CardContent>
-          </Card>
+        <ModuleTabPanel value="ai-response">
+          <OutputSection
+            title="AI response"
+            description="Paste the response from ChatGPT or your AI tool"
+          >
+            <Textarea
+              id="thumbnail-ai-response"
+              value={aiResponse}
+              onChange={(e) => setAiResponse(e.target.value)}
+              placeholder="Paste AI response here..."
+              className="min-h-[min(24rem,50vh)] w-full font-mono text-xs"
+            />
+            {aiResponse.trim() ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleCopy(aiResponse, "AI response")}
+              >
+                <Copy className="size-4" />
+                Copy AI response
+              </Button>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Paste your AI output here after running the completed prompt.
+              </p>
+            )}
+          </OutputSection>
+        </ModuleTabPanel>
 
-          <Card>
-            <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
-              <div>
-                <CardTitle className="text-base">Final Thumbnail</CardTitle>
-                <CardDescription>
-                  Paste or edit your chosen concept, composition, and image
-                  prompt
-                </CardDescription>
-              </div>
+        <ModuleTabPanel value="final">
+          <OutputSection
+            title="Final Thumbnail"
+            description="Paste or edit your chosen concept, composition, and image prompt"
+            action={
               <Button
                 type="button"
                 variant="outline"
@@ -637,8 +645,8 @@ export function YouTubeThumbnailGenerator() {
               >
                 Clear final thumbnail
               </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            }
+          >
               {FINAL_THUMBNAIL_FIELDS.map(({ key, label, copyLabel }) => {
                 const value = finalThumbnail[key]
                 const id = `final-${key}`
@@ -682,17 +690,16 @@ export function YouTubeThumbnailGenerator() {
                   <Copy className="size-4" />
                   Copy final thumbnail
                 </Button>
-              ) : null}
-            </CardContent>
-          </Card>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Fill in final thumbnail concepts after reviewing the AI response.
+                </p>
+              )}
+          </OutputSection>
+        </ModuleTabPanel>
 
-          <Button type="button" onClick={handleSave}>
-            {editingId ? "Update thumbnail" : "Save thumbnail"}
-          </Button>
-        </div>
-      </div>
-
-      <Card>
+        <ModuleTabPanel value="saved">
+      <Card className={RECENT_RECORDS_CARD_CLASS}>
         <CardHeader className="flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <CardTitle className="text-base">Recent thumbnails</CardTitle>
@@ -882,6 +889,8 @@ export function YouTubeThumbnailGenerator() {
           )}
         </CardContent>
       </Card>
+        </ModuleTabPanel>
+      </ModuleWorkflowTabs>
 
       <Dialog
         open={!!pendingDelete}

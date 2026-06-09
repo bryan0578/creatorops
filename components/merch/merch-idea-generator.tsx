@@ -28,7 +28,16 @@ import {
   type MerchIdeaSelectedConcept,
 } from "@/lib/merch-ideas"
 
-import { PageHeader } from "@/components/app-shell"
+import { ModulePageHeader } from "@/components/app-shell"
+import {
+  FormSection,
+  GENERATOR_WORKFLOW_TABS,
+  ModuleTabPanel,
+  ModuleWorkflowTabs,
+  OutputSection,
+  PromptPreviewBlock,
+  RECENT_RECORDS_CARD_CLASS,
+} from "@/components/module/form-layout"
 import {
   Card,
   CardContent,
@@ -367,28 +376,32 @@ export function MerchIdeaGenerator() {
   const selectedConceptText = buildSelectedConceptText(selectedConcept)
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
+    <div className="flex flex-col gap-8">
+      <ModulePageHeader
         title="Merch Idea Generator"
         description="Generate, save, and organize merch concepts for artist stores, Fourthwall, and niche ecommerce."
         action={
-          editingId ? (
-            <Button type="button" variant="outline" onClick={resetForm}>
-              New idea
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" onClick={handleSaveIdea}>
+              {editingId ? "Update merch idea" : "Save merch idea"}
             </Button>
-          ) : null
+            {editingId ? (
+              <Button type="button" variant="outline" onClick={resetForm}>
+                New idea
+              </Button>
+            ) : null}
+          </div>
         }
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Concept inputs</CardTitle>
-            <CardDescription>
-              Describe the niche and product to build your merch prompt
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      <ModuleWorkflowTabs defaultTab="details" tabs={GENERATOR_WORKFLOW_TABS}>
+        <ModuleTabPanel value="details">
+          <Card>
+            <CardContent className="pt-6">
+              <FormSection
+                title="Concept inputs"
+                description="Describe the niche and product to build your merch prompt"
+              >
             {FORM_FIELD_ORDER.map((field) => {
               const id = `merch-${field}`
               const label = FIELD_LABELS[field]
@@ -446,20 +459,20 @@ export function MerchIdeaGenerator() {
                 </div>
               )
             })}
+            </FormSection>
           </CardContent>
         </Card>
+        </ModuleTabPanel>
 
-        <div className="flex flex-col gap-4">
-          <Card>
-            <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
-              <div>
-                <CardTitle className="text-base">Completed prompt</CardTitle>
-                <CardDescription>
-                  {usingSavedTemplate
-                    ? "Using Merch Idea Generator from library"
-                    : "Using built-in fallback template"}
-                </CardDescription>
-              </div>
+        <ModuleTabPanel value="prompt">
+          <OutputSection
+            title="Completed prompt"
+            description={
+              usingSavedTemplate
+                ? "Using Merch Idea Generator from library"
+                : "Using built-in fallback template"
+            }
+            action={
               <Button
                 type="button"
                 size="sm"
@@ -469,51 +482,43 @@ export function MerchIdeaGenerator() {
                 <Copy className="size-4" />
                 Copy prompt
               </Button>
-            </CardHeader>
-            <CardContent>
-              <pre className="max-h-80 overflow-y-auto whitespace-pre-wrap rounded-md border bg-muted/40 p-3 font-mono text-xs leading-relaxed">
-                {completedPrompt || "Fill in the form to preview your prompt."}
-              </pre>
-            </CardContent>
-          </Card>
+            }
+          >
+            <PromptPreviewBlock value={completedPrompt} />
+          </OutputSection>
+        </ModuleTabPanel>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">AI response</CardTitle>
-              <CardDescription>
-                Paste the response from ChatGPT or your AI tool
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Textarea
-                id="merch-ai-response"
-                value={aiResponse}
-                onChange={(e) => setAiResponse(e.target.value)}
-                placeholder="Paste AI response here..."
-                className="min-h-40 w-full font-mono text-xs"
-              />
-              {aiResponse.trim() ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleCopy(aiResponse, "AI response")}
-                >
-                  <Copy className="size-4" />
-                  Copy AI response
-                </Button>
-              ) : null}
-            </CardContent>
-          </Card>
+        <ModuleTabPanel value="ai-response">
+          <OutputSection
+            title="AI response"
+            description="Paste the response from ChatGPT or your AI tool"
+          >
+            <Textarea
+              id="merch-ai-response"
+              value={aiResponse}
+              onChange={(e) => setAiResponse(e.target.value)}
+              placeholder="Paste AI response here..."
+              className="min-h-40 w-full font-mono text-xs"
+            />
+            {aiResponse.trim() ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleCopy(aiResponse, "AI response")}
+              >
+                <Copy className="size-4" />
+                Copy AI response
+              </Button>
+            ) : null}
+          </OutputSection>
+        </ModuleTabPanel>
 
-          <Card>
-            <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
-              <div>
-                <CardTitle className="text-base">Selected Concept</CardTitle>
-                <CardDescription>
-                  Paste or edit your chosen merch concept
-                </CardDescription>
-              </div>
+        <ModuleTabPanel value="final">
+          <OutputSection
+            title="Selected Concept"
+            description="Paste or edit your chosen merch concept"
+            action={
               <Button
                 type="button"
                 variant="outline"
@@ -522,8 +527,8 @@ export function MerchIdeaGenerator() {
               >
                 Clear selected concept
               </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            }
+          >
               {SELECTED_CONCEPT_FIELDS.map(({ key, label, multiline, copyLabel }) => {
                 const value = selectedConcept[key]
                 const id = `selected-${key}`
@@ -579,18 +584,11 @@ export function MerchIdeaGenerator() {
                   Copy selected concept
                 </Button>
               ) : null}
-            </CardContent>
-          </Card>
+          </OutputSection>
+        </ModuleTabPanel>
 
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" onClick={handleSaveIdea}>
-              {editingId ? "Update merch idea" : "Save merch idea"}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <Card>
+        <ModuleTabPanel value="saved">
+      <Card className={RECENT_RECORDS_CARD_CLASS}>
         <CardHeader className="flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <CardTitle className="text-base">Recent merch ideas</CardTitle>
@@ -765,6 +763,8 @@ export function MerchIdeaGenerator() {
           )}
         </CardContent>
       </Card>
+        </ModuleTabPanel>
+      </ModuleWorkflowTabs>
 
       <Dialog
         open={!!pendingDelete}

@@ -33,7 +33,14 @@ import {
   type AnalyticsSortKey,
 } from "@/lib/analytics-tracker"
 
-import { PageHeader } from "@/components/app-shell"
+import { ModulePageHeader } from "@/components/app-shell"
+import {
+  ANALYTICS_WORKFLOW_TABS,
+  ModuleTabPanel,
+  ModuleWorkflowTabs,
+  PromptPreviewBlock,
+  RECENT_RECORDS_CARD_CLASS,
+} from "@/components/module/form-layout"
 import { RatingStars } from "@/components/rating-stars"
 import {
   Card,
@@ -448,16 +455,21 @@ export function AnalyticsTracker() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
+    <div className="flex flex-col gap-8">
+      <ModulePageHeader
         title="Analytics Tracker"
         description="Manually track performance for YouTube videos, music releases, merch, listings, social posts, and campaigns."
         action={
-          editingId ? (
-            <Button type="button" variant="outline" onClick={resetForm}>
-              New record
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" onClick={handleSave}>
+              {editingId ? "Update analytics record" : "Save analytics record"}
             </Button>
-          ) : null
+            {editingId ? (
+              <Button type="button" variant="outline" onClick={resetForm}>
+                New record
+              </Button>
+            ) : null}
+          </div>
         }
       />
 
@@ -495,8 +507,8 @@ export function AnalyticsTracker() {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <div className="flex flex-col gap-4 xl:col-span-2">
+      <ModuleWorkflowTabs defaultTab="details" tabs={ANALYTICS_WORKFLOW_TABS}>
+        <ModuleTabPanel value="details">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Tracked item</CardTitle>
@@ -585,7 +597,9 @@ export function AnalyticsTracker() {
               })}
             </CardContent>
           </Card>
+        </ModuleTabPanel>
 
+        <ModuleTabPanel value="metrics">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Metrics</CardTitle>
@@ -621,9 +635,9 @@ export function AnalyticsTracker() {
               </div>
             </CardContent>
           </Card>
-        </div>
+        </ModuleTabPanel>
 
-        <div className="flex flex-col gap-4">
+        <ModuleTabPanel value="review">
           <Card className="border-primary/20 bg-primary/5">
             <CardHeader>
               <CardTitle className="text-base">Performance review</CardTitle>
@@ -660,7 +674,9 @@ export function AnalyticsTracker() {
               </div>
             </CardContent>
           </Card>
+        </ModuleTabPanel>
 
+        <ModuleTabPanel value="insights">
           <Card>
             <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
               <div>
@@ -668,16 +684,16 @@ export function AnalyticsTracker() {
                 <CardDescription>
                   {selectedRecords.length
                     ? `${selectedRecords.length} record(s) selected for analysis`
-                    : "Select records in the table below to build an insights prompt"}
+                    : "Select records in the Saved Records tab to build an insights prompt"}
                 </CardDescription>
               </div>
               <BarChart3 className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent className="space-y-4">
-              <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-md border bg-muted/40 p-3 font-mono text-xs leading-relaxed">
-                {insightsPrompt ||
-                  "Select one or more analytics records below, then copy the generated insights prompt."}
-              </pre>
+              <PromptPreviewBlock
+                value={insightsPrompt}
+                emptyMessage="Select one or more analytics records in Saved Records, then copy the generated insights prompt."
+              />
               <Button
                 type="button"
                 variant="outline"
@@ -690,14 +706,10 @@ export function AnalyticsTracker() {
               </Button>
             </CardContent>
           </Card>
+        </ModuleTabPanel>
 
-          <Button type="button" onClick={handleSave} className="w-full">
-            {editingId ? "Update analytics record" : "Save analytics record"}
-          </Button>
-        </div>
-      </div>
-
-      <Card>
+        <ModuleTabPanel value="saved">
+      <Card className={RECENT_RECORDS_CARD_CLASS}>
         <CardHeader className="flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <CardTitle className="text-base">Recent analytics records</CardTitle>
@@ -932,6 +944,8 @@ export function AnalyticsTracker() {
           )}
         </CardContent>
       </Card>
+        </ModuleTabPanel>
+      </ModuleWorkflowTabs>
 
       <Dialog
         open={!!pendingDelete}

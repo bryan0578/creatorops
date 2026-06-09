@@ -139,3 +139,29 @@ export function StickyActionBar({
     </div>
   )
 }
+
+export function PromptPreviewBlock({
+  value,
+  emptyMessage = "Fill in the form to preview your prompt.",
+}: {
+  value: string
+  emptyMessage?: string
+}) {
+  return (
+    <pre className="max-h-80 overflow-y-auto whitespace-pre-wrap rounded-lg border border-border/80 bg-muted/30 p-3 font-mono text-xs leading-relaxed">
+      {value || emptyMessage}
+    </pre>
+  )
+}
+
+export const RECENT_RECORDS_CARD_CLASS = "border-border/80"
+
+export { ModulePageHeader } from "@/components/app-shell"
+
+export {
+  ANALYTICS_WORKFLOW_TABS,
+  ARTIST_CRM_WORKFLOW_TABS,
+  GENERATOR_WORKFLOW_TABS,
+  ModuleTabPanel,
+  ModuleWorkflowTabs,
+} from "@/components/module/workflow-tabs"

@@ -31,7 +31,16 @@ import {
 } from "@/lib/youtube-packaging"
 import { variableToLabel } from "@/lib/prompt-variables"
 
-import { PageHeader } from "@/components/app-shell"
+import { ModulePageHeader } from "@/components/app-shell"
+import {
+  FormSection,
+  GENERATOR_WORKFLOW_TABS,
+  ModuleTabPanel,
+  ModuleWorkflowTabs,
+  OutputSection,
+  PromptPreviewBlock,
+  RECENT_RECORDS_CARD_CLASS,
+} from "@/components/module/form-layout"
 import {
   Card,
   CardContent,
@@ -396,29 +405,32 @@ export function YouTubePackagingTool() {
   ]
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
+    <div className="flex flex-col gap-8">
+      <ModulePageHeader
         title="YouTube Packaging"
         description="Generate, save, and organize YouTube upload metadata for AI music videos."
         action={
-          editingId ? (
-            <Button type="button" variant="outline" onClick={resetForm}>
-              New package
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" onClick={handleSavePackage}>
+              {editingId ? "Update package" : "Save package"}
             </Button>
-          ) : null
+            {editingId ? (
+              <Button type="button" variant="outline" onClick={resetForm}>
+                New package
+              </Button>
+            ) : null}
+          </div>
         }
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Left — form */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Track details</CardTitle>
-            <CardDescription>
-              Fill in release info to build your metadata prompt
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      <ModuleWorkflowTabs defaultTab="details" tabs={GENERATOR_WORKFLOW_TABS}>
+        <ModuleTabPanel value="details">
+          <Card>
+            <CardContent className="pt-6">
+              <FormSection
+                title="Track details"
+                description="Fill in release info to build your metadata prompt"
+              >
             {formFields.map((field) => {
               const id = `yt-${field}`
               const label = variableToLabel(field)
@@ -499,21 +511,20 @@ export function YouTubePackagingTool() {
                 </div>
               )
             })}
+            </FormSection>
           </CardContent>
         </Card>
+        </ModuleTabPanel>
 
-        {/* Right — preview & outputs */}
-        <div className="flex flex-col gap-4">
-          <Card>
-            <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
-              <div>
-                <CardTitle className="text-base">Completed prompt</CardTitle>
-                <CardDescription>
-                  {usingSavedTemplate
-                    ? "Using YouTube Metadata Generator from library"
-                    : "Using built-in fallback template"}
-                </CardDescription>
-              </div>
+        <ModuleTabPanel value="prompt">
+          <OutputSection
+            title="Completed prompt"
+            description={
+              usingSavedTemplate
+                ? "Using YouTube Metadata Generator from library"
+                : "Using built-in fallback template"
+            }
+            action={
               <Button
                 type="button"
                 size="sm"
@@ -523,56 +534,50 @@ export function YouTubePackagingTool() {
                 <Copy className="size-4" />
                 Copy prompt
               </Button>
-            </CardHeader>
-            <CardContent>
-              <pre className="max-h-80 overflow-y-auto whitespace-pre-wrap rounded-md border bg-muted/40 p-3 font-mono text-xs leading-relaxed">
-                {completedPrompt || "Fill in track details to generate a prompt."}
-              </pre>
-            </CardContent>
-          </Card>
+            }
+          >
+            <PromptPreviewBlock
+              value={completedPrompt}
+              emptyMessage="Fill in track details to generate a prompt."
+            />
+          </OutputSection>
+        </ModuleTabPanel>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">AI response</CardTitle>
-              <CardDescription>
-                Paste the metadata response from ChatGPT
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="yt-ai-response" className="text-sm font-medium">
-                  AI response
-                </Label>
-                <Textarea
-                  id="yt-ai-response"
-                  value={aiResponse}
-                  onChange={(e) => setAiResponse(e.target.value)}
-                  placeholder="Paste the AI-generated metadata here..."
-                  className="min-h-36 w-full font-mono text-xs"
-                />
-              </div>
-              {aiResponse.trim() ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleCopy(aiResponse, "AI response")}
-                >
-                  <Copy className="size-4" />
-                  Copy AI response
-                </Button>
-              ) : null}
-            </CardContent>
-          </Card>
+        <ModuleTabPanel value="ai-response">
+          <OutputSection
+            title="AI response"
+            description="Paste the metadata response from ChatGPT"
+          >
+            <Textarea
+              id="yt-ai-response"
+              value={aiResponse}
+              onChange={(e) => setAiResponse(e.target.value)}
+              placeholder="Paste the AI-generated metadata here..."
+              className="min-h-[min(24rem,50vh)] w-full font-mono text-xs"
+            />
+            {aiResponse.trim() ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleCopy(aiResponse, "AI response")}
+              >
+                <Copy className="size-4" />
+                Copy AI response
+              </Button>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Paste your AI output here after running the completed prompt.
+              </p>
+            )}
+          </OutputSection>
+        </ModuleTabPanel>
 
-          <Card className="border-primary/20 bg-primary/5">
-            <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
-              <div>
-                <CardTitle className="text-base">Final Package</CardTitle>
-                <CardDescription>
-                  Paste or edit your chosen upload metadata
-                </CardDescription>
-              </div>
+        <ModuleTabPanel value="final">
+          <OutputSection
+            title="Final Package"
+            description="Paste or edit your chosen upload metadata"
+            action={
               <Button
                 type="button"
                 variant="outline"
@@ -581,9 +586,9 @@ export function YouTubePackagingTool() {
               >
                 Clear Final Package
               </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {FINAL_PACKAGE_FIELDS.map(({ key, label, multiline, copyLabel }) => {
+            }
+          >
+            {FINAL_PACKAGE_FIELDS.map(({ key, label, multiline, copyLabel }) => {
                 const value = finalPackage[key]
                 const id = `final-${key}`
 
@@ -637,18 +642,16 @@ export function YouTubePackagingTool() {
                   <Copy className="size-4" />
                   Copy final package
                 </Button>
-              ) : null}
-            </CardContent>
-          </Card>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Fill in final upload metadata after reviewing the AI response.
+                </p>
+              )}
+          </OutputSection>
+        </ModuleTabPanel>
 
-          <Button type="button" className="w-full" onClick={handleSavePackage}>
-            {editingId ? "Update package" : "Save package"}
-          </Button>
-        </div>
-      </div>
-
-      {/* Recent packages */}
-      <Card>
+        <ModuleTabPanel value="saved">
+      <Card className={RECENT_RECORDS_CARD_CLASS}>
         <CardHeader className="flex-row flex-wrap items-start justify-between gap-3 space-y-0">
           <div>
             <CardTitle className="text-base">Recent packages</CardTitle>
@@ -854,6 +857,8 @@ export function YouTubePackagingTool() {
           )}
         </CardContent>
       </Card>
+        </ModuleTabPanel>
+      </ModuleWorkflowTabs>
 
       <Dialog
         open={!!viewingPackage}

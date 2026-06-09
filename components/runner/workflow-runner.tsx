@@ -37,7 +37,13 @@ import {
   updateWorkflowRunNotes,
 } from "@/lib/workflow-run-utils"
 
-import { PageHeader } from "@/components/app-shell"
+import { ModulePageHeader } from "@/components/app-shell"
+import {
+  FormSection,
+  PromptPreviewBlock,
+  RECENT_RECORDS_CARD_CLASS,
+  StickyActionBar,
+} from "@/components/module/form-layout"
 import {
   Card,
   CardContent,
@@ -264,8 +270,8 @@ export function WorkflowRunner() {
 
   if (hydrated && workflows.length === 0) {
     return (
-      <div className="flex flex-col gap-6">
-        <PageHeader
+      <div className="flex flex-col gap-8">
+        <ModulePageHeader
           title="Workflow Runner"
           description="Run saved workflows step by step, track progress, and link to prompts."
         />
@@ -286,23 +292,20 @@ export function WorkflowRunner() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
+    <div className="flex flex-col gap-8">
+      <ModulePageHeader
         title="Workflow Runner"
         description="Select a workflow, run each step in order, and track your progress locally."
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Left column */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Select workflow</CardTitle>
-              <CardDescription>
-                Active workflows shown by default
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="pt-6">
+              <FormSection
+                title="Select workflow"
+                description="Active workflows shown by default"
+              >
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -385,16 +388,17 @@ export function WorkflowRunner() {
                   Select a workflow to begin.
                 </p>
               )}
+              </FormSection>
             </CardContent>
           </Card>
 
           {activeRun ? (
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Run summary</CardTitle>
-                <CardDescription>{activeRun.workflowName}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="pt-6">
+                <FormSection
+                  title="Run summary"
+                  description={activeRun.workflowName}
+                >
                 <div className="flex flex-wrap items-center gap-2">
                   <WorkflowRunStatusBadge status={activeRun.status} />
                   <Badge variant="secondary">{activeRun.category}</Badge>
@@ -418,23 +422,24 @@ export function WorkflowRunner() {
                     className="min-h-20 w-full"
                   />
                 </div>
+                </FormSection>
                 {allStepsFinished(activeRun.stepRuns) &&
                 activeRun.status !== "Complete" ? (
-                  <Button
-                    type="button"
-                    className="w-full"
-                    onClick={handleMarkComplete}
-                  >
-                    Mark workflow run complete
-                  </Button>
+                  <StickyActionBar>
+                    <Button
+                      type="button"
+                      onClick={handleMarkComplete}
+                    >
+                      Mark workflow run complete
+                    </Button>
+                  </StickyActionBar>
                 ) : null}
               </CardContent>
             </Card>
           ) : null}
         </div>
 
-        {/* Right column — step runner */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-6">
           {!activeRun ? (
             <Card>
               <CardContent className="py-12 text-center text-sm text-muted-foreground">
@@ -591,8 +596,7 @@ export function WorkflowRunner() {
         </div>
       </div>
 
-      {/* Recent workflow runs */}
-      <Card>
+      <Card className={RECENT_RECORDS_CARD_CLASS}>
         <CardHeader className="flex-row flex-wrap items-start justify-between gap-3 space-y-0">
           <div>
             <CardTitle className="text-base">Recent workflow runs</CardTitle>
@@ -732,9 +736,10 @@ export function WorkflowRunner() {
               {viewingPrompt?.category} · Linked prompt
             </DialogDescription>
           </DialogHeader>
-          <pre className="max-h-80 overflow-y-auto whitespace-pre-wrap rounded-md border bg-muted/40 p-3 font-mono text-xs leading-relaxed">
-            {viewingPrompt?.promptText || "—"}
-          </pre>
+          <PromptPreviewBlock
+            value={viewingPrompt?.promptText ?? ""}
+            emptyMessage="—"
+          />
           <DialogFooter>
             <Button
               type="button"

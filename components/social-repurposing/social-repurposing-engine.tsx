@@ -32,7 +32,16 @@ import {
   type SocialRepurposingFinalFields,
 } from "@/lib/social-repurposing"
 
-import { PageHeader } from "@/components/app-shell"
+import { ModulePageHeader } from "@/components/app-shell"
+import {
+  FormSection,
+  GENERATOR_WORKFLOW_TABS,
+  ModuleTabPanel,
+  ModuleWorkflowTabs,
+  OutputSection,
+  PromptPreviewBlock,
+  RECENT_RECORDS_CARD_CLASS,
+} from "@/components/module/form-layout"
 import {
   Card,
   CardContent,
@@ -415,28 +424,32 @@ export function SocialRepurposingEngine() {
   )
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
+    <div className="flex flex-col gap-8">
+      <ModulePageHeader
         title="Social Repurposing Engine"
         description="Turn one source idea into platform-specific content for TikTok, Instagram, X, YouTube, and email."
         action={
-          editingId ? (
-            <Button type="button" variant="outline" onClick={resetForm}>
-              New campaign
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" onClick={handleSaveRecord}>
+              {editingId ? "Update social content" : "Save social content"}
             </Button>
-          ) : null
+            {editingId ? (
+              <Button type="button" variant="outline" onClick={resetForm}>
+                New campaign
+              </Button>
+            ) : null}
+          </div>
         }
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Source details</CardTitle>
-            <CardDescription>
-              Describe the source content and campaign to build your prompt
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      <ModuleWorkflowTabs defaultTab="details" tabs={GENERATOR_WORKFLOW_TABS}>
+        <ModuleTabPanel value="details">
+          <Card>
+            <CardContent className="space-y-4 pt-6">
+              <FormSection
+                title="Source details"
+                description="Describe the source content and campaign to build your prompt"
+              >
             {FORM_FIELD_ORDER.map((field) => {
               const id = `social-${field}`
               const label = FIELD_LABELS[field]
@@ -521,20 +534,20 @@ export function SocialRepurposingEngine() {
                 </div>
               )
             })}
-          </CardContent>
-        </Card>
+              </FormSection>
+            </CardContent>
+          </Card>
+        </ModuleTabPanel>
 
-        <div className="flex flex-col gap-4">
-          <Card>
-            <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
-              <div>
-                <CardTitle className="text-base">Completed prompt</CardTitle>
-                <CardDescription>
-                  {usingSavedTemplate
-                    ? "Using Social Repurposing Engine from library"
-                    : "Using built-in fallback template"}
-                </CardDescription>
-              </div>
+        <ModuleTabPanel value="prompt">
+          <OutputSection
+            title="Completed prompt"
+            description={
+              usingSavedTemplate
+                ? "Using Social Repurposing Engine from library"
+                : "Using built-in fallback template"
+            }
+            action={
               <Button
                 type="button"
                 size="sm"
@@ -544,51 +557,43 @@ export function SocialRepurposingEngine() {
                 <Copy className="size-4" />
                 Copy prompt
               </Button>
-            </CardHeader>
-            <CardContent>
-              <pre className="max-h-80 overflow-y-auto whitespace-pre-wrap rounded-md border bg-muted/40 p-3 font-mono text-xs leading-relaxed">
-                {completedPrompt || "Fill in the form to preview your prompt."}
-              </pre>
-            </CardContent>
-          </Card>
+            }
+          >
+            <PromptPreviewBlock value={completedPrompt} />
+          </OutputSection>
+        </ModuleTabPanel>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">AI response</CardTitle>
-              <CardDescription>
-                Paste the response from ChatGPT or your AI tool
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Textarea
-                id="social-ai-response"
-                value={aiResponse}
-                onChange={(e) => setAiResponse(e.target.value)}
-                placeholder="Paste AI response here..."
-                className="min-h-40 w-full font-mono text-xs"
-              />
-              {aiResponse.trim() ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleCopy(aiResponse, "AI response")}
-                >
-                  <Copy className="size-4" />
-                  Copy AI response
-                </Button>
-              ) : null}
-            </CardContent>
-          </Card>
+        <ModuleTabPanel value="ai-response">
+          <OutputSection
+            title="AI response"
+            description="Paste the response from ChatGPT or your AI tool"
+          >
+            <Textarea
+              id="social-ai-response"
+              value={aiResponse}
+              onChange={(e) => setAiResponse(e.target.value)}
+              placeholder="Paste AI response here..."
+              className="min-h-40 w-full font-mono text-xs"
+            />
+            {aiResponse.trim() ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleCopy(aiResponse, "AI response")}
+              >
+                <Copy className="size-4" />
+                Copy AI response
+              </Button>
+            ) : null}
+          </OutputSection>
+        </ModuleTabPanel>
 
-          <Card>
-            <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
-              <div>
-                <CardTitle className="text-base">Final Content</CardTitle>
-                <CardDescription>
-                  Paste or edit your platform-specific content
-                </CardDescription>
-              </div>
+        <ModuleTabPanel value="final">
+          <OutputSection
+            title="Final Content"
+            description="Paste or edit your platform-specific content"
+            action={
               <Button
                 type="button"
                 variant="outline"
@@ -597,8 +602,8 @@ export function SocialRepurposingEngine() {
               >
                 Clear final content
               </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            }
+          >
               {FINAL_CONTENT_FIELDS.map(({ key, label, multiline, copyLabel }) => {
                 const value = finalContent[key]
                 const id = `final-${key}`
@@ -654,18 +659,11 @@ export function SocialRepurposingEngine() {
                   Copy final content
                 </Button>
               ) : null}
-            </CardContent>
-          </Card>
+          </OutputSection>
+        </ModuleTabPanel>
 
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" onClick={handleSaveRecord}>
-              {editingId ? "Update social content" : "Save social content"}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <Card>
+        <ModuleTabPanel value="saved">
+          <Card className={RECENT_RECORDS_CARD_CLASS}>
         <CardHeader className="flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <CardTitle className="text-base">Recent social content</CardTitle>
@@ -847,7 +845,9 @@ export function SocialRepurposingEngine() {
             </div>
           )}
         </CardContent>
-      </Card>
+          </Card>
+        </ModuleTabPanel>
+      </ModuleWorkflowTabs>
 
       <Dialog
         open={!!pendingDelete}
