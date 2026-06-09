@@ -37,9 +37,15 @@ import {
   shouldSkipCampaignUrlPrefill,
   youtubePackageLinkTitle,
 } from "@/lib/campaign-prefill"
+import type { PresetPrefillContext } from "@/lib/preset-prefill"
+import {
+  presetPrefillToastMessage,
+  tryConsumePresetPrefill,
+} from "@/lib/preset-prefill"
 
 import { ModulePageHeader } from "@/components/app-shell"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
+import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
 import {
   FormSection,
   GENERATOR_WORKFLOW_TABS,
@@ -174,6 +180,9 @@ export function YouTubePackagingTool() {
   const searchParams = useSearchParams()
   const [campaignPrefill, setCampaignPrefill] = React.useState(
     parseCampaignPrefillContext(searchParams),
+  )
+  const [presetPrefill, setPresetPrefill] = React.useState<PresetPrefillContext | null>(
+    null,
   )
 
   const template = React.useMemo(
@@ -313,6 +322,28 @@ export function YouTubePackagingTool() {
   React.useEffect(() => {
     if (prefillApplied.current || shouldSkipCampaignUrlPrefill(editingId)) return
 
+    const recordId = searchParams.get("recordId")
+    if (recordId && youtubePackages.length > 0) {
+      const pkg = youtubePackages.find((p) => p.id === recordId)
+      if (pkg) {
+        prefillApplied.current = true
+        openPackage(normalizeYouTubePackage(pkg))
+        return
+      }
+    }
+
+    const presetContext = tryConsumePresetPrefill({
+      searchParams,
+      editingId,
+      prefillApplied,
+      setForm,
+    })
+    if (presetContext) {
+      setPresetPrefill(presetContext)
+      toast.success(presetPrefillToastMessage(presetContext.presetName))
+      return
+    }
+
     const context = parseCampaignPrefillContext(searchParams)
     if (context.campaignId) setCampaignPrefill(context)
 
@@ -365,7 +396,7 @@ export function YouTubePackagingTool() {
         ? campaignPrefillToastMessage(context.campaignName)
         : "Prefilled from artist CRM",
     )
-  }, [searchParams, editingId])
+  }, [searchParams, editingId, youtubePackages])
 
   async function confirmDelete() {
     if (!pendingDelete) return
@@ -463,6 +494,7 @@ export function YouTubePackagingTool() {
         }
       />
 
+      <PresetPrefillBanner presetPrefill={presetPrefill} />
       <CampaignPrefillBanner
         campaignId={campaignPrefill.campaignId}
         campaignName={campaignPrefill.campaignName}

@@ -123,3 +123,10 @@ export {
   campaignToPrismaCreate,
   campaignToPrismaUpdate,
 } from "@/lib/data/campaigns"
+
+export {
+  normalizePresetRecord,
+  prismaPresetToPresetRecord,
+  presetToPrismaCreate,
+  presetToPrismaUpdate,
+} from "@/lib/data/presets"

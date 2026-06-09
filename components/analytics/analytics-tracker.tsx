@@ -39,9 +39,15 @@ import {
   parseCampaignPrefillContext,
   shouldSkipCampaignUrlPrefill,
 } from "@/lib/campaign-prefill"
+import type { PresetPrefillContext } from "@/lib/preset-prefill"
+import {
+  presetPrefillToastMessage,
+  tryConsumePresetPrefill,
+} from "@/lib/preset-prefill"
 
 import { ModulePageHeader } from "@/components/app-shell"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
+import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
 import {
   ANALYTICS_WORKFLOW_TABS,
   ModuleTabPanel,
@@ -221,6 +227,9 @@ export function AnalyticsTracker() {
   const [campaignPrefill, setCampaignPrefill] = React.useState(
     parseCampaignPrefillContext(searchParams),
   )
+  const [presetPrefill, setPresetPrefill] = React.useState<PresetPrefillContext | null>(
+    null,
+  )
 
   const summary = React.useMemo(
     () => computeAnalyticsSummary(analyticsRecords),
@@ -299,6 +308,18 @@ export function AnalyticsTracker() {
 
   React.useEffect(() => {
     if (prefillApplied.current || shouldSkipCampaignUrlPrefill(editingId)) return
+
+    const presetContext = tryConsumePresetPrefill({
+      searchParams,
+      editingId,
+      prefillApplied,
+      setForm,
+    })
+    if (presetContext) {
+      setPresetPrefill(presetContext)
+      toast.success(presetPrefillToastMessage(presetContext.presetName))
+      return
+    }
 
     const context = parseCampaignPrefillContext(searchParams)
     if (context.campaignId) setCampaignPrefill(context)
@@ -514,6 +535,7 @@ export function AnalyticsTracker() {
         }
       />
 
+      <PresetPrefillBanner presetPrefill={presetPrefill} />
       <CampaignPrefillBanner
         campaignId={campaignPrefill.campaignId}
         campaignName={campaignPrefill.campaignName}

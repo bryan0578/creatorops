@@ -5,6 +5,7 @@ import { revalidatePath } from "next/navigation"
 import { importAnalyticsRecords } from "@/lib/actions/analytics-records"
 import { importArtists } from "@/lib/actions/artists"
 import { importCampaigns } from "@/lib/actions/campaigns"
+import { importPresets } from "@/lib/actions/presets"
 import { importEmailCampaignRecords } from "@/lib/actions/email-campaigns"
 import { importMerchIdeas } from "@/lib/actions/merch-ideas"
 import { importMockupPromptRecords } from "@/lib/actions/mockup-prompts"
@@ -37,6 +38,7 @@ import {
 import { getAnalyticsRecords } from "@/lib/actions/analytics-records"
 import { getArtists } from "@/lib/actions/artists"
 import { getCampaigns } from "@/lib/actions/campaigns"
+import { getPresets } from "@/lib/actions/presets"
 import { getEmailCampaignRecords } from "@/lib/actions/email-campaigns"
 import { getMerchIdeas } from "@/lib/actions/merch-ideas"
 import { getMockupPromptRecords } from "@/lib/actions/mockup-prompts"
@@ -54,6 +56,7 @@ import type {
   AnalyticsRecord,
   ArtistRecord,
   CampaignRecord,
+  PresetRecord,
   EmailCampaignRecord,
   MerchIdea,
   MockupPromptRecord,
@@ -86,6 +89,7 @@ const REVALIDATE_PATHS = [
   "/mockup-prompts",
   "/email-campaigns",
   "/campaigns",
+  "/presets",
   "/search",
 ]
 
@@ -128,6 +132,7 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     mockupPrompts,
     emailCampaigns,
     campaigns,
+    presets,
   ] = await Promise.all([
     getPrompts(),
     getWorkflows(),
@@ -144,6 +149,7 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     getMockupPromptRecords(),
     getEmailCampaignRecords(),
     getCampaigns(),
+    getPresets(),
   ])
 
   return {
@@ -162,6 +168,7 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     mockupPrompts,
     emailCampaigns,
     campaigns,
+    presets,
   }
 }
 
@@ -221,6 +228,7 @@ async function clearAllBackupTables(): Promise<void> {
   await prisma.mockupPrompt.deleteMany()
   await prisma.emailCampaign.deleteMany()
   await prisma.campaign.deleteMany()
+  await prisma.preset.deleteMany()
 }
 
 async function importBackupData(
@@ -277,6 +285,9 @@ async function importBackupData(
   }
   if (data.campaigns.length > 0) {
     await importCampaigns(data.campaigns as CampaignRecord[])
+  }
+  if (data.presets.length > 0) {
+    await importPresets(data.presets as PresetRecord[])
   }
 
   revalidateAllRoutes()

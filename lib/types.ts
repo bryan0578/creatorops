@@ -1270,3 +1270,51 @@ export interface CampaignFormValues {
   whatWorked: string
   whatToImprove: string
 }
+
+export type PresetType =
+  | "Campaign"
+  | "YouTube Package"
+  | "YouTube Thumbnail"
+  | "Release Plan"
+  | "Merch Idea"
+  | "Product Listing"
+  | "Social Repurposing"
+  | "Email Campaign"
+  | "Analytics Record"
+  | "Mockup Prompt"
+
+export const PRESET_TYPES: PresetType[] = [
+  "Campaign",
+  "YouTube Package",
+  "YouTube Thumbnail",
+  "Release Plan",
+  "Merch Idea",
+  "Product Listing",
+  "Social Repurposing",
+  "Email Campaign",
+  "Analytics Record",
+  "Mockup Prompt",
+]
+
+export interface PresetRecord {
+  id: string
+  name: string
+  description: string
+  presetType: PresetType
+  category: string
+  tags: string[]
+  values: Record<string, unknown>
+  notes: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface PresetFormValues {
+  name: string
+  description: string
+  presetType: PresetType
+  category: string
+  tags: string
+  valuesJson: string
+  notes: string
+}

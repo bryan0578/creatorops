@@ -71,6 +71,7 @@ function formatDate(ts: number) {
 export function PromptRunner() {
   const searchParams = useSearchParams()
   const promptIdParam = searchParams.get("promptId")
+  const recordIdParam = searchParams.get("recordId")
 
   const {
     prompts,
@@ -168,6 +169,12 @@ export function PromptRunner() {
       setEditingRunId(null)
     }
   }, [hydrated, promptIdParam, prompts])
+
+  React.useEffect(() => {
+    if (!hydrated || !recordIdParam) return
+    const run = runs.find((r) => r.id === recordIdParam)
+    if (run) openRun(run)
+  }, [hydrated, recordIdParam, runs])
 
   function clearFields() {
     setInputValues({})

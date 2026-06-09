@@ -2,8 +2,9 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 
 import { getCampaignBackHref } from "@/lib/campaign-prefill"
+import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 
 export function CampaignPrefillBanner({
   campaignId,
@@ -22,12 +23,16 @@ export function CampaignPrefillBanner({
           ? `Prefilled from campaign: ${campaignName}`
           : "Prefilled from campaign"}
       </span>
-      <Button variant="outline" size="sm" className="ml-auto" asChild>
-        <Link href={getCampaignBackHref(campaignId)}>
-          <ArrowLeft className="size-4" />
-          Back to Campaign
-        </Link>
-      </Button>
+      <Link
+        href={getCampaignBackHref(campaignId)}
+        className={cn(
+          buttonVariants({ variant: "outline", size: "sm" }),
+          "ml-auto",
+        )}
+      >
+        <ArrowLeft className="size-4" />
+        Back to Campaign
+      </Link>
     </div>
   )
 }

@@ -35,9 +35,15 @@ import {
   releasePlanLinkTitle,
   shouldSkipCampaignUrlPrefill,
 } from "@/lib/campaign-prefill"
+import type { PresetPrefillContext } from "@/lib/preset-prefill"
+import {
+  presetPrefillToastMessage,
+  tryConsumePresetPrefill,
+} from "@/lib/preset-prefill"
 
 import { ModulePageHeader } from "@/components/app-shell"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
+import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
 import {
   FormSection,
   GENERATOR_WORKFLOW_TABS,
@@ -234,6 +240,9 @@ export function ReleasePlannerTool() {
   const [campaignPrefill, setCampaignPrefill] = React.useState(
     parseCampaignPrefillContext(searchParams),
   )
+  const [presetPrefill, setPresetPrefill] = React.useState<PresetPrefillContext | null>(
+    null,
+  )
 
   const template = React.useMemo(
     () => getReleasePlannerTemplate(prompts),
@@ -369,6 +378,28 @@ export function ReleasePlannerTool() {
   React.useEffect(() => {
     if (prefillApplied.current || shouldSkipCampaignUrlPrefill(editingId)) return
 
+    const recordId = searchParams.get("recordId")
+    if (recordId && releasePlans.length > 0) {
+      const plan = releasePlans.find((p) => p.id === recordId)
+      if (plan) {
+        prefillApplied.current = true
+        openPlan(normalizeReleasePlan(plan))
+        return
+      }
+    }
+
+    const presetContext = tryConsumePresetPrefill({
+      searchParams,
+      editingId,
+      prefillApplied,
+      setForm,
+    })
+    if (presetContext) {
+      setPresetPrefill(presetContext)
+      toast.success(presetPrefillToastMessage(presetContext.presetName))
+      return
+    }
+
     const context = parseCampaignPrefillContext(searchParams)
     if (context.campaignId) setCampaignPrefill(context)
 
@@ -418,7 +449,7 @@ export function ReleasePlannerTool() {
         ? campaignPrefillToastMessage(context.campaignName)
         : "Prefilled from artist CRM",
     )
-  }, [searchParams, editingId])
+  }, [searchParams, editingId, releasePlans])
 
   async function confirmDelete() {
     if (!pendingDelete) return
@@ -506,6 +537,7 @@ export function ReleasePlannerTool() {
         }
       />
 
+      <PresetPrefillBanner presetPrefill={presetPrefill} />
       <CampaignPrefillBanner
         campaignId={campaignPrefill.campaignId}
         campaignName={campaignPrefill.campaignName}

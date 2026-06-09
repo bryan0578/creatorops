@@ -595,3 +595,24 @@ model Campaign {
   @@index([niche])
   @@index([updatedAt])
 }
+
+/// Reusable presets / templates for fast module creation.
+model Preset {
+  id          String   @id
+  name        String   @default("")
+  description String   @default("")
+  presetType  String   @default("Campaign")
+  category    String   @default("")
+  /// JSON string[] tags
+  tags        String   @default("[]")
+  /// JSON object of form field values
+  values      String   @default("{}")
+  notes       String   @default("")
+  createdAt   DateTime
+  updatedAt   DateTime
+
+  @@index([name])
+  @@index([presetType])
+  @@index([category])
+  @@index([updatedAt])
+}

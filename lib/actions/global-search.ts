@@ -8,6 +8,7 @@ import {
   filterGroupsByCategory,
   matchFields,
   normalizeSearchQuery,
+  parseTagsArray,
   parseTagsJson,
   previewText,
   type GlobalSearchFilter,
@@ -636,6 +637,42 @@ async function searchMockupPrompts(query: string): Promise<GlobalSearchResult[]>
   )
 }
 
+async function searchPresets(query: string): Promise<GlobalSearchResult[]> {
+  const rows = await prisma.preset.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: GLOBAL_SEARCH_FETCH_BATCH,
+  })
+
+  return pushMatches(
+    rows.map((row) => ({
+      ...row,
+      tagsText: parseTagsArray(row.tags).join(" "),
+    })),
+    query,
+    ["name", "description", "presetType", "category", "tagsText", "notes"],
+    {
+      name: "Name",
+      description: "Description",
+      presetType: "Preset type",
+      category: "Category",
+      tagsText: "Tags",
+      notes: "Notes",
+    },
+    (row, matchedFields) =>
+      makeResult(
+        "preset",
+        row.id as string,
+        row.name as string,
+        [row.presetType, row.category].filter(Boolean).join(" · "),
+        previewText(row.description) || previewText(row.notes),
+        row.createdAt as Date,
+        row.updatedAt as Date,
+        matchedFields,
+      ),
+    GLOBAL_SEARCH_LIMIT_PER_TYPE,
+  )
+}
+
 async function searchCampaigns(query: string): Promise<GlobalSearchResult[]> {
   const rows = await prisma.campaign.findMany({
     orderBy: { updatedAt: "desc" },
@@ -749,6 +786,7 @@ const SEARCHERS: {
   { type: "mockup-prompt", search: searchMockupPrompts },
   { type: "email-campaign", search: searchEmailCampaigns },
   { type: "campaign", search: searchCampaigns },
+  { type: "preset", search: searchPresets },
 ]
 
 /**

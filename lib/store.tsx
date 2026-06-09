@@ -5,6 +5,7 @@ import type {
   AnalyticsRecord,
   ArtistRecord,
   CampaignRecord,
+  PresetRecord,
   EmailCampaignRecord,
   MerchIdea,
   MockupPromptRecord,
@@ -22,6 +23,7 @@ import {
   loadAnalyticsRecords,
   loadArtistRecords,
   loadCampaigns,
+  loadPresets,
   loadEmailCampaignRecords,
   loadMerchIdeas,
   loadMockupPromptRecords,
@@ -41,6 +43,12 @@ import {
   importCampaigns as importCampaignsToDb,
   upsertCampaign,
 } from "@/lib/actions/campaigns"
+import {
+  deletePresetById,
+  getPresets,
+  importPresets as importPresetsToDb,
+  upsertPreset,
+} from "@/lib/actions/presets"
 import {
   deleteEmailCampaignRecordById,
   getEmailCampaignRecords,
@@ -142,6 +150,7 @@ interface StoreContextValue {
   mockupPromptRecords: MockupPromptRecord[]
   emailCampaignRecords: EmailCampaignRecord[]
   campaigns: CampaignRecord[]
+  presets: PresetRecord[]
   artistRecords: ArtistRecord[]
   youtubeThumbnailRecords: YouTubeThumbnailRecord[]
   hydrated: boolean
@@ -160,6 +169,7 @@ interface StoreContextValue {
   mockupPromptRecordsUseDatabase: boolean
   emailCampaignRecordsUseDatabase: boolean
   campaignsUseDatabase: boolean
+  presetsUseDatabase: boolean
   addPrompt: (p: Prompt) => Promise<void>
   updatePrompt: (p: Prompt) => Promise<void>
   deletePrompt: (id: string) => Promise<void>
@@ -226,6 +236,11 @@ interface StoreContextValue {
   deleteCampaign: (id: string) => Promise<void>
   importCampaigns: (items: CampaignRecord[]) => Promise<void>
   reloadCampaigns: () => Promise<void>
+  addPreset: (record: PresetRecord) => Promise<void>
+  updatePreset: (record: PresetRecord) => Promise<void>
+  deletePreset: (id: string) => Promise<void>
+  importPresets: (items: PresetRecord[]) => Promise<void>
+  reloadPresets: () => Promise<void>
   addArtistRecord: (record: ArtistRecord) => Promise<void>
   updateArtistRecord: (record: ArtistRecord) => Promise<void>
   deleteArtistRecord: (id: string) => Promise<void>
@@ -272,6 +287,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     EmailCampaignRecord[]
   >([])
   const [campaigns, setCampaigns] = React.useState<CampaignRecord[]>([])
+  const [presets, setPresets] = React.useState<PresetRecord[]>([])
   const [artistRecords, setArtistRecords] = React.useState<ArtistRecord[]>([])
   const [youtubeThumbnailRecords, setYoutubeThumbnailRecords] = React.useState<
     YouTubeThumbnailRecord[]
@@ -303,6 +319,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [emailCampaignRecordsUseDatabase, setEmailCampaignRecordsUseDatabase] =
     React.useState(true)
   const [campaignsUseDatabase, setCampaignsUseDatabase] = React.useState(true)
+  const [presetsUseDatabase, setPresetsUseDatabase] = React.useState(true)
 
   const reloadPrompts = React.useCallback(async () => {
     const next = await getPrompts()
@@ -530,6 +547,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       )
       setCampaigns(loadCampaigns())
       setCampaignsUseDatabase(false)
+      throw error
+    }
+  }, [])
+
+  const reloadPresets = React.useCallback(async () => {
+    try {
+      const next = await getPresets()
+      setPresets(next)
+      setPresetsUseDatabase(true)
+    } catch (error) {
+      console.error(
+        "[CreatorOps] Failed to reload presets from database; using localStorage.",
+        error,
+      )
+      setPresets(loadPresets())
+      setPresetsUseDatabase(false)
       throw error
     }
   }, [])
@@ -780,6 +813,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (!cancelled) {
           setCampaigns(loadCampaigns())
           setCampaignsUseDatabase(false)
+        }
+      }
+
+      if (cancelled) return
+
+      try {
+        const dbPresets = await getPresets()
+        if (!cancelled) {
+          setPresets(dbPresets)
+          setPresetsUseDatabase(true)
+        }
+      } catch (error) {
+        console.error(
+          "[CreatorOps] Failed to load presets from database; using localStorage.",
+          error,
+        )
+        if (!cancelled) {
+          setPresets(loadPresets())
+          setPresetsUseDatabase(false)
         }
       }
 
@@ -1202,6 +1254,30 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setCampaignsUseDatabase(true)
   }, [])
 
+  const addPreset = React.useCallback(async (record: PresetRecord) => {
+    const saved = await upsertPreset(record)
+    setPresets((prev) => [saved, ...prev.filter((x) => x.id !== saved.id)])
+    setPresetsUseDatabase(true)
+  }, [])
+
+  const updatePreset = React.useCallback(async (record: PresetRecord) => {
+    const saved = await upsertPreset(record)
+    setPresets((prev) => prev.map((x) => (x.id === saved.id ? saved : x)))
+    setPresetsUseDatabase(true)
+  }, [])
+
+  const deletePreset = React.useCallback(async (id: string) => {
+    await deletePresetById(id)
+    setPresets((prev) => prev.filter((x) => x.id !== id))
+    setPresetsUseDatabase(true)
+  }, [])
+
+  const importPresets = React.useCallback(async (items: PresetRecord[]) => {
+    const merged = await importPresetsToDb(items)
+    setPresets(merged)
+    setPresetsUseDatabase(true)
+  }, [])
+
   const addArtistRecord = React.useCallback(async (record: ArtistRecord) => {
     const saved = await upsertArtist(record)
     setArtistRecords((prev) => [saved, ...prev.filter((x) => x.id !== saved.id)])
@@ -1278,6 +1354,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     mockupPromptRecords,
     emailCampaignRecords,
     campaigns,
+    presets,
     artistRecords,
     youtubeThumbnailRecords,
     hydrated,
@@ -1296,6 +1373,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     mockupPromptRecordsUseDatabase,
     emailCampaignRecordsUseDatabase,
     campaignsUseDatabase,
+    presetsUseDatabase,
     addPrompt,
     updatePrompt,
     deletePrompt,
@@ -1362,6 +1440,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     deleteCampaign,
     importCampaigns,
     reloadCampaigns,
+    addPreset,
+    updatePreset,
+    deletePreset,
+    importPresets,
+    reloadPresets,
     addArtistRecord,
     updateArtistRecord,
     deleteArtistRecord,

@@ -142,6 +142,7 @@ export function BackupCenter() {
       store.reloadMockupPromptRecords(),
       store.reloadEmailCampaignRecords(),
       store.reloadCampaigns(),
+      store.reloadPresets(),
     ])
   }
 

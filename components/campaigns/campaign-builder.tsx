@@ -32,6 +32,12 @@ import {
   CAMPAIGN_TASK_STATUSES,
 } from "@/lib/types"
 import { buildCampaignQuickActionHref } from "@/lib/campaign-prefill"
+import type { PresetPrefillContext } from "@/lib/preset-prefill"
+import {
+  presetPrefillToastMessage,
+  tryConsumePresetPrefill,
+} from "@/lib/preset-prefill"
+import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
 import {
   buildCampaignRecordFromForm,
   buildCampaignTimeline,
@@ -118,6 +124,10 @@ export function CampaignBuilder() {
   const [linkSearch, setLinkSearch] = React.useState("")
 
   const recordOpened = React.useRef(false)
+  const presetPrefillApplied = React.useRef(false)
+  const [presetPrefill, setPresetPrefill] = React.useState<PresetPrefillContext | null>(
+    null,
+  )
 
   const linkableOptions = React.useMemo(() => {
     const options = getLinkableRecordOptions(linkType, store)
@@ -345,6 +355,28 @@ export function CampaignBuilder() {
   }, [searchParams, store.campaigns, store.hydrated, recordId])
 
   React.useEffect(() => {
+    if (!store.hydrated || presetPrefillApplied.current) return
+
+    const openId = searchParams.get("campaignId") ?? searchParams.get("recordId")
+    if (openId && store.campaigns.some((c) => c.id === openId)) return
+
+    const isEditingSaved =
+      store.campaigns.some((c) => c.id === recordId) && form.campaignName.trim()
+
+    const presetContext = tryConsumePresetPrefill({
+      searchParams,
+      editingId: isEditingSaved ? recordId : null,
+      prefillApplied: presetPrefillApplied,
+      setForm,
+    })
+    if (presetContext) {
+      setPresetPrefill(presetContext)
+      setActiveTab("overview")
+      toast.success(presetPrefillToastMessage(presetContext.presetName))
+    }
+  }, [store.hydrated, searchParams, store.campaigns, recordId, form.campaignName])
+
+  React.useEffect(() => {
     const campaign = store.campaigns.find((c) => c.id === recordId)
     if (!campaign) return
 
@@ -384,6 +416,8 @@ export function CampaignBuilder() {
           </div>
         }
       />
+
+      <PresetPrefillBanner presetPrefill={presetPrefill} />
 
       {isEditingSaved ? (
         <p className="-mt-4 text-sm text-muted-foreground">

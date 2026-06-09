@@ -29,6 +29,7 @@ export type GlobalSearchResultType =
   | "mockup-prompt"
   | "email-campaign"
   | "campaign"
+  | "preset"
 
 export interface GlobalSearchResult {
   id: string
@@ -129,6 +130,11 @@ export const GLOBAL_SEARCH_TYPE_META: Record<
     category: "operations",
     href: "/campaigns",
   },
+  preset: {
+    typeLabel: "Preset",
+    category: "core",
+    href: "/presets",
+  },
 }
 
 export function normalizeSearchQuery(raw: string): string {
@@ -190,7 +196,7 @@ export function buildResultHref(
 
   if (type === "campaign") {
     return {
-      href: `${base}?recordId=${encodeURIComponent(id)}`,
+      href: `${base}?campaignId=${encodeURIComponent(id)}`,
       directOpen: true,
     }
   }
@@ -202,16 +208,58 @@ export function buildResultHref(
   }
 }
 
-export function parseTagsJson(raw: string): string {
-  try {
-    const parsed = JSON.parse(raw) as unknown
-    if (Array.isArray(parsed)) {
-      return parsed.map(String).join(", ")
-    }
-  } catch {
-    // ignore
+export function parseTagsArray(value: unknown): string[] {
+  if (value == null || value === "") return []
+
+  if (Array.isArray(value)) {
+    return value.map(String).filter(Boolean)
   }
-  return ""
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value) as unknown
+
+      if (Array.isArray(parsed)) {
+        return parsed.map(String).filter(Boolean)
+      }
+
+      if (typeof parsed === "string") {
+        return parsed
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean)
+      }
+
+      if (parsed && typeof parsed === "object") {
+        return Object.values(parsed as Record<string, unknown>)
+          .map(String)
+          .filter(Boolean)
+      }
+
+      return value
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean)
+    } catch {
+      return value
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean)
+    }
+  }
+
+  if (typeof value === "object") {
+    return Object.values(value as Record<string, unknown>)
+      .map(String)
+      .filter(Boolean)
+  }
+
+  return []
+}
+
+/** Flatten tags for search matching (comma-separated display string). */
+export function parseTagsJson(raw: unknown): string {
+  return parseTagsArray(raw).join(", ")
 }
 
 export function filterGroupsByCategory(

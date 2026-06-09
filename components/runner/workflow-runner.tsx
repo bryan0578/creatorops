@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import {
   Copy,
   Database,
@@ -80,6 +81,9 @@ function formatDate(ts: number) {
 }
 
 export function WorkflowRunner() {
+  const searchParams = useSearchParams()
+  const recordIdParam = searchParams.get("recordId")
+
   const {
     workflows,
     prompts,
@@ -202,6 +206,12 @@ export function WorkflowRunner() {
     window.scrollTo({ top: 0, behavior: "smooth" })
     toast.success("Workflow run loaded")
   }
+
+  React.useEffect(() => {
+    if (!hydrated || !recordIdParam) return
+    const run = workflowRuns.find((r) => r.id === recordIdParam)
+    if (run) openRun(run)
+  }, [hydrated, recordIdParam, workflowRuns])
 
   async function handleCopyPrompt(prompt: Prompt) {
     try {

@@ -2,6 +2,7 @@ import type {
   AnalyticsRecord,
   ArtistRecord,
   CampaignRecord,
+  PresetRecord,
   EmailCampaignRecord,
   MerchIdea,
   MockupPromptRecord,
@@ -16,6 +17,7 @@ import type {
   YouTubeThumbnailRecord,
 } from "@/lib/types"
 import { normalizeCampaignRecord } from "@/lib/campaigns"
+import { normalizePresetRecord } from "@/lib/presets"
 import { normalizeAnalyticsRecord } from "@/lib/analytics-tracker"
 import { normalizeArtistRecord } from "@/lib/artist-crm"
 import { normalizeEmailCampaignRecord } from "@/lib/email-campaigns"
@@ -43,6 +45,7 @@ export const EMAIL_CAMPAIGNS_KEY = "creatorops:email-campaigns"
 export const ARTIST_CRM_KEY = "creatorops:artist-crm"
 export const YOUTUBE_THUMBNAILS_KEY = "creatorops:youtube-thumbnails"
 export const CAMPAIGNS_KEY = "creatorops:campaigns"
+export const PRESETS_KEY = "creatorops:presets"
 
 export function loadPrompts(): Prompt[] {
   if (typeof window === "undefined") return SEED_PROMPTS
@@ -410,6 +413,24 @@ export function loadCampaigns(): CampaignRecord[] {
 export function saveCampaigns(records: CampaignRecord[]): void {
   if (typeof window === "undefined") return
   localStorage.setItem(CAMPAIGNS_KEY, JSON.stringify(records))
+}
+
+export function loadPresets(): PresetRecord[] {
+  if (typeof window === "undefined") return []
+  try {
+    const raw = localStorage.getItem(PRESETS_KEY)
+    const parsed = raw ? (JSON.parse(raw) as Partial<PresetRecord>[]) : []
+    return parsed.map((record) =>
+      normalizePresetRecord(record as Partial<PresetRecord> & { id: string }),
+    )
+  } catch {
+    return []
+  }
+}
+
+export function savePresets(records: PresetRecord[]): void {
+  if (typeof window === "undefined") return
+  localStorage.setItem(PRESETS_KEY, JSON.stringify(records))
 }
 
 export function mergeById<T extends { id: string }>(existing: T[], incoming: T[]): T[] {

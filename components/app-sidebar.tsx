@@ -24,11 +24,13 @@ import {
   Workflow as WorkflowIcon,
   HardDrive,
   Megaphone,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { focusRing } from "@/lib/ui-classes"
+import { useStore } from "@/lib/store"
 import { ThemeToggle } from "@/components/theme-toggle"
 import {
   Sidebar,
@@ -68,6 +70,7 @@ const NAV_GROUPS: NavGroup[] = [
       { title: "Workflow Hub", href: "/workflows", icon: WorkflowIcon },
       { title: "Prompt Runner", href: "/runner", icon: Play },
       { title: "Workflow Runner", href: "/workflow-runner", icon: ListChecks },
+      { title: "Presets", href: "/presets", icon: Sparkles },
     ],
   },
   {
@@ -153,6 +156,7 @@ function isGroupOpen(
 
 export function AppSidebar() {
   const pathname = usePathname()
+  const { campaignsUseDatabase } = useStore()
   const [groupState, setGroupState] = React.useState<Record<string, boolean>>({})
   const [groupsHydrated, setGroupsHydrated] = React.useState(false)
 
@@ -179,7 +183,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader>
+      <SidebarHeader className="shrink-0">
         <div className="flex items-center gap-2 px-2 py-1.5">
           <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_16px_-4px] shadow-primary/50">
             <Music2 className="size-4" />
@@ -190,7 +194,7 @@ export function AppSidebar() {
           </div>
         </div>
       </SidebarHeader>
-      <SidebarContent className="gap-0.5">
+      <SidebarContent className="min-h-0 flex-1 gap-0.5 overflow-y-auto">
         {NAV_GROUPS.map((group) => {
           const open = isGroupOpen(group, pathname, groupState)
           const contentId = `sidebar-group-${group.id}`
@@ -246,10 +250,10 @@ export function AppSidebar() {
           )
         })}
       </SidebarContent>
-      <SidebarFooter className="gap-2 border-t border-sidebar-border/80 p-2">
+      <SidebarFooter className="mt-auto shrink-0 gap-2.5 border-t border-sidebar-border/80 px-3 pb-4 pt-3">
         <ThemeToggle />
-        <p className="px-1 py-1 text-xs text-muted-foreground text-balance">
-          Data is saved locally in this browser.
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          {campaignsUseDatabase ? "SQLite database" : "Browser storage"}
         </p>
       </SidebarFooter>
       <SidebarRail />

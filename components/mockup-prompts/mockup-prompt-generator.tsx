@@ -39,9 +39,15 @@ import {
   parseCampaignPrefillContext,
   shouldSkipCampaignUrlPrefill,
 } from "@/lib/campaign-prefill"
+import type { PresetPrefillContext } from "@/lib/preset-prefill"
+import {
+  presetPrefillToastMessage,
+  tryConsumePresetPrefill,
+} from "@/lib/preset-prefill"
 
 import { ModulePageHeader } from "@/components/app-shell"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
+import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
 import {
   FormSection,
   GENERATOR_WORKFLOW_TABS,
@@ -209,6 +215,9 @@ export function MockupPromptGenerator() {
   const [campaignPrefill, setCampaignPrefill] = React.useState(
     parseCampaignPrefillContext(searchParams),
   )
+  const [presetPrefill, setPresetPrefill] = React.useState<PresetPrefillContext | null>(
+    null,
+  )
 
   const template = React.useMemo(
     () => getMockupPromptTemplate(prompts),
@@ -322,6 +331,18 @@ export function MockupPromptGenerator() {
 
   React.useEffect(() => {
     if (prefillApplied.current || shouldSkipCampaignUrlPrefill(editingId)) return
+
+    const presetContext = tryConsumePresetPrefill({
+      searchParams,
+      editingId,
+      prefillApplied,
+      setForm,
+    })
+    if (presetContext) {
+      setPresetPrefill(presetContext)
+      toast.success(presetPrefillToastMessage(presetContext.presetName))
+      return
+    }
 
     const context = parseCampaignPrefillContext(searchParams)
     if (context.campaignId) setCampaignPrefill(context)
@@ -467,6 +488,7 @@ export function MockupPromptGenerator() {
         }
       />
 
+      <PresetPrefillBanner presetPrefill={presetPrefill} />
       <CampaignPrefillBanner
         campaignId={campaignPrefill.campaignId}
         campaignName={campaignPrefill.campaignName}
