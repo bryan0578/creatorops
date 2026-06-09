@@ -1,8 +1,12 @@
 "use server"
 
-import { prismaCampaignToCampaignRecord } from "@/lib/data/campaigns"
+import { revalidatePath } from "next/cache"
+
+import { getCampaigns, upsertCampaign } from "@/lib/actions/campaigns"
+import { normalizeCampaignRecord } from "@/lib/campaigns"
 import { prismaAnalyticsRecordToAnalyticsRecord } from "@/lib/data/analytics-records"
 import { prismaArtistToArtistRecord } from "@/lib/data/artists"
+import { prismaCampaignToCampaignRecord } from "@/lib/data/campaigns"
 import {
   buildDataHealthReport,
   createDataLoadFailureIssue,
@@ -28,6 +32,7 @@ import { prismaYouTubePackageToYouTubePackage } from "@/lib/data/youtube-package
 import { prismaYouTubeThumbnailToRecord } from "@/lib/data/youtube-thumbnails"
 import { prisma } from "@/lib/prisma"
 import { WORKSPACE_SETTINGS_ID } from "@/lib/workspace-settings"
+import type { CampaignLinkedRecordType } from "@/lib/types"
 
 const artistInclude = {
   releases: { orderBy: { sortOrder: "asc" as const } },
@@ -384,4 +389,49 @@ export async function getDataHealthReport(): Promise<DataHealthReport> {
   } catch (error) {
     return createFailedDataHealthReport(error)
   }
+}
+
+export type RemoveBrokenLinkResult = {
+  ok: boolean
+  message?: string
+}
+
+/**
+ * Remove a single broken linkedRecords entry from a campaign.
+ * Only mutates when the user explicitly triggers this action.
+ */
+export async function removeBrokenCampaignLink(
+  campaignId: string,
+  linkedRecordId: string,
+  linkedRecordType: CampaignLinkedRecordType,
+): Promise<RemoveBrokenLinkResult> {
+  const campaigns = await getCampaigns()
+  const campaign = campaigns.find((item) => item.id === campaignId)
+
+  if (!campaign) {
+    return { ok: false, message: "Campaign not found." }
+  }
+
+  const beforeCount = campaign.linkedRecords.length
+  const linkedRecords = campaign.linkedRecords.filter(
+    (record) =>
+      !(record.id === linkedRecordId && record.type === linkedRecordType),
+  )
+
+  if (linkedRecords.length === beforeCount) {
+    return { ok: false, message: "Broken link was not found on this campaign." }
+  }
+
+  await upsertCampaign(
+    normalizeCampaignRecord({
+      ...campaign,
+      linkedRecords,
+      updatedAt: Date.now(),
+    }),
+  )
+
+  revalidatePath("/data-health")
+  revalidatePath("/campaigns")
+
+  return { ok: true }
 }

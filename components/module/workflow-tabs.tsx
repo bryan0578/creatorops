@@ -34,6 +34,7 @@ export const ARTIST_CRM_WORKFLOW_TABS = [
 ] as const
 
 export const CAMPAIGN_BUILDER_TABS = [
+  { value: "launch", label: "Launch Dashboard" },
   { value: "overview", label: "Overview" },
   { value: "linked", label: "Linked Records" },
   { value: "tasks", label: "Tasks" },

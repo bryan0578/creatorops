@@ -53,6 +53,10 @@ import {
 import { downloadJson, loadCampaigns } from "@/lib/storage"
 import { migrateLocalCampaignsToDatabase } from "@/lib/actions/campaigns"
 import { CampaignLinkedRecordsGroups } from "@/components/relationships/campaign-linked-records-groups"
+import {
+  CampaignLaunchDashboard,
+  CampaignLaunchDashboardEmpty,
+} from "@/components/campaigns/launch-dashboard/campaign-launch-dashboard"
 import { EmptyState } from "@/components/empty-state"
 import {
   CAMPAIGN_BUILDER_TABS,
@@ -178,7 +182,7 @@ export function CampaignBuilder() {
     setForm(campaignFormFromRecord(record))
     setLinkedRecords(record.linkedRecords)
     setTasks(record.tasks)
-    setActiveTab("overview")
+    setActiveTab("launch")
     toast.message(`Opened ${record.campaignName || "campaign"}`)
   }
 
@@ -396,6 +400,34 @@ export function CampaignBuilder() {
   const isEditingSaved =
     store.campaigns.some((c) => c.id === recordId) && form.campaignName.trim()
 
+  const launchCampaign = React.useMemo(
+    () =>
+      buildCampaignRecordFromForm(recordId, form, linkedRecords, tasks, {
+        createdAt,
+        updatedAt: Date.now(),
+      }),
+    [recordId, form, linkedRecords, tasks, createdAt],
+  )
+
+  const linkableStore = React.useMemo(
+    () => ({
+      releasePlans: store.releasePlans,
+      youtubePackages: store.youtubePackages,
+      youtubeThumbnailRecords: store.youtubeThumbnailRecords,
+      socialRepurposingRecords: store.socialRepurposingRecords,
+      merchIdeas: store.merchIdeas,
+      productListings: store.productListings,
+      mockupPromptRecords: store.mockupPromptRecords,
+      emailCampaignRecords: store.emailCampaignRecords,
+      analyticsRecords: store.analyticsRecords,
+      artistRecords: store.artistRecords,
+      workflows: store.workflows,
+      workflowRuns: store.workflowRuns,
+      runs: store.runs,
+    }),
+    [store],
+  )
+
   return (
     <div className="flex flex-col gap-8">
       <ModulePageHeader
@@ -444,6 +476,23 @@ export function CampaignBuilder() {
             </TabsTrigger>
           ))}
         </TabRow>
+        <ModuleTabPanel value="launch">
+          {isEditingSaved ? (
+            <CampaignLaunchDashboard
+              campaign={launchCampaign}
+              store={linkableStore}
+              onGoToTasks={() => setActiveTab("tasks")}
+              onGoToOverview={() => setActiveTab("overview")}
+              onGoToSaved={() => setActiveTab("saved")}
+              onGoToLinked={() => setActiveTab("linked")}
+            />
+          ) : (
+            <CampaignLaunchDashboardEmpty
+              onCreateCampaign={() => setActiveTab("overview")}
+              onGoToSaved={() => setActiveTab("saved")}
+            />
+          )}
+        </ModuleTabPanel>
         <ModuleTabPanel value="overview">
           <Card className={RECENT_RECORDS_CARD_CLASS}>
             <CardHeader>

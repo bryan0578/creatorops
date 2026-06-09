@@ -16,6 +16,7 @@ export function EmptyState({
   primaryActionOnClick,
   secondaryActionLabel,
   secondaryActionHref,
+  secondaryActionOnClick,
   className,
 }: {
   icon?: LucideIcon
@@ -26,12 +27,15 @@ export function EmptyState({
   primaryActionOnClick?: () => void
   secondaryActionLabel?: string
   secondaryActionHref?: string
+  secondaryActionOnClick?: () => void
   className?: string
 }) {
   const hasPrimary =
     Boolean(primaryActionLabel) &&
     Boolean(primaryActionHref || primaryActionOnClick)
-  const hasSecondary = Boolean(secondaryActionLabel) && Boolean(secondaryActionHref)
+  const hasSecondary =
+    Boolean(secondaryActionLabel) &&
+    Boolean(secondaryActionHref || secondaryActionOnClick)
 
   return (
     <div
@@ -63,13 +67,19 @@ export function EmptyState({
               </Button>
             )
           ) : null}
-          {hasSecondary && secondaryActionHref ? (
-            <Link
-              href={secondaryActionHref}
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              {secondaryActionLabel}
-            </Link>
+          {hasSecondary ? (
+            secondaryActionHref ? (
+              <Link
+                href={secondaryActionHref}
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                {secondaryActionLabel}
+              </Link>
+            ) : (
+              <Button type="button" variant="outline" size="sm" onClick={secondaryActionOnClick}>
+                {secondaryActionLabel}
+              </Button>
+            )
           ) : null}
         </div>
       ) : null}

@@ -14,7 +14,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
-import { getDataHealthReport } from "@/lib/actions/data-health"
+import { getDataHealthReport, removeBrokenCampaignLink } from "@/lib/actions/data-health"
 import {
   filterIssuesByCategory,
   type DataHealthIssue,
@@ -139,15 +139,93 @@ function ScanErrorCard({
   )
 }
 
+function IssueRepairActions({
+  issue,
+  onRepairComplete,
+  repairingId,
+  setRepairingId,
+}: {
+  issue: DataHealthIssue
+  onRepairComplete: () => void
+  repairingId: string | null
+  setRepairingId: (id: string | null) => void
+}) {
+  const repair = issue.repair
+  const isRepairing = repairingId === issue.id
+
+  async function handleRemoveBrokenLink() {
+    if (repair?.kind !== "remove-broken-link") return
+
+    setRepairingId(issue.id)
+    try {
+      const result = await removeBrokenCampaignLink(
+        repair.campaignId,
+        repair.linkedRecordId,
+        repair.linkedRecordType,
+      )
+      if (!result.ok) {
+        toast.error(result.message ?? "Could not remove broken link.")
+        return
+      }
+      toast.success("Broken link removed")
+      onRepairComplete()
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Could not remove broken link."
+      toast.error(message)
+    } finally {
+      setRepairingId(null)
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <Button variant="outline" size="sm" asChild>
+        <Link href={issue.href}>
+          Open Record
+          <ExternalLink className="size-3.5" />
+        </Link>
+      </Button>
+      {repair?.kind === "remove-broken-link" ? (
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          disabled={isRepairing}
+          onClick={() => void handleRemoveBrokenLink()}
+        >
+          {isRepairing ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : null}
+          Remove Broken Link
+        </Button>
+      ) : null}
+      {repair?.kind === "create-asset" ? (
+        <Button variant="secondary" size="sm" asChild>
+          <Link href={repair.href}>{repair.label}</Link>
+        </Button>
+      ) : null}
+      {issue.relatedHref ? (
+        <Button variant="ghost" size="sm" asChild>
+          <Link href={issue.relatedHref}>Related link</Link>
+        </Button>
+      ) : null}
+    </div>
+  )
+}
+
 function IssuesTable({
   issues,
+  onRepairComplete,
   emptyTitle = "Data health looks good",
   emptyDescription = "No broken links, duplicate records, malformed JSON, or major missing assets were found in this category.",
 }: {
   issues: DataHealthIssue[]
+  onRepairComplete: () => void
   emptyTitle?: string
   emptyDescription?: string
 }) {
+  const [repairingId, setRepairingId] = React.useState<string | null>(null)
   if (!issues.length) {
     return (
       <EmptyState
@@ -167,7 +245,7 @@ function IssuesTable({
               <TableHead className="w-[110px]">Severity</TableHead>
               <TableHead>Issue</TableHead>
               <TableHead className="hidden md:table-cell">Source</TableHead>
-              <TableHead className="w-[140px] text-right">Actions</TableHead>
+              <TableHead className="w-[200px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -194,19 +272,12 @@ function IssuesTable({
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
-                  <div className="flex flex-col items-end gap-1">
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={issue.href}>
-                        Open Record
-                        <ExternalLink className="size-3.5" />
-                      </Link>
-                    </Button>
-                    {issue.relatedHref ? (
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link href={issue.relatedHref}>Related link</Link>
-                      </Button>
-                    ) : null}
-                  </div>
+                  <IssueRepairActions
+                    issue={issue}
+                    onRepairComplete={onRepairComplete}
+                    repairingId={repairingId}
+                    setRepairingId={setRepairingId}
+                  />
                 </TableCell>
               </TableRow>
             ))}
@@ -221,10 +292,12 @@ function ReportContent({
   report,
   onRetry,
   refreshing,
+  onRepairComplete,
 }: {
   report: DataHealthReport
   onRetry: () => void
   refreshing: boolean
+  onRepairComplete: () => void
 }) {
   const summary = report.summary
   const noRecords = report.totalRecords === 0
@@ -301,7 +374,10 @@ function ReportContent({
                     primaryActionHref="/backups"
                   />
                 ) : (
-                  <IssuesTable issues={report.issues.slice(0, 12)} />
+                  <IssuesTable
+                    issues={report.issues.slice(0, 12)}
+                    onRepairComplete={onRepairComplete}
+                  />
                 )}
               </div>
             </ModuleTabPanel>
@@ -310,6 +386,7 @@ function ReportContent({
               <ModuleTabPanel key={tab.value} value={tab.value}>
                 <IssuesTable
                   issues={filterIssuesByCategory(report.issues, tab.value)}
+                  onRepairComplete={onRepairComplete}
                 />
               </ModuleTabPanel>
             ))}
@@ -396,7 +473,12 @@ export function DataHealthPage() {
           Scanning local database…
         </div>
       ) : report ? (
-        <ReportContent report={report} onRetry={() => void runScan(true)} refreshing={refreshing} />
+        <ReportContent
+          report={report}
+          onRetry={() => void runScan(true)}
+          refreshing={refreshing}
+          onRepairComplete={() => void runScan(true)}
+        />
       ) : (
         <ScanErrorCard
           message="The scan did not return a report. Try refreshing."

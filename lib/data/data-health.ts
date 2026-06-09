@@ -3,6 +3,10 @@
  */
 
 import { buildRecordHref } from "@/lib/data/related-records"
+import {
+  buildMissingAssetRepair,
+  buildRemoveBrokenLinkRepair,
+} from "@/lib/data/data-health-repairs"
 import type {
   AnalyticsRecord,
   ArtistRecord,
@@ -33,6 +37,19 @@ export type DataHealthCategory =
   | "incomplete-records"
   | "data-issues"
 
+export type DataHealthRepair =
+  | {
+      kind: "remove-broken-link"
+      campaignId: string
+      linkedRecordId: string
+      linkedRecordType: CampaignLinkedRecordType
+    }
+  | {
+      kind: "create-asset"
+      label: string
+      href: string
+    }
+
 export interface DataHealthIssue {
   id: string
   severity: DataHealthSeverity
@@ -45,6 +62,7 @@ export interface DataHealthIssue {
   href: string
   suggestedAction: string
   relatedHref?: string
+  repair?: DataHealthRepair
 }
 
 export interface DataHealthSummary {
@@ -289,6 +307,7 @@ function scanBrokenLinks(
           href: campaignHref(campaign.id),
           suggestedAction: "Open campaign and remove or replace the broken link.",
           relatedHref: linked.href || canonicalHref(linkType, linked.id),
+          repair: buildRemoveBrokenLinkRepair(campaign.id, linked.id, linkType),
         })
       }
 
@@ -307,6 +326,7 @@ function scanBrokenLinks(
             href: campaignHref(campaign.id),
             suggestedAction: "Open campaign and update the linked record href.",
             relatedHref: linked.href,
+            repair: buildRemoveBrokenLinkRepair(campaign.id, linked.id, linkType),
           })
         } else if (parsed.id !== linked.id) {
           pushIssue(issues, {
@@ -417,6 +437,7 @@ function scanMissingAssets(
 
     for (const type of expected) {
       if (!linkedTypes.has(type)) {
+        const repair = buildMissingAssetRepair(campaign, type)
         pushIssue(issues, {
           id: issueId(["missing-asset", campaign.id, type]),
           severity: "warning",
@@ -428,6 +449,7 @@ function scanMissingAssets(
           sourceTitle: campaignTitle,
           href: campaignHref(campaign.id),
           suggestedAction: `Create or link a ${LINK_TYPE_LABELS[type]} from Campaign Builder.`,
+          repair,
         })
       }
     }
