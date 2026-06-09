@@ -6,6 +6,7 @@ import type {
   ArtistRecord,
   CampaignRecord,
   PresetRecord,
+  WorkspaceSettingsRecord,
   EmailCampaignRecord,
   MerchIdea,
   MockupPromptRecord,
@@ -49,6 +50,10 @@ import {
   importPresets as importPresetsToDb,
   upsertPreset,
 } from "@/lib/actions/presets"
+import {
+  getWorkspaceSettings,
+  upsertWorkspaceSettings,
+} from "@/lib/actions/workspace-settings"
 import {
   deleteEmailCampaignRecordById,
   getEmailCampaignRecords,
@@ -151,6 +156,7 @@ interface StoreContextValue {
   emailCampaignRecords: EmailCampaignRecord[]
   campaigns: CampaignRecord[]
   presets: PresetRecord[]
+  workspaceSettings: WorkspaceSettingsRecord | null
   artistRecords: ArtistRecord[]
   youtubeThumbnailRecords: YouTubeThumbnailRecord[]
   hydrated: boolean
@@ -241,6 +247,9 @@ interface StoreContextValue {
   deletePreset: (id: string) => Promise<void>
   importPresets: (items: PresetRecord[]) => Promise<void>
   reloadPresets: () => Promise<void>
+  setWorkspaceSettings: (record: WorkspaceSettingsRecord | null) => void
+  updateWorkspaceSettings: (record: WorkspaceSettingsRecord) => Promise<void>
+  reloadWorkspaceSettings: () => Promise<void>
   addArtistRecord: (record: ArtistRecord) => Promise<void>
   updateArtistRecord: (record: ArtistRecord) => Promise<void>
   deleteArtistRecord: (id: string) => Promise<void>
@@ -288,6 +297,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   >([])
   const [campaigns, setCampaigns] = React.useState<CampaignRecord[]>([])
   const [presets, setPresets] = React.useState<PresetRecord[]>([])
+  const [workspaceSettings, setWorkspaceSettings] =
+    React.useState<WorkspaceSettingsRecord | null>(null)
   const [artistRecords, setArtistRecords] = React.useState<ArtistRecord[]>([])
   const [youtubeThumbnailRecords, setYoutubeThumbnailRecords] = React.useState<
     YouTubeThumbnailRecord[]
@@ -566,6 +577,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       throw error
     }
   }, [])
+
+  const reloadWorkspaceSettings = React.useCallback(async () => {
+    try {
+      const next = await getWorkspaceSettings()
+      setWorkspaceSettings(next)
+    } catch (error) {
+      console.error("[CreatorOps] Failed to reload workspace settings.", error)
+      throw error
+    }
+  }, [])
+
+  const updateWorkspaceSettings = React.useCallback(
+    async (record: WorkspaceSettingsRecord) => {
+      const saved = await upsertWorkspaceSettings(record)
+      setWorkspaceSettings(saved)
+    },
+    [],
+  )
 
   React.useEffect(() => {
     let cancelled = false
@@ -871,6 +900,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           setYoutubeThumbnailRecords(loadYouTubeThumbnailRecords())
           setYoutubeThumbnailRecordsUseDatabase(false)
         }
+      }
+
+      if (cancelled) return
+
+      try {
+        const settings = await getWorkspaceSettings()
+        if (!cancelled) {
+          setWorkspaceSettings(settings)
+        }
+      } catch (error) {
+        console.error(
+          "[CreatorOps] Failed to load workspace settings from database.",
+          error,
+        )
       }
 
       setHydrated(true)
@@ -1355,6 +1398,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     emailCampaignRecords,
     campaigns,
     presets,
+    workspaceSettings,
     artistRecords,
     youtubeThumbnailRecords,
     hydrated,
@@ -1445,6 +1489,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     deletePreset,
     importPresets,
     reloadPresets,
+    setWorkspaceSettings,
+    updateWorkspaceSettings,
+    reloadWorkspaceSettings,
     addArtistRecord,
     updateArtistRecord,
     deleteArtistRecord,

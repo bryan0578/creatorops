@@ -1,0 +1,27 @@
+-- CreateTable
+CREATE TABLE "WorkspaceSettings" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "workspaceName" TEXT NOT NULL DEFAULT '',
+    "labelName" TEXT NOT NULL DEFAULT '',
+    "defaultYouTubeChannel" TEXT NOT NULL DEFAULT '',
+    "defaultStoreName" TEXT NOT NULL DEFAULT '',
+    "defaultStoreType" TEXT NOT NULL DEFAULT '',
+    "defaultMerchStoreLink" TEXT NOT NULL DEFAULT '',
+    "defaultWebsiteLink" TEXT NOT NULL DEFAULT '',
+    "defaultStreamingLink" TEXT NOT NULL DEFAULT '',
+    "defaultPlatforms" TEXT NOT NULL DEFAULT '',
+    "defaultCTA" TEXT NOT NULL DEFAULT '',
+    "defaultHashtagSet" TEXT NOT NULL DEFAULT '',
+    "defaultBrandTone" TEXT NOT NULL DEFAULT '',
+    "defaultVisualStyle" TEXT NOT NULL DEFAULT '',
+    "defaultAudience" TEXT NOT NULL DEFAULT '',
+    "defaultEmailSender" TEXT NOT NULL DEFAULT '',
+    "defaultBusinessArea" TEXT NOT NULL DEFAULT '',
+    "defaultPrimaryGoal" TEXT NOT NULL DEFAULT '',
+    "brandPrimaryColor" TEXT NOT NULL DEFAULT '',
+    "brandSecondaryColor" TEXT NOT NULL DEFAULT '',
+    "brandAccentColor" TEXT NOT NULL DEFAULT '',
+    "notes" TEXT NOT NULL DEFAULT '',
+    "createdAt" DATETIME NOT NULL,
+    "updatedAt" DATETIME NOT NULL
+);

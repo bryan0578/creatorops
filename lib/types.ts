@@ -1318,3 +1318,35 @@ export interface PresetFormValues {
   valuesJson: string
   notes: string
 }
+
+export interface WorkspaceSettingsRecord {
+  id: string
+  workspaceName: string
+  labelName: string
+  defaultYouTubeChannel: string
+  defaultStoreName: string
+  defaultStoreType: string
+  defaultMerchStoreLink: string
+  defaultWebsiteLink: string
+  defaultStreamingLink: string
+  defaultPlatforms: string
+  defaultCTA: string
+  defaultHashtagSet: string
+  defaultBrandTone: string
+  defaultVisualStyle: string
+  defaultAudience: string
+  defaultEmailSender: string
+  defaultBusinessArea: string
+  defaultPrimaryGoal: string
+  brandPrimaryColor: string
+  brandSecondaryColor: string
+  brandAccentColor: string
+  notes: string
+  createdAt: number
+  updatedAt: number
+}
+
+export type WorkspaceSettingsFormValues = Omit<
+  WorkspaceSettingsRecord,
+  "id" | "createdAt" | "updatedAt"
+>

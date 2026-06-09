@@ -37,6 +37,7 @@ import {
 } from "@/lib/preset-prefill"
 import { ModulePageHeader } from "@/components/app-shell"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
+import { ApplyWorkspaceDefaultsButton } from "@/components/settings/apply-workspace-defaults-button"
 import {
   buildCampaignRecordFromForm,
   buildCampaignTimeline,
@@ -60,7 +61,8 @@ import {
   ModuleTabPanel,
   RECENT_RECORDS_CARD_CLASS,
 } from "@/components/module/form-layout"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { TabRow } from "@/components/ui/tab-row"
+import { Tabs, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -401,6 +403,11 @@ export function CampaignBuilder() {
         description="Plan a launch from one place — link release plans, YouTube assets, merch, email, social, analytics, and more."
         action={
           <div className="flex flex-wrap items-center gap-2">
+            <ApplyWorkspaceDefaultsButton
+              module="campaign"
+              form={form}
+              setForm={setForm}
+            />
             <Button type="button" variant="outline" onClick={resetDraft}>
               <Plus className="size-4" />
               New campaign
@@ -430,17 +437,13 @@ export function CampaignBuilder() {
         onValueChange={setActiveTab}
         className="w-full gap-6"
       >
-        <TabsList className="h-auto w-full max-w-full flex-nowrap justify-start overflow-x-auto">
+        <TabRow>
           {CAMPAIGN_BUILDER_TABS.map((tab) => (
-            <TabsTrigger
-              key={tab.value}
-              value={tab.value}
-              className="shrink-0 px-3 py-1.5"
-            >
+            <TabsTrigger key={tab.value} value={tab.value}>
               {tab.label}
             </TabsTrigger>
           ))}
-        </TabsList>
+        </TabRow>
         <ModuleTabPanel value="overview">
           <Card className={RECENT_RECORDS_CARD_CLASS}>
             <CardHeader>

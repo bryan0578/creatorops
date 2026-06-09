@@ -48,6 +48,7 @@ import { ModulePageHeader } from "@/components/app-shell"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
 import { RelationshipPanel } from "@/components/relationships/relationship-panel"
+import { ApplyWorkspaceDefaultsButton } from "@/components/settings/apply-workspace-defaults-button"
 import {
   FormSection,
   GENERATOR_WORKFLOW_TABS,
@@ -490,6 +491,11 @@ export function SocialRepurposingEngine() {
         description="Turn one source idea into platform-specific content for TikTok, Instagram, X, YouTube, and email."
         action={
           <div className="flex flex-wrap items-center gap-2">
+            <ApplyWorkspaceDefaultsButton
+              module="social-repurposing"
+              form={form}
+              setForm={setForm}
+            />
             <Button type="button" onClick={handleSaveRecord}>
               {editingId ? "Update social content" : "Save social content"}
             </Button>

@@ -49,6 +49,7 @@ import { ModulePageHeader } from "@/components/app-shell"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
 import { RelationshipPanel } from "@/components/relationships/relationship-panel"
+import { ApplyWorkspaceDefaultsButton } from "@/components/settings/apply-workspace-defaults-button"
 import {
   FormSection,
   GENERATOR_WORKFLOW_TABS,
@@ -477,6 +478,11 @@ export function MockupPromptGenerator() {
         description="Generate, save, and organize image and mockup prompts for merch, thumbnails, ads, and ecommerce visuals."
         action={
           <div className="flex flex-wrap items-center gap-2">
+            <ApplyWorkspaceDefaultsButton
+              module="mockup-prompt"
+              form={form}
+              setForm={setForm}
+            />
             <Button type="button" onClick={handleSave}>
               {editingId ? "Update mockup prompt" : "Save mockup prompt"}
             </Button>

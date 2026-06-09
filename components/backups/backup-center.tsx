@@ -145,6 +145,7 @@ export function BackupCenter() {
       store.reloadEmailCampaignRecords(),
       store.reloadCampaigns(),
       store.reloadPresets(),
+      store.reloadWorkspaceSettings(),
     ])
   }
 

@@ -166,3 +166,5 @@ export {
   ModuleTabPanel,
   ModuleWorkflowTabs,
 } from "@/components/module/workflow-tabs"
+
+export { TabRow, tabTriggerClassName } from "@/components/ui/tab-row"

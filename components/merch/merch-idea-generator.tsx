@@ -45,6 +45,7 @@ import { ModulePageHeader } from "@/components/app-shell"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
 import { RelationshipPanel } from "@/components/relationships/relationship-panel"
+import { ApplyWorkspaceDefaultsButton } from "@/components/settings/apply-workspace-defaults-button"
 import {
   FormSection,
   GENERATOR_WORKFLOW_TABS,
@@ -457,6 +458,11 @@ export function MerchIdeaGenerator() {
         description="Generate, save, and organize merch concepts for artist stores, Fourthwall, and niche ecommerce."
         action={
           <div className="flex flex-wrap items-center gap-2">
+            <ApplyWorkspaceDefaultsButton
+              module="merch-idea"
+              form={form}
+              setForm={setForm}
+            />
             <Button type="button" onClick={handleSaveIdea}>
               {editingId ? "Update merch idea" : "Save merch idea"}
             </Button>

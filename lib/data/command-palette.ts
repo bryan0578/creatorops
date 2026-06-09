@@ -12,6 +12,7 @@ import {
   Megaphone,
   Play,
   Search,
+  Settings,
   Share2,
   Shirt,
   ShoppingBag,
@@ -129,6 +130,13 @@ export const COMMAND_PALETTE_QUICK_ACTIONS: CommandPaletteStaticItem[] = [
     title: "Open Presets",
     href: "/presets",
     keywords: "templates preset starter",
+  },
+  {
+    id: "qa-settings",
+    group: "quick-actions",
+    title: "Open Settings",
+    href: "/settings",
+    keywords: "workspace defaults configuration",
   },
 ]
 
@@ -265,6 +273,13 @@ export const COMMAND_PALETTE_MODULES: CommandPaletteStaticItem[] = [
     title: "Backup Center",
     href: "/backups",
     icon: HardDrive,
+  },
+  {
+    id: "mod-settings",
+    group: "modules",
+    title: "Settings",
+    href: "/settings",
+    icon: Settings,
   },
 ]
 

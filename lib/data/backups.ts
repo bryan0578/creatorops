@@ -22,6 +22,7 @@ export type BackupDataKey =
   | "emailCampaigns"
   | "campaigns"
   | "presets"
+  | "workspaceSettings"
 
 export type BackupImportMode = "merge" | "replace"
 
@@ -42,6 +43,7 @@ export interface BackupRecordCounts {
   emailCampaigns: number
   campaigns: number
   presets: number
+  workspaceSettings: number
 }
 
 export interface CreatorOpsBackupData {
@@ -61,6 +63,7 @@ export interface CreatorOpsBackupData {
   emailCampaigns: unknown[]
   campaigns: unknown[]
   presets: unknown[]
+  workspaceSettings: unknown[]
 }
 
 export interface CreatorOpsBackup {
@@ -95,6 +98,12 @@ export const BACKUP_MODULE_META: BackupModuleMeta[] = [
   { key: "emailCampaigns", label: "Email Campaigns", exportFilename: "creatorops-email-campaigns.json", category: "marketing" },
   { key: "campaigns", label: "Campaigns", exportFilename: "creatorops-campaigns.json", category: "operations" },
   { key: "presets", label: "Presets", exportFilename: "creatorops-presets.json", category: "core" },
+  {
+    key: "workspaceSettings",
+    label: "Workspace Settings",
+    exportFilename: "creatorops-workspace-settings.json",
+    category: "operations",
+  },
 ]
 
 export const BACKUP_DATA_KEYS = BACKUP_MODULE_META.map((m) => m.key)
@@ -117,6 +126,7 @@ export function emptyBackupData(): CreatorOpsBackupData {
     emailCampaigns: [],
     campaigns: [],
     presets: [],
+    workspaceSettings: [],
   }
 }
 
@@ -138,6 +148,7 @@ export function countBackupData(data: CreatorOpsBackupData): BackupRecordCounts 
     emailCampaigns: data.emailCampaigns.length,
     campaigns: data.campaigns.length,
     presets: data.presets.length,
+    workspaceSettings: data.workspaceSettings.length,
   }
 }
 

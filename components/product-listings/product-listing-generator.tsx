@@ -45,6 +45,7 @@ import { ModulePageHeader } from "@/components/app-shell"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
 import { RelationshipPanel } from "@/components/relationships/relationship-panel"
+import { ApplyWorkspaceDefaultsButton } from "@/components/settings/apply-workspace-defaults-button"
 import {
   FormSection,
   GENERATOR_WORKFLOW_TABS,
@@ -471,6 +472,11 @@ export function ProductListingGenerator() {
         description="Generate, save, and organize ecommerce listings for merch, digital products, templates, and tech resources."
         action={
           <div className="flex flex-wrap items-center gap-2">
+            <ApplyWorkspaceDefaultsButton
+              module="product-listing"
+              form={form}
+              setForm={setForm}
+            />
             <Button type="button" onClick={handleSaveListing}>
               {editingId ? "Update product listing" : "Save product listing"}
             </Button>

@@ -3,7 +3,8 @@
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { TabRow } from "@/components/ui/tab-row"
+import { Tabs, TabsContent, TabsTrigger } from "@/components/ui/tabs"
 
 export const GENERATOR_WORKFLOW_TABS = [
   { value: "details", label: "Details" },
@@ -54,17 +55,13 @@ export function ModuleWorkflowTabs({
 }) {
   return (
     <Tabs defaultValue={defaultTab} className={cn("w-full gap-6", className)}>
-      <TabsList className="h-auto w-full max-w-full flex-nowrap justify-start overflow-x-auto">
+      <TabRow>
         {tabs.map((tab) => (
-          <TabsTrigger
-            key={tab.value}
-            value={tab.value}
-            className="shrink-0 px-3 py-1.5"
-          >
+          <TabsTrigger key={tab.value} value={tab.value}>
             {tab.label}
           </TabsTrigger>
         ))}
-      </TabsList>
+      </TabRow>
       {children}
     </Tabs>
   )

@@ -50,6 +50,7 @@ import { ModulePageHeader } from "@/components/app-shell"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
 import { RelationshipPanel } from "@/components/relationships/relationship-panel"
+import { ApplyWorkspaceDefaultsButton } from "@/components/settings/apply-workspace-defaults-button"
 import {
   FormSection,
   GENERATOR_WORKFLOW_TABS,
@@ -463,6 +464,11 @@ export function EmailCampaignGenerator() {
         description="Generate, save, and organize email campaigns for music releases, merch drops, product launches, newsletters, and more."
         action={
           <div className="flex flex-wrap items-center gap-2">
+            <ApplyWorkspaceDefaultsButton
+              module="email-campaign"
+              form={form}
+              setForm={setForm}
+            />
             <Button type="button" onClick={handleSave}>
               {editingId ? "Update email campaign" : "Save email campaign"}
             </Button>

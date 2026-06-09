@@ -616,3 +616,31 @@ model Preset {
   @@index([category])
   @@index([updatedAt])
 }
+
+/// Singleton workspace defaults for CreatorOps (single row id: creatorops-workspace-default).
+model WorkspaceSettings {
+  id                    String   @id
+  workspaceName         String   @default("")
+  labelName             String   @default("")
+  defaultYouTubeChannel String   @default("")
+  defaultStoreName      String   @default("")
+  defaultStoreType      String   @default("")
+  defaultMerchStoreLink String   @default("")
+  defaultWebsiteLink    String   @default("")
+  defaultStreamingLink  String   @default("")
+  defaultPlatforms      String   @default("")
+  defaultCTA            String   @default("")
+  defaultHashtagSet     String   @default("")
+  defaultBrandTone      String   @default("")
+  defaultVisualStyle    String   @default("")
+  defaultAudience       String   @default("")
+  defaultEmailSender    String   @default("")
+  defaultBusinessArea   String   @default("")
+  defaultPrimaryGoal    String   @default("")
+  brandPrimaryColor     String   @default("")
+  brandSecondaryColor   String   @default("")
+  brandAccentColor      String   @default("")
+  notes                 String   @default("")
+  createdAt             DateTime
+  updatedAt             DateTime
+}

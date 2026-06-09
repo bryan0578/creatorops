@@ -38,7 +38,8 @@ import {
   FormSection,
   ModuleTabPanel,
 } from "@/components/module/form-layout"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { TabRow } from "@/components/ui/tab-row"
+import { Tabs, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -265,17 +266,11 @@ export function PresetLibrary() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full gap-6">
-        <TabsList className="h-auto w-full max-w-full flex-nowrap justify-start overflow-x-auto">
-          <TabsTrigger value="library" className="shrink-0 px-3 py-1.5">
-            Preset Library
-          </TabsTrigger>
-          <TabsTrigger value="edit" className="shrink-0 px-3 py-1.5">
-            Create/Edit Preset
-          </TabsTrigger>
-          <TabsTrigger value="starters" className="shrink-0 px-3 py-1.5">
-            Starter Presets
-          </TabsTrigger>
-        </TabsList>
+        <TabRow>
+          <TabsTrigger value="library">Preset Library</TabsTrigger>
+          <TabsTrigger value="edit">Create/Edit Preset</TabsTrigger>
+          <TabsTrigger value="starters">Starter Presets</TabsTrigger>
+        </TabRow>
 
       <ModuleTabPanel value="library">
         <Card className="border-border/80">

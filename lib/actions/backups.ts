@@ -6,6 +6,7 @@ import { importAnalyticsRecords } from "@/lib/actions/analytics-records"
 import { importArtists } from "@/lib/actions/artists"
 import { importCampaigns } from "@/lib/actions/campaigns"
 import { importPresets } from "@/lib/actions/presets"
+import { importWorkspaceSettings } from "@/lib/actions/workspace-settings"
 import { importEmailCampaignRecords } from "@/lib/actions/email-campaigns"
 import { importMerchIdeas } from "@/lib/actions/merch-ideas"
 import { importMockupPromptRecords } from "@/lib/actions/mockup-prompts"
@@ -39,6 +40,7 @@ import { getAnalyticsRecords } from "@/lib/actions/analytics-records"
 import { getArtists } from "@/lib/actions/artists"
 import { getCampaigns } from "@/lib/actions/campaigns"
 import { getPresets } from "@/lib/actions/presets"
+import { getWorkspaceSettings } from "@/lib/actions/workspace-settings"
 import { getEmailCampaignRecords } from "@/lib/actions/email-campaigns"
 import { getMerchIdeas } from "@/lib/actions/merch-ideas"
 import { getMockupPromptRecords } from "@/lib/actions/mockup-prompts"
@@ -57,6 +59,7 @@ import type {
   ArtistRecord,
   CampaignRecord,
   PresetRecord,
+  WorkspaceSettingsRecord,
   EmailCampaignRecord,
   MerchIdea,
   MockupPromptRecord,
@@ -91,6 +94,7 @@ const REVALIDATE_PATHS = [
   "/campaigns",
   "/presets",
   "/search",
+  "/settings",
 ]
 
 function revalidateAllRoutes() {
@@ -133,6 +137,7 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     emailCampaigns,
     campaigns,
     presets,
+    workspaceSettingsRow,
   ] = await Promise.all([
     getPrompts(),
     getWorkflows(),
@@ -150,7 +155,10 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     getEmailCampaignRecords(),
     getCampaigns(),
     getPresets(),
+    getWorkspaceSettings(),
   ])
+
+  const workspaceSettings = workspaceSettingsRow ? [workspaceSettingsRow] : []
 
   return {
     prompts,
@@ -169,6 +177,7 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     emailCampaigns,
     campaigns,
     presets,
+    workspaceSettings,
   }
 }
 
@@ -229,6 +238,7 @@ async function clearAllBackupTables(): Promise<void> {
   await prisma.emailCampaign.deleteMany()
   await prisma.campaign.deleteMany()
   await prisma.preset.deleteMany()
+  await prisma.workspaceSettings.deleteMany()
 }
 
 async function importBackupData(
@@ -288,6 +298,9 @@ async function importBackupData(
   }
   if (data.presets.length > 0) {
     await importPresets(data.presets as PresetRecord[])
+  }
+  if (data.workspaceSettings.length > 0) {
+    await importWorkspaceSettings(data.workspaceSettings as WorkspaceSettingsRecord[])
   }
 
   revalidateAllRoutes()
