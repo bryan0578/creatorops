@@ -636,6 +636,58 @@ async function searchMockupPrompts(query: string): Promise<GlobalSearchResult[]>
   )
 }
 
+async function searchCampaigns(query: string): Promise<GlobalSearchResult[]> {
+  const rows = await prisma.campaign.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: GLOBAL_SEARCH_FETCH_BATCH,
+  })
+
+  return pushMatches(
+    rows,
+    query,
+    [
+      "campaignName",
+      "campaignType",
+      "status",
+      "priority",
+      "artistName",
+      "songTitle",
+      "productName",
+      "niche",
+      "primaryGoal",
+      "targetAudience",
+      "description",
+      "notes",
+    ],
+    {
+      campaignName: "Campaign name",
+      campaignType: "Campaign type",
+      status: "Status",
+      priority: "Priority",
+      artistName: "Artist",
+      songTitle: "Song",
+      productName: "Product",
+      niche: "Niche",
+      primaryGoal: "Primary goal",
+      targetAudience: "Target audience",
+      description: "Description",
+      notes: "Notes",
+    },
+    (row, matchedFields) =>
+      makeResult(
+        "campaign",
+        row.id as string,
+        row.campaignName as string,
+        [row.campaignType, row.status, row.priority].filter(Boolean).join(" · "),
+        previewText(row.description) || previewText(row.primaryGoal),
+        row.createdAt as Date,
+        row.updatedAt as Date,
+        matchedFields,
+      ),
+    GLOBAL_SEARCH_LIMIT_PER_TYPE,
+  )
+}
+
 async function searchEmailCampaigns(query: string): Promise<GlobalSearchResult[]> {
   const rows = await prisma.emailCampaign.findMany({
     orderBy: { updatedAt: "desc" },
@@ -696,6 +748,7 @@ const SEARCHERS: {
   { type: "analytics", search: searchAnalytics },
   { type: "mockup-prompt", search: searchMockupPrompts },
   { type: "email-campaign", search: searchEmailCampaigns },
+  { type: "campaign", search: searchCampaigns },
 ]
 
 /**

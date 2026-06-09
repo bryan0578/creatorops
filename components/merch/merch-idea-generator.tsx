@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useSearchParams } from "next/navigation"
 import {
   Copy,
   Database,
@@ -27,8 +28,16 @@ import {
   selectedConceptFromMerchIdea,
   type MerchIdeaSelectedConcept,
 } from "@/lib/merch-ideas"
+import {
+  campaignPrefillToastMessage,
+  linkRecordToCampaign,
+  merchIdeaLinkTitle,
+  parseCampaignPrefillContext,
+  shouldSkipCampaignUrlPrefill,
+} from "@/lib/campaign-prefill"
 
 import { ModulePageHeader } from "@/components/app-shell"
+import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import {
   FormSection,
   GENERATOR_WORKFLOW_TABS,
@@ -182,6 +191,8 @@ export function MerchIdeaGenerator() {
     deleteMerchIdea,
     importMerchIdeas,
     reloadMerchIdeas,
+    campaigns,
+    updateCampaign,
   } = useStore()
 
   const [form, setForm] = React.useState<MerchIdeaFormValues>(
@@ -198,6 +209,11 @@ export function MerchIdeaGenerator() {
   )
   const [migrating, setMigrating] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const prefillApplied = React.useRef(false)
+  const searchParams = useSearchParams()
+  const [campaignPrefill, setCampaignPrefill] = React.useState(
+    parseCampaignPrefillContext(searchParams),
+  )
 
   const template = React.useMemo(
     () => getMerchIdeaTemplate(prompts),
@@ -290,10 +306,47 @@ export function MerchIdeaGenerator() {
         setEditingId(idea.id)
         toast.success("Merch idea saved")
       }
+
+      const linked = await linkRecordToCampaign(
+        campaigns,
+        updateCampaign,
+        campaignPrefill.campaignId,
+        "merch-idea",
+        idea.id,
+        merchIdeaLinkTitle(idea),
+        "/merch-ideas",
+      )
+      if (linked) toast.message("Linked to campaign")
     } catch {
       toast.error("Could not save merch idea to database")
     }
   }
+
+  React.useEffect(() => {
+    if (prefillApplied.current || shouldSkipCampaignUrlPrefill(editingId)) return
+
+    const context = parseCampaignPrefillContext(searchParams)
+    if (context.campaignId) setCampaignPrefill(context)
+
+    const niche = searchParams.get("niche")
+    const audience = searchParams.get("audience")
+    const primaryGoal = searchParams.get("primaryGoal")
+    const notes = searchParams.get("notes")
+
+    if (!context.campaignId && !niche && !audience && !primaryGoal && !notes) {
+      return
+    }
+
+    prefillApplied.current = true
+    setForm((prev) => ({
+      ...prev,
+      niche: niche ?? prev.niche,
+      audience: audience ?? prev.audience,
+      primaryGoal: primaryGoal ?? prev.primaryGoal,
+      notes: notes ?? prev.notes,
+    }))
+    toast.success(campaignPrefillToastMessage(context.campaignName))
+  }, [searchParams, editingId])
 
   function openIdea(idea: MerchIdea) {
     const normalized = normalizeMerchIdea(idea)
@@ -392,6 +445,11 @@ export function MerchIdeaGenerator() {
             ) : null}
           </div>
         }
+      />
+
+      <CampaignPrefillBanner
+        campaignId={campaignPrefill.campaignId}
+        campaignName={campaignPrefill.campaignName}
       />
 
       <ModuleWorkflowTabs defaultTab="details" tabs={GENERATOR_WORKFLOW_TABS}>

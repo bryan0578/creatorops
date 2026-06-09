@@ -37,8 +37,16 @@ import {
   YOUTUBE_THUMBNAIL_PROMPT_NAME,
   type YouTubeThumbnailFinalFields,
 } from "@/lib/youtube-thumbnails"
+import {
+  campaignPrefillToastMessage,
+  linkRecordToCampaign,
+  parseCampaignPrefillContext,
+  shouldSkipCampaignUrlPrefill,
+  youtubeThumbnailLinkTitle,
+} from "@/lib/campaign-prefill"
 
 import { ModulePageHeader } from "@/components/app-shell"
+import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import {
   FormSection,
   GENERATOR_WORKFLOW_TABS,
@@ -183,6 +191,8 @@ export function YouTubeThumbnailGenerator() {
     deleteYouTubeThumbnailRecord,
     importYouTubeThumbnailRecords,
     reloadYouTubeThumbnailRecords,
+    campaigns,
+    updateCampaign,
   } = useStore()
 
   const [form, setForm] = React.useState<YouTubeThumbnailFormValues>(
@@ -200,6 +210,9 @@ export function YouTubeThumbnailGenerator() {
   const [migrating, setMigrating] = React.useState(false)
   const prefillApplied = React.useRef(false)
   const searchParams = useSearchParams()
+  const [campaignPrefill, setCampaignPrefill] = React.useState(
+    parseCampaignPrefillContext(searchParams),
+  )
 
   const template = React.useMemo(
     () => getYouTubeThumbnailTemplate(prompts),
@@ -298,6 +311,17 @@ export function YouTubeThumbnailGenerator() {
         setEditingId(record.id)
         toast.success("Thumbnail saved")
       }
+
+      const linked = await linkRecordToCampaign(
+        campaigns,
+        updateCampaign,
+        campaignPrefill.campaignId,
+        "youtube-thumbnail",
+        record.id,
+        youtubeThumbnailLinkTitle(record),
+        `/youtube-thumbnails?recordId=${encodeURIComponent(record.id)}`,
+      )
+      if (linked) toast.message("Linked to campaign")
     } catch {
       toast.error("Could not save thumbnail to database")
     }
@@ -344,20 +368,30 @@ export function YouTubeThumbnailGenerator() {
       }
     }
 
+    if (shouldSkipCampaignUrlPrefill(editingId)) return
+
+    const context = parseCampaignPrefillContext(searchParams)
+    if (context.campaignId) setCampaignPrefill(context)
+
     const artistName = searchParams.get("artistName")
     const trackTitle = searchParams.get("trackTitle")
     const videoTitle = searchParams.get("videoTitle")
     const genre = searchParams.get("genre")
     const mood = searchParams.get("mood")
     const visualTheme = searchParams.get("visualTheme")
+    const targetAudience = searchParams.get("targetAudience")
+    const ctaGoal = searchParams.get("ctaGoal")
 
     if (
+      !context.campaignId &&
       !artistName &&
       !trackTitle &&
       !videoTitle &&
       !genre &&
       !mood &&
-      !visualTheme
+      !visualTheme &&
+      !targetAudience &&
+      !ctaGoal
     ) {
       return
     }
@@ -371,9 +405,15 @@ export function YouTubeThumbnailGenerator() {
       genre: genre ?? prev.genre,
       mood: mood ?? prev.mood,
       visualTheme: visualTheme ?? prev.visualTheme,
+      targetAudience: targetAudience ?? prev.targetAudience,
+      ctaGoal: ctaGoal ?? prev.ctaGoal,
     }))
-    toast.success("Prefilled from artist CRM")
-  }, [searchParams, youtubeThumbnailRecords])
+    toast.success(
+      context.campaignId
+        ? campaignPrefillToastMessage(context.campaignName)
+        : "Prefilled from artist CRM",
+    )
+  }, [searchParams, youtubeThumbnailRecords, editingId])
 
   async function confirmDelete() {
     if (!pendingDelete) return
@@ -464,6 +504,11 @@ export function YouTubeThumbnailGenerator() {
             ) : null}
           </div>
         }
+      />
+
+      <CampaignPrefillBanner
+        campaignId={campaignPrefill.campaignId}
+        campaignName={campaignPrefill.campaignName}
       />
 
       <ModuleWorkflowTabs defaultTab="details" tabs={GENERATOR_WORKFLOW_TABS}>

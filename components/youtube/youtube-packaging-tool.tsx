@@ -30,8 +30,16 @@ import {
   type YouTubePackageFinalFields,
 } from "@/lib/youtube-packaging"
 import { variableToLabel } from "@/lib/prompt-variables"
+import {
+  campaignPrefillToastMessage,
+  linkRecordToCampaign,
+  parseCampaignPrefillContext,
+  shouldSkipCampaignUrlPrefill,
+  youtubePackageLinkTitle,
+} from "@/lib/campaign-prefill"
 
 import { ModulePageHeader } from "@/components/app-shell"
+import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import {
   FormSection,
   GENERATOR_WORKFLOW_TABS,
@@ -140,6 +148,8 @@ export function YouTubePackagingTool() {
     deleteYouTubePackage,
     importYouTubePackages,
     reloadYouTubePackages,
+    campaigns,
+    updateCampaign,
   } = useStore()
 
   const [form, setForm] = React.useState<YouTubePackageFormValues>(
@@ -162,6 +172,9 @@ export function YouTubePackagingTool() {
   const [migrating, setMigrating] = React.useState(false)
   const prefillApplied = React.useRef(false)
   const searchParams = useSearchParams()
+  const [campaignPrefill, setCampaignPrefill] = React.useState(
+    parseCampaignPrefillContext(searchParams),
+  )
 
   const template = React.useMemo(
     () => getYouTubeMetadataTemplate(prompts),
@@ -254,6 +267,19 @@ export function YouTubePackagingTool() {
         setEditingId(pkg.id)
         toast.success("Package saved")
       }
+
+      const linked = await linkRecordToCampaign(
+        campaigns,
+        updateCampaign,
+        campaignPrefill.campaignId,
+        "youtube-package",
+        pkg.id,
+        youtubePackageLinkTitle(pkg),
+        "/youtube-packaging",
+      )
+      if (linked) {
+        toast.message("Linked to campaign")
+      }
     } catch {
       toast.error("Could not save package to database")
     }
@@ -285,7 +311,10 @@ export function YouTubePackagingTool() {
   }
 
   React.useEffect(() => {
-    if (prefillApplied.current) return
+    if (prefillApplied.current || shouldSkipCampaignUrlPrefill(editingId)) return
+
+    const context = parseCampaignPrefillContext(searchParams)
+    if (context.campaignId) setCampaignPrefill(context)
 
     const artistName = searchParams.get("artistName")
     const trackTitle = searchParams.get("trackTitle")
@@ -296,8 +325,11 @@ export function YouTubePackagingTool() {
     const targetListener = searchParams.get("targetListener")
     const releaseDate = searchParams.get("releaseDate")
     const streamingLink = searchParams.get("streamingLink")
+    const primaryGoal = searchParams.get("primaryGoal")
+    const notes = searchParams.get("notes")
 
     if (
+      !context.campaignId &&
       !artistName &&
       !trackTitle &&
       !genre &&
@@ -306,7 +338,9 @@ export function YouTubePackagingTool() {
       !channelName &&
       !targetListener &&
       !releaseDate &&
-      !streamingLink
+      !streamingLink &&
+      !primaryGoal &&
+      !notes
     ) {
       return
     }
@@ -323,9 +357,15 @@ export function YouTubePackagingTool() {
       targetListener: targetListener ?? prev.targetListener,
       releaseDate: releaseDate ?? prev.releaseDate,
       streamingLink: streamingLink ?? prev.streamingLink,
+      primaryGoal: primaryGoal ?? prev.primaryGoal,
+      notes: notes ?? prev.notes,
     }))
-    toast.success("Prefilled from artist CRM")
-  }, [searchParams])
+    toast.success(
+      context.campaignId
+        ? campaignPrefillToastMessage(context.campaignName)
+        : "Prefilled from artist CRM",
+    )
+  }, [searchParams, editingId])
 
   async function confirmDelete() {
     if (!pendingDelete) return
@@ -421,6 +461,11 @@ export function YouTubePackagingTool() {
             ) : null}
           </div>
         }
+      />
+
+      <CampaignPrefillBanner
+        campaignId={campaignPrefill.campaignId}
+        campaignName={campaignPrefill.campaignName}
       />
 
       <ModuleWorkflowTabs defaultTab="details" tabs={GENERATOR_WORKFLOW_TABS}>

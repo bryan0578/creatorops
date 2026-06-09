@@ -31,8 +31,16 @@ import {
   normalizeSocialRepurposingRecord,
   type SocialRepurposingFinalFields,
 } from "@/lib/social-repurposing"
+import {
+  campaignPrefillToastMessage,
+  linkRecordToCampaign,
+  parseCampaignPrefillContext,
+  shouldSkipCampaignUrlPrefill,
+  socialRepurposingLinkTitle,
+} from "@/lib/campaign-prefill"
 
 import { ModulePageHeader } from "@/components/app-shell"
+import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import {
   FormSection,
   GENERATOR_WORKFLOW_TABS,
@@ -185,6 +193,8 @@ export function SocialRepurposingEngine() {
     deleteSocialRepurposingRecord,
     importSocialRepurposingRecords,
     reloadSocialRepurposingRecords,
+    campaigns,
+    updateCampaign,
   } = useStore()
 
   const [form, setForm] = React.useState<SocialRepurposingFormValues>(
@@ -202,6 +212,9 @@ export function SocialRepurposingEngine() {
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const prefillApplied = React.useRef(false)
   const searchParams = useSearchParams()
+  const [campaignPrefill, setCampaignPrefill] = React.useState(
+    parseCampaignPrefillContext(searchParams),
+  )
 
   const template = React.useMemo(
     () => getSocialRepurposingTemplate(prompts),
@@ -298,6 +311,17 @@ export function SocialRepurposingEngine() {
         setEditingId(record.id)
         toast.success("Social content saved")
       }
+
+      const linked = await linkRecordToCampaign(
+        campaigns,
+        updateCampaign,
+        campaignPrefill.campaignId,
+        "social-repurposing",
+        record.id,
+        socialRepurposingLinkTitle(record),
+        "/social-repurposing",
+      )
+      if (linked) toast.message("Linked to campaign")
     } catch {
       toast.error("Could not save social content to database")
     }
@@ -326,20 +350,28 @@ export function SocialRepurposingEngine() {
   }
 
   React.useEffect(() => {
-    if (prefillApplied.current) return
+    if (prefillApplied.current || shouldSkipCampaignUrlPrefill(editingId)) return
+
+    const context = parseCampaignPrefillContext(searchParams)
+    if (context.campaignId) setCampaignPrefill(context)
 
     const campaignName = searchParams.get("campaignName")
     const audience = searchParams.get("audience")
     const tone = searchParams.get("tone")
     const sourceContent = searchParams.get("sourceContent")
     const productOrReleaseLink = searchParams.get("productOrReleaseLink")
+    const businessArea = searchParams.get("businessArea")
+    const goal = searchParams.get("goal")
 
     if (
+      !context.campaignId &&
       !campaignName &&
       !audience &&
       !tone &&
       !sourceContent &&
-      !productOrReleaseLink
+      !productOrReleaseLink &&
+      !businessArea &&
+      !goal
     ) {
       return
     }
@@ -352,9 +384,15 @@ export function SocialRepurposingEngine() {
       tone: tone ?? prev.tone,
       sourceContent: sourceContent ?? prev.sourceContent,
       productOrReleaseLink: productOrReleaseLink ?? prev.productOrReleaseLink,
+      businessArea: businessArea ?? prev.businessArea,
+      goal: goal ?? prev.goal,
     }))
-    toast.success("Prefilled from artist CRM")
-  }, [searchParams])
+    toast.success(
+      context.campaignId
+        ? campaignPrefillToastMessage(context.campaignName)
+        : "Prefilled from artist CRM",
+    )
+  }, [searchParams, editingId])
 
   async function confirmDelete() {
     if (!pendingDelete) return
@@ -440,6 +478,11 @@ export function SocialRepurposingEngine() {
             ) : null}
           </div>
         }
+      />
+
+      <CampaignPrefillBanner
+        campaignId={campaignPrefill.campaignId}
+        campaignName={campaignPrefill.campaignName}
       />
 
       <ModuleWorkflowTabs defaultTab="details" tabs={GENERATOR_WORKFLOW_TABS}>

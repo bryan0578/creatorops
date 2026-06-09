@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useSearchParams } from "next/navigation"
 import {
   Copy,
   Database,
@@ -27,8 +28,16 @@ import {
   normalizeProductListing,
   type ProductListingFinalFields,
 } from "@/lib/product-listings"
+import {
+  campaignPrefillToastMessage,
+  linkRecordToCampaign,
+  parseCampaignPrefillContext,
+  productListingLinkTitle,
+  shouldSkipCampaignUrlPrefill,
+} from "@/lib/campaign-prefill"
 
 import { ModulePageHeader } from "@/components/app-shell"
+import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import {
   FormSection,
   GENERATOR_WORKFLOW_TABS,
@@ -182,6 +191,8 @@ export function ProductListingGenerator() {
     deleteProductListing,
     importProductListings,
     reloadProductListings,
+    campaigns,
+    updateCampaign,
   } = useStore()
 
   const [form, setForm] = React.useState<ProductListingFormValues>(
@@ -197,6 +208,11 @@ export function ProductListingGenerator() {
     React.useState<ProductListing | null>(null)
   const [migrating, setMigrating] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const prefillApplied = React.useRef(false)
+  const searchParams = useSearchParams()
+  const [campaignPrefill, setCampaignPrefill] = React.useState(
+    parseCampaignPrefillContext(searchParams),
+  )
 
   const template = React.useMemo(
     () => getProductListingTemplate(prompts),
@@ -293,10 +309,56 @@ export function ProductListingGenerator() {
         setEditingId(listing.id)
         toast.success("Product listing saved")
       }
+
+      const linked = await linkRecordToCampaign(
+        campaigns,
+        updateCampaign,
+        campaignPrefill.campaignId,
+        "product-listing",
+        listing.id,
+        productListingLinkTitle(listing),
+        "/product-listings",
+      )
+      if (linked) toast.message("Linked to campaign")
     } catch {
       toast.error("Could not save product listing to database")
     }
   }
+
+  React.useEffect(() => {
+    if (prefillApplied.current || shouldSkipCampaignUrlPrefill(editingId)) return
+
+    const context = parseCampaignPrefillContext(searchParams)
+    if (context.campaignId) setCampaignPrefill(context)
+
+    const niche = searchParams.get("niche")
+    const audience = searchParams.get("audience")
+    const designConcept = searchParams.get("designConcept")
+    const primaryKeyword = searchParams.get("primaryKeyword")
+    const notes = searchParams.get("notes")
+
+    if (
+      !context.campaignId &&
+      !niche &&
+      !audience &&
+      !designConcept &&
+      !primaryKeyword &&
+      !notes
+    ) {
+      return
+    }
+
+    prefillApplied.current = true
+    setForm((prev) => ({
+      ...prev,
+      niche: niche ?? prev.niche,
+      audience: audience ?? prev.audience,
+      designConcept: designConcept ?? prev.designConcept,
+      primaryKeyword: primaryKeyword ?? prev.primaryKeyword,
+      notes: notes ?? prev.notes,
+    }))
+    toast.success(campaignPrefillToastMessage(context.campaignName))
+  }, [searchParams, editingId])
 
   function openListing(listing: ProductListing) {
     const normalized = normalizeProductListing(listing)
@@ -397,6 +459,11 @@ export function ProductListingGenerator() {
             ) : null}
           </div>
         }
+      />
+
+      <CampaignPrefillBanner
+        campaignId={campaignPrefill.campaignId}
+        campaignName={campaignPrefill.campaignName}
       />
 
       <ModuleWorkflowTabs defaultTab="details" tabs={GENERATOR_WORKFLOW_TABS}>

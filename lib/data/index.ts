@@ -116,3 +116,10 @@ export {
   workflowToPrismaCreate,
   workflowToPrismaUpdate,
 } from "@/lib/data/workflows"
+
+export {
+  normalizeCampaignRecord,
+  prismaCampaignToCampaignRecord,
+  campaignToPrismaCreate,
+  campaignToPrismaUpdate,
+} from "@/lib/data/campaigns"

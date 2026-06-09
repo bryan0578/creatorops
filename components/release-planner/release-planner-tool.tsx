@@ -28,8 +28,16 @@ import {
   normalizeReleasePlan,
   type ReleasePlanFinalFields,
 } from "@/lib/release-planner"
+import {
+  campaignPrefillToastMessage,
+  linkRecordToCampaign,
+  parseCampaignPrefillContext,
+  releasePlanLinkTitle,
+  shouldSkipCampaignUrlPrefill,
+} from "@/lib/campaign-prefill"
 
 import { ModulePageHeader } from "@/components/app-shell"
+import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import {
   FormSection,
   GENERATOR_WORKFLOW_TABS,
@@ -202,6 +210,8 @@ export function ReleasePlannerTool() {
     deleteReleasePlan,
     importReleasePlans,
     reloadReleasePlans,
+    campaigns,
+    updateCampaign,
   } = useStore()
 
   const [form, setForm] = React.useState<ReleasePlanFormValues>(
@@ -221,6 +231,9 @@ export function ReleasePlannerTool() {
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const prefillApplied = React.useRef(false)
   const searchParams = useSearchParams()
+  const [campaignPrefill, setCampaignPrefill] = React.useState(
+    parseCampaignPrefillContext(searchParams),
+  )
 
   const template = React.useMemo(
     () => getReleasePlannerTemplate(prompts),
@@ -314,6 +327,17 @@ export function ReleasePlannerTool() {
         setEditingId(plan.id)
         toast.success("Release plan saved")
       }
+
+      const linked = await linkRecordToCampaign(
+        campaigns,
+        updateCampaign,
+        campaignPrefill.campaignId,
+        "release-plan",
+        plan.id,
+        releasePlanLinkTitle(plan),
+        "/release-planner",
+      )
+      if (linked) toast.message("Linked to campaign")
     } catch {
       toast.error("Could not save release plan to database")
     }
@@ -343,7 +367,10 @@ export function ReleasePlannerTool() {
   }
 
   React.useEffect(() => {
-    if (prefillApplied.current) return
+    if (prefillApplied.current || shouldSkipCampaignUrlPrefill(editingId)) return
+
+    const context = parseCampaignPrefillContext(searchParams)
+    if (context.campaignId) setCampaignPrefill(context)
 
     const artistName = searchParams.get("artistName")
     const songTitle = searchParams.get("songTitle")
@@ -353,8 +380,11 @@ export function ReleasePlannerTool() {
     const targetAudience = searchParams.get("targetAudience")
     const youtubeChannel = searchParams.get("youtubeChannel")
     const releaseDate = searchParams.get("releaseDate")
+    const primaryGoal = searchParams.get("primaryGoal")
+    const notes = searchParams.get("notes")
 
     if (
+      !context.campaignId &&
       !artistName &&
       !songTitle &&
       !genre &&
@@ -362,7 +392,9 @@ export function ReleasePlannerTool() {
       !visualTheme &&
       !targetAudience &&
       !youtubeChannel &&
-      !releaseDate
+      !releaseDate &&
+      !primaryGoal &&
+      !notes
     ) {
       return
     }
@@ -378,9 +410,15 @@ export function ReleasePlannerTool() {
       targetAudience: targetAudience ?? prev.targetAudience,
       youtubeChannel: youtubeChannel ?? prev.youtubeChannel,
       releaseDate: releaseDate ?? prev.releaseDate,
+      primaryGoal: primaryGoal ?? prev.primaryGoal,
+      notes: notes ?? prev.notes,
     }))
-    toast.success("Prefilled from artist CRM")
-  }, [searchParams])
+    toast.success(
+      context.campaignId
+        ? campaignPrefillToastMessage(context.campaignName)
+        : "Prefilled from artist CRM",
+    )
+  }, [searchParams, editingId])
 
   async function confirmDelete() {
     if (!pendingDelete) return
@@ -466,6 +504,11 @@ export function ReleasePlannerTool() {
             ) : null}
           </div>
         }
+      />
+
+      <CampaignPrefillBanner
+        campaignId={campaignPrefill.campaignId}
+        campaignName={campaignPrefill.campaignName}
       />
 
       <ModuleWorkflowTabs defaultTab="details" tabs={GENERATOR_WORKFLOW_TABS}>

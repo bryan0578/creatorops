@@ -18,6 +18,7 @@ import {
   Shirt,
   ShoppingBag,
   HardDrive,
+  Megaphone,
   Star,
   Users,
   Video,
@@ -85,6 +86,7 @@ export function DashboardHome() {
     analyticsRecords,
     mockupPromptRecords,
     emailCampaignRecords,
+    campaigns,
     artistRecords,
     youtubeThumbnailRecords,
     addPrompt,
@@ -117,6 +119,13 @@ export function DashboardHome() {
   const recentWorkflows = React.useMemo(
     () => [...workflows].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 4),
     [workflows],
+  )
+
+  const activeCampaigns = React.useMemo(
+    () =>
+      campaigns.filter((c) => c.status === "Active" || c.status === "Planning")
+        .length,
+    [campaigns],
   )
 
   return (
@@ -155,6 +164,10 @@ export function DashboardHome() {
             <Link href="/backups" className={buttonVariants({ variant: "outline" })}>
               <HardDrive className="size-4" />
               Backup Center
+            </Link>
+            <Link href="/campaigns" className={buttonVariants({ variant: "outline" })}>
+              <Megaphone className="size-4" />
+              Campaigns
             </Link>
           </div>
         }
@@ -197,6 +210,22 @@ export function DashboardHome() {
               <div className="text-2xl font-semibold tracking-tight">Export</div>
               <p className="mt-1 text-xs text-muted-foreground text-pretty">
                 Full backup and per-module JSON import/export
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/campaigns" className="block transition-opacity hover:opacity-90">
+          <Card className="h-full border-border/80 shadow-sm">
+            <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
+              <CardDescription>Campaigns</CardDescription>
+              <Megaphone className="size-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-semibold tracking-tight">
+                {activeCampaigns}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground text-pretty">
+                {campaigns.length} total launch campaigns
               </p>
             </CardContent>
           </Card>

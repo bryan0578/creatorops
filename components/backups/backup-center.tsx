@@ -141,6 +141,7 @@ export function BackupCenter() {
       store.reloadAnalyticsRecords(),
       store.reloadMockupPromptRecords(),
       store.reloadEmailCampaignRecords(),
+      store.reloadCampaigns(),
     ])
   }
 
@@ -253,8 +254,8 @@ export function BackupCenter() {
         />
         <SummaryCard
           label="Modules included"
-          value={summary?.modulesIncluded ?? 14}
-          hint="Prompts through email campaigns"
+          value={summary?.modulesIncluded ?? 15}
+          hint="Prompts through campaigns"
           icon={HardDrive}
         />
         <SummaryCard

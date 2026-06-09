@@ -1125,3 +1125,148 @@ export interface YouTubeThumbnailFormValues {
   ctaGoal: string
   notes: string
 }
+
+export type CampaignBuilderType =
+  | "Music Release"
+  | "YouTube Video"
+  | "Merch Drop"
+  | "Product Launch"
+  | "Digital Product Launch"
+  | "Email Campaign"
+  | "Social Campaign"
+  | "Artist Campaign"
+  | "Label Campaign"
+  | "Content Campaign"
+  | "Other"
+
+export const CAMPAIGN_BUILDER_TYPES: CampaignBuilderType[] = [
+  "Music Release",
+  "YouTube Video",
+  "Merch Drop",
+  "Product Launch",
+  "Digital Product Launch",
+  "Email Campaign",
+  "Social Campaign",
+  "Artist Campaign",
+  "Label Campaign",
+  "Content Campaign",
+  "Other",
+]
+
+export type CampaignBuilderStatus =
+  | "Idea"
+  | "Planning"
+  | "Active"
+  | "Launched"
+  | "Reviewing"
+  | "Complete"
+  | "Archived"
+
+export const CAMPAIGN_BUILDER_STATUSES: CampaignBuilderStatus[] = [
+  "Idea",
+  "Planning",
+  "Active",
+  "Launched",
+  "Reviewing",
+  "Complete",
+  "Archived",
+]
+
+export type CampaignPriority = "Low" | "Medium" | "High" | "Urgent"
+
+export const CAMPAIGN_PRIORITIES: CampaignPriority[] = [
+  "Low",
+  "Medium",
+  "High",
+  "Urgent",
+]
+
+export type CampaignTaskStatus = "To Do" | "In Progress" | "Done" | "Skipped"
+
+export const CAMPAIGN_TASK_STATUSES: CampaignTaskStatus[] = [
+  "To Do",
+  "In Progress",
+  "Done",
+  "Skipped",
+]
+
+export type CampaignLinkedRecordType =
+  | "release-plan"
+  | "youtube-package"
+  | "youtube-thumbnail"
+  | "social-repurposing"
+  | "merch-idea"
+  | "product-listing"
+  | "mockup-prompt"
+  | "email-campaign"
+  | "analytics"
+  | "artist"
+  | "workflow"
+  | "workflow-run"
+  | "prompt-run"
+
+export interface CampaignLinkedRecord {
+  id: string
+  type: CampaignLinkedRecordType
+  title: string
+  href: string
+  notes: string
+}
+
+export interface CampaignTask {
+  id: string
+  title: string
+  description: string
+  status: CampaignTaskStatus
+  dueDate: string
+  relatedRecordType: CampaignLinkedRecordType | ""
+  relatedRecordId: string
+  order: number
+}
+
+export interface CampaignRecord {
+  id: string
+  campaignName: string
+  campaignType: string
+  status: string
+  priority: string
+  artistName: string
+  songTitle: string
+  productName: string
+  niche: string
+  primaryGoal: string
+  targetAudience: string
+  startDate: string
+  launchDate: string
+  endDate: string
+  description: string
+  notes: string
+  lessonsLearned: string
+  whatWorked: string
+  whatToImprove: string
+  linkedRecords: CampaignLinkedRecord[]
+  tasks: CampaignTask[]
+  createdAt: number
+  updatedAt: number
+}
+
+export interface CampaignFormValues {
+  campaignName: string
+  campaignType: string
+  status: string
+  priority: string
+  artistName: string
+  songTitle: string
+  productName: string
+  niche: string
+  primaryGoal: string
+  targetAudience: string
+  startDate: string
+  launchDate: string
+  endDate: string
+  description: string
+  notes: string
+  lessonsLearned: string
+  whatWorked: string
+  whatToImprove: string
+}

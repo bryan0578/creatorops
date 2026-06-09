@@ -1,6 +1,7 @@
 import type {
   AnalyticsRecord,
   ArtistRecord,
+  CampaignRecord,
   EmailCampaignRecord,
   MerchIdea,
   MockupPromptRecord,
@@ -14,6 +15,7 @@ import type {
   YouTubePackage,
   YouTubeThumbnailRecord,
 } from "@/lib/types"
+import { normalizeCampaignRecord } from "@/lib/campaigns"
 import { normalizeAnalyticsRecord } from "@/lib/analytics-tracker"
 import { normalizeArtistRecord } from "@/lib/artist-crm"
 import { normalizeEmailCampaignRecord } from "@/lib/email-campaigns"
@@ -40,6 +42,7 @@ export const MOCKUP_PROMPTS_KEY = "creatorops:mockup-prompts"
 export const EMAIL_CAMPAIGNS_KEY = "creatorops:email-campaigns"
 export const ARTIST_CRM_KEY = "creatorops:artist-crm"
 export const YOUTUBE_THUMBNAILS_KEY = "creatorops:youtube-thumbnails"
+export const CAMPAIGNS_KEY = "creatorops:campaigns"
 
 export function loadPrompts(): Prompt[] {
   if (typeof window === "undefined") return SEED_PROMPTS
@@ -385,6 +388,28 @@ export function saveYouTubeThumbnailRecords(
 ): void {
   if (typeof window === "undefined") return
   localStorage.setItem(YOUTUBE_THUMBNAILS_KEY, JSON.stringify(records))
+}
+
+export function loadCampaigns(): CampaignRecord[] {
+  if (typeof window === "undefined") return []
+  try {
+    const raw = localStorage.getItem(CAMPAIGNS_KEY)
+    const parsed = raw ? (JSON.parse(raw) as Partial<CampaignRecord>[]) : []
+    return parsed.map((record) =>
+      normalizeCampaignRecord(record as Partial<CampaignRecord> & { id: string }),
+    )
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Legacy localStorage persistence for campaigns.
+ * Campaign Builder now reads/writes SQLite via server actions.
+ */
+export function saveCampaigns(records: CampaignRecord[]): void {
+  if (typeof window === "undefined") return
+  localStorage.setItem(CAMPAIGNS_KEY, JSON.stringify(records))
 }
 
 export function mergeById<T extends { id: string }>(existing: T[], incoming: T[]): T[] {

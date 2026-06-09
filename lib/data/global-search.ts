@@ -28,6 +28,7 @@ export type GlobalSearchResultType =
   | "analytics"
   | "mockup-prompt"
   | "email-campaign"
+  | "campaign"
 
 export interface GlobalSearchResult {
   id: string
@@ -123,6 +124,11 @@ export const GLOBAL_SEARCH_TYPE_META: Record<
     category: "marketing",
     href: "/email-campaigns",
   },
+  campaign: {
+    typeLabel: "Campaign",
+    category: "operations",
+    href: "/campaigns",
+  },
 }
 
 export function normalizeSearchQuery(raw: string): string {
@@ -179,6 +185,13 @@ export function buildResultHref(
       href: `/runner?promptId=${encodeURIComponent(id)}`,
       directOpen: true,
       openNote: "Opens in Prompt Runner with this prompt selected.",
+    }
+  }
+
+  if (type === "campaign") {
+    return {
+      href: `${base}?recordId=${encodeURIComponent(id)}`,
+      directOpen: true,
     }
   }
 

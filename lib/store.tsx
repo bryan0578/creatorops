@@ -4,6 +4,7 @@ import * as React from "react"
 import type {
   AnalyticsRecord,
   ArtistRecord,
+  CampaignRecord,
   EmailCampaignRecord,
   MerchIdea,
   MockupPromptRecord,
@@ -20,6 +21,7 @@ import type {
 import {
   loadAnalyticsRecords,
   loadArtistRecords,
+  loadCampaigns,
   loadEmailCampaignRecords,
   loadMerchIdeas,
   loadMockupPromptRecords,
@@ -33,6 +35,12 @@ import {
   loadYouTubePackages,
   loadYouTubeThumbnailRecords,
 } from "@/lib/storage"
+import {
+  deleteCampaignById,
+  getCampaigns,
+  importCampaigns as importCampaignsToDb,
+  upsertCampaign,
+} from "@/lib/actions/campaigns"
 import {
   deleteEmailCampaignRecordById,
   getEmailCampaignRecords,
@@ -133,6 +141,7 @@ interface StoreContextValue {
   analyticsRecords: AnalyticsRecord[]
   mockupPromptRecords: MockupPromptRecord[]
   emailCampaignRecords: EmailCampaignRecord[]
+  campaigns: CampaignRecord[]
   artistRecords: ArtistRecord[]
   youtubeThumbnailRecords: YouTubeThumbnailRecord[]
   hydrated: boolean
@@ -150,6 +159,7 @@ interface StoreContextValue {
   analyticsRecordsUseDatabase: boolean
   mockupPromptRecordsUseDatabase: boolean
   emailCampaignRecordsUseDatabase: boolean
+  campaignsUseDatabase: boolean
   addPrompt: (p: Prompt) => Promise<void>
   updatePrompt: (p: Prompt) => Promise<void>
   deletePrompt: (id: string) => Promise<void>
@@ -211,6 +221,11 @@ interface StoreContextValue {
   deleteEmailCampaignRecord: (id: string) => Promise<void>
   importEmailCampaignRecords: (items: EmailCampaignRecord[]) => Promise<void>
   reloadEmailCampaignRecords: () => Promise<void>
+  addCampaign: (record: CampaignRecord) => Promise<void>
+  updateCampaign: (record: CampaignRecord) => Promise<void>
+  deleteCampaign: (id: string) => Promise<void>
+  importCampaigns: (items: CampaignRecord[]) => Promise<void>
+  reloadCampaigns: () => Promise<void>
   addArtistRecord: (record: ArtistRecord) => Promise<void>
   updateArtistRecord: (record: ArtistRecord) => Promise<void>
   deleteArtistRecord: (id: string) => Promise<void>
@@ -256,6 +271,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [emailCampaignRecords, setEmailCampaignRecords] = React.useState<
     EmailCampaignRecord[]
   >([])
+  const [campaigns, setCampaigns] = React.useState<CampaignRecord[]>([])
   const [artistRecords, setArtistRecords] = React.useState<ArtistRecord[]>([])
   const [youtubeThumbnailRecords, setYoutubeThumbnailRecords] = React.useState<
     YouTubeThumbnailRecord[]
@@ -286,6 +302,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     React.useState(true)
   const [emailCampaignRecordsUseDatabase, setEmailCampaignRecordsUseDatabase] =
     React.useState(true)
+  const [campaignsUseDatabase, setCampaignsUseDatabase] = React.useState(true)
 
   const reloadPrompts = React.useCallback(async () => {
     const next = await getPrompts()
@@ -497,6 +514,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       )
       setEmailCampaignRecords(loadEmailCampaignRecords())
       setEmailCampaignRecordsUseDatabase(false)
+      throw error
+    }
+  }, [])
+
+  const reloadCampaigns = React.useCallback(async () => {
+    try {
+      const next = await getCampaigns()
+      setCampaigns(next)
+      setCampaignsUseDatabase(true)
+    } catch (error) {
+      console.error(
+        "[CreatorOps] Failed to reload campaigns from database; using localStorage.",
+        error,
+      )
+      setCampaigns(loadCampaigns())
+      setCampaignsUseDatabase(false)
       throw error
     }
   }, [])
@@ -728,6 +761,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (!cancelled) {
           setEmailCampaignRecords(loadEmailCampaignRecords())
           setEmailCampaignRecordsUseDatabase(false)
+        }
+      }
+
+      if (cancelled) return
+
+      try {
+        const dbCampaigns = await getCampaigns()
+        if (!cancelled) {
+          setCampaigns(dbCampaigns)
+          setCampaignsUseDatabase(true)
+        }
+      } catch (error) {
+        console.error(
+          "[CreatorOps] Failed to load campaigns from database; using localStorage.",
+          error,
+        )
+        if (!cancelled) {
+          setCampaigns(loadCampaigns())
+          setCampaignsUseDatabase(false)
         }
       }
 
@@ -1126,6 +1178,30 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [],
   )
 
+  const addCampaign = React.useCallback(async (record: CampaignRecord) => {
+    const saved = await upsertCampaign(record)
+    setCampaigns((prev) => [saved, ...prev.filter((x) => x.id !== saved.id)])
+    setCampaignsUseDatabase(true)
+  }, [])
+
+  const updateCampaign = React.useCallback(async (record: CampaignRecord) => {
+    const saved = await upsertCampaign(record)
+    setCampaigns((prev) => prev.map((x) => (x.id === saved.id ? saved : x)))
+    setCampaignsUseDatabase(true)
+  }, [])
+
+  const deleteCampaign = React.useCallback(async (id: string) => {
+    await deleteCampaignById(id)
+    setCampaigns((prev) => prev.filter((x) => x.id !== id))
+    setCampaignsUseDatabase(true)
+  }, [])
+
+  const importCampaigns = React.useCallback(async (items: CampaignRecord[]) => {
+    const merged = await importCampaignsToDb(items)
+    setCampaigns(merged)
+    setCampaignsUseDatabase(true)
+  }, [])
+
   const addArtistRecord = React.useCallback(async (record: ArtistRecord) => {
     const saved = await upsertArtist(record)
     setArtistRecords((prev) => [saved, ...prev.filter((x) => x.id !== saved.id)])
@@ -1201,6 +1277,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     analyticsRecords,
     mockupPromptRecords,
     emailCampaignRecords,
+    campaigns,
     artistRecords,
     youtubeThumbnailRecords,
     hydrated,
@@ -1218,6 +1295,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     analyticsRecordsUseDatabase,
     mockupPromptRecordsUseDatabase,
     emailCampaignRecordsUseDatabase,
+    campaignsUseDatabase,
     addPrompt,
     updatePrompt,
     deletePrompt,
@@ -1279,6 +1357,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     deleteEmailCampaignRecord,
     importEmailCampaignRecords,
     reloadEmailCampaignRecords,
+    addCampaign,
+    updateCampaign,
+    deleteCampaign,
+    importCampaigns,
+    reloadCampaigns,
     addArtistRecord,
     updateArtistRecord,
     deleteArtistRecord,

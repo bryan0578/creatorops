@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useSearchParams } from "next/navigation"
 import {
   Copy,
   Database,
@@ -31,8 +32,16 @@ import {
   normalizeMockupPromptRecord,
   type MockupPromptFinalFields,
 } from "@/lib/mockup-prompts"
+import {
+  campaignPrefillToastMessage,
+  linkRecordToCampaign,
+  mockupPromptLinkTitle,
+  parseCampaignPrefillContext,
+  shouldSkipCampaignUrlPrefill,
+} from "@/lib/campaign-prefill"
 
 import { ModulePageHeader } from "@/components/app-shell"
+import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import {
   FormSection,
   GENERATOR_WORKFLOW_TABS,
@@ -177,6 +186,8 @@ export function MockupPromptGenerator() {
     deleteMockupPromptRecord,
     importMockupPromptRecords,
     reloadMockupPromptRecords,
+    campaigns,
+    updateCampaign,
   } = useStore()
 
   const [form, setForm] = React.useState<MockupPromptFormValues>(
@@ -193,6 +204,11 @@ export function MockupPromptGenerator() {
     React.useState<MockupPromptRecord | null>(null)
   const [migrating, setMigrating] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const prefillApplied = React.useRef(false)
+  const searchParams = useSearchParams()
+  const [campaignPrefill, setCampaignPrefill] = React.useState(
+    parseCampaignPrefillContext(searchParams),
+  )
 
   const template = React.useMemo(
     () => getMockupPromptTemplate(prompts),
@@ -288,10 +304,56 @@ export function MockupPromptGenerator() {
         setEditingId(record.id)
         toast.success("Mockup prompt saved")
       }
+
+      const linked = await linkRecordToCampaign(
+        campaigns,
+        updateCampaign,
+        campaignPrefill.campaignId,
+        "mockup-prompt",
+        record.id,
+        mockupPromptLinkTitle(record),
+        "/mockup-prompts",
+      )
+      if (linked) toast.message("Linked to campaign")
     } catch {
       toast.error("Could not save mockup prompt to database")
     }
   }
+
+  React.useEffect(() => {
+    if (prefillApplied.current || shouldSkipCampaignUrlPrefill(editingId)) return
+
+    const context = parseCampaignPrefillContext(searchParams)
+    if (context.campaignId) setCampaignPrefill(context)
+
+    const projectName = searchParams.get("projectName")
+    const niche = searchParams.get("niche")
+    const audience = searchParams.get("audience")
+    const designConcept = searchParams.get("designConcept")
+    const notes = searchParams.get("notes")
+
+    if (
+      !context.campaignId &&
+      !projectName &&
+      !niche &&
+      !audience &&
+      !designConcept &&
+      !notes
+    ) {
+      return
+    }
+
+    prefillApplied.current = true
+    setForm((prev) => ({
+      ...prev,
+      projectName: projectName ?? prev.projectName,
+      niche: niche ?? prev.niche,
+      audience: audience ?? prev.audience,
+      designConcept: designConcept ?? prev.designConcept,
+      notes: notes ?? prev.notes,
+    }))
+    toast.success(campaignPrefillToastMessage(context.campaignName))
+  }, [searchParams, editingId])
 
   function openRecord(record: MockupPromptRecord) {
     const normalized = normalizeMockupPromptRecord(record)
@@ -403,6 +465,11 @@ export function MockupPromptGenerator() {
             ) : null}
           </div>
         }
+      />
+
+      <CampaignPrefillBanner
+        campaignId={campaignPrefill.campaignId}
+        campaignName={campaignPrefill.campaignName}
       />
 
       <ModuleWorkflowTabs defaultTab="details" tabs={GENERATOR_WORKFLOW_TABS}>

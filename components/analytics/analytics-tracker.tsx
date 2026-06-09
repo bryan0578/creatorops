@@ -32,8 +32,16 @@ import {
   sortAnalyticsRecords,
   type AnalyticsSortKey,
 } from "@/lib/analytics-tracker"
+import {
+  analyticsLinkTitle,
+  campaignPrefillToastMessage,
+  linkRecordToCampaign,
+  parseCampaignPrefillContext,
+  shouldSkipCampaignUrlPrefill,
+} from "@/lib/campaign-prefill"
 
 import { ModulePageHeader } from "@/components/app-shell"
+import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import {
   ANALYTICS_WORKFLOW_TABS,
   ModuleTabPanel,
@@ -188,6 +196,8 @@ export function AnalyticsTracker() {
     deleteAnalyticsRecord,
     importAnalyticsRecords,
     reloadAnalyticsRecords,
+    campaigns,
+    updateCampaign,
   } = useStore()
 
   const [form, setForm] = React.useState<AnalyticsFormState>(
@@ -208,6 +218,9 @@ export function AnalyticsTracker() {
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const prefillApplied = React.useRef(false)
   const searchParams = useSearchParams()
+  const [campaignPrefill, setCampaignPrefill] = React.useState(
+    parseCampaignPrefillContext(searchParams),
+  )
 
   const summary = React.useMemo(
     () => computeAnalyticsSummary(analyticsRecords),
@@ -285,22 +298,32 @@ export function AnalyticsTracker() {
   }
 
   React.useEffect(() => {
-    if (prefillApplied.current) return
+    if (prefillApplied.current || shouldSkipCampaignUrlPrefill(editingId)) return
+
+    const context = parseCampaignPrefillContext(searchParams)
+    if (context.campaignId) setCampaignPrefill(context)
 
     const relatedArtist = searchParams.get("relatedArtist")
     const relatedSong = searchParams.get("relatedSong")
+    const relatedCampaign = searchParams.get("relatedCampaign")
     const itemName = searchParams.get("itemName")
     const genre = searchParams.get("genre")
     const mood = searchParams.get("mood")
     const url = searchParams.get("url")
+    const niche = searchParams.get("niche")
+    const publishDate = searchParams.get("publishDate")
 
     if (
+      !context.campaignId &&
       !relatedArtist &&
       !relatedSong &&
+      !relatedCampaign &&
       !itemName &&
       !genre &&
       !mood &&
-      !url
+      !url &&
+      !niche &&
+      !publishDate
     ) {
       return
     }
@@ -310,13 +333,20 @@ export function AnalyticsTracker() {
       ...prev,
       relatedArtist: relatedArtist ?? prev.relatedArtist,
       relatedSong: relatedSong ?? prev.relatedSong,
+      relatedCampaign: relatedCampaign ?? prev.relatedCampaign,
       itemName: itemName ?? prev.itemName,
       genre: genre ?? prev.genre,
       mood: mood ?? prev.mood,
       url: url ?? prev.url,
+      niche: niche ?? prev.niche,
+      publishDate: publishDate ?? prev.publishDate,
     }))
-    toast.success("Prefilled from artist CRM")
-  }, [searchParams])
+    toast.success(
+      context.campaignId
+        ? campaignPrefillToastMessage(context.campaignName)
+        : "Prefilled from artist CRM",
+    )
+  }, [searchParams, editingId])
 
   async function handleSave() {
     const now = Date.now()
@@ -338,6 +368,17 @@ export function AnalyticsTracker() {
         setEditingId(record.id)
         toast.success("Analytics record saved")
       }
+
+      const linked = await linkRecordToCampaign(
+        campaigns,
+        updateCampaign,
+        campaignPrefill.campaignId,
+        "analytics",
+        record.id,
+        analyticsLinkTitle(record),
+        "/analytics",
+      )
+      if (linked) toast.message("Linked to campaign")
     } catch {
       toast.error("Could not save analytics record to database")
     }
@@ -471,6 +512,11 @@ export function AnalyticsTracker() {
             ) : null}
           </div>
         }
+      />
+
+      <CampaignPrefillBanner
+        campaignId={campaignPrefill.campaignId}
+        campaignName={campaignPrefill.campaignName}
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

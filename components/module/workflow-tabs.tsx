@@ -30,6 +30,15 @@ export const ARTIST_CRM_WORKFLOW_TABS = [
   { value: "saved", label: "Saved Artists" },
 ] as const
 
+export const CAMPAIGN_BUILDER_TABS = [
+  { value: "overview", label: "Overview" },
+  { value: "linked", label: "Linked Records" },
+  { value: "tasks", label: "Tasks" },
+  { value: "timeline", label: "Timeline" },
+  { value: "notes", label: "Notes" },
+  { value: "saved", label: "Saved Campaigns" },
+] as const
+
 export function ModuleWorkflowTabs({
   defaultTab,
   tabs,

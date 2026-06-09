@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useSearchParams } from "next/navigation"
 import {
   Copy,
   Database,
@@ -32,8 +33,16 @@ import {
   EMAIL_CAMPAIGN_PROMPT_NAME,
   type EmailCampaignFinalFields,
 } from "@/lib/email-campaigns"
+import {
+  campaignPrefillToastMessage,
+  emailCampaignLinkTitle,
+  linkRecordToCampaign,
+  parseCampaignPrefillContext,
+  shouldSkipCampaignUrlPrefill,
+} from "@/lib/campaign-prefill"
 
 import { ModulePageHeader } from "@/components/app-shell"
+import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import {
   FormSection,
   GENERATOR_WORKFLOW_TABS,
@@ -167,6 +176,8 @@ export function EmailCampaignGenerator() {
     deleteEmailCampaignRecord,
     importEmailCampaignRecords,
     reloadEmailCampaignRecords,
+    campaigns,
+    updateCampaign,
   } = useStore()
 
   const [form, setForm] = React.useState<EmailCampaignFormValues>(
@@ -183,6 +194,11 @@ export function EmailCampaignGenerator() {
   const [pendingDelete, setPendingDelete] =
     React.useState<EmailCampaignRecord | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const prefillApplied = React.useRef(false)
+  const searchParams = useSearchParams()
+  const [campaignPrefill, setCampaignPrefill] = React.useState(
+    parseCampaignPrefillContext(searchParams),
+  )
 
   const template = React.useMemo(
     () => getEmailCampaignTemplate(prompts),
@@ -280,10 +296,59 @@ export function EmailCampaignGenerator() {
         setEditingId(record.id)
         toast.success("Email campaign saved")
       }
+
+      const linked = await linkRecordToCampaign(
+        campaigns,
+        updateCampaign,
+        campaignPrefill.campaignId,
+        "email-campaign",
+        record.id,
+        emailCampaignLinkTitle(record),
+        "/email-campaigns",
+      )
+      if (linked) toast.message("Linked to campaign")
     } catch {
       toast.error("Could not save email campaign to database")
     }
   }
+
+  React.useEffect(() => {
+    if (prefillApplied.current || shouldSkipCampaignUrlPrefill(editingId)) return
+
+    const context = parseCampaignPrefillContext(searchParams)
+    if (context.campaignId) setCampaignPrefill(context)
+
+    const campaignName = searchParams.get("campaignName")
+    const campaignType = searchParams.get("campaignType")
+    const productOrReleaseName = searchParams.get("productOrReleaseName")
+    const audience = searchParams.get("audience")
+    const callToAction = searchParams.get("callToAction")
+    const notes = searchParams.get("notes")
+
+    if (
+      !context.campaignId &&
+      !campaignName &&
+      !campaignType &&
+      !productOrReleaseName &&
+      !audience &&
+      !callToAction &&
+      !notes
+    ) {
+      return
+    }
+
+    prefillApplied.current = true
+    setForm((prev) => ({
+      ...prev,
+      campaignName: campaignName ?? prev.campaignName,
+      campaignType: campaignType ?? prev.campaignType,
+      productOrReleaseName: productOrReleaseName ?? prev.productOrReleaseName,
+      audience: audience ?? prev.audience,
+      callToAction: callToAction ?? prev.callToAction,
+      notes: notes ?? prev.notes,
+    }))
+    toast.success(campaignPrefillToastMessage(context.campaignName))
+  }, [searchParams, editingId])
 
   function openRecord(record: EmailCampaignRecord) {
     const normalized = normalizeEmailCampaignRecord(record)
@@ -386,6 +451,11 @@ export function EmailCampaignGenerator() {
             ) : null}
           </div>
         }
+      />
+
+      <CampaignPrefillBanner
+        campaignId={campaignPrefill.campaignId}
+        campaignName={campaignPrefill.campaignName}
       />
 
       <ModuleWorkflowTabs defaultTab="details" tabs={GENERATOR_WORKFLOW_TABS}>

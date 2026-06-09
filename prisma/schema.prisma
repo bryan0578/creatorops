@@ -556,3 +556,42 @@ model EmailCampaign {
   @@index([senderName])
   @@index([updatedAt])
 }
+
+/// Campaign Builder — central launch hub linking records across CreatorOps modules.
+model Campaign {
+  id             String   @id
+  campaignName   String   @default("")
+  campaignType   String   @default("")
+  status         String   @default("Idea")
+  priority       String   @default("Medium")
+  artistName     String   @default("")
+  songTitle      String   @default("")
+  productName    String   @default("")
+  niche          String   @default("")
+  primaryGoal    String   @default("")
+  targetAudience String   @default("")
+  startDate      String   @default("")
+  launchDate     String   @default("")
+  endDate        String   @default("")
+  description    String   @default("")
+  notes          String   @default("")
+  lessonsLearned String   @default("")
+  whatWorked     String   @default("")
+  whatToImprove  String   @default("")
+  /// JSON CampaignLinkedRecord[]
+  linkedRecords  String   @default("[]")
+  /// JSON CampaignTask[]
+  tasks          String   @default("[]")
+  createdAt      DateTime
+  updatedAt      DateTime
+
+  @@index([campaignName])
+  @@index([campaignType])
+  @@index([status])
+  @@index([priority])
+  @@index([artistName])
+  @@index([songTitle])
+  @@index([productName])
+  @@index([niche])
+  @@index([updatedAt])
+}
