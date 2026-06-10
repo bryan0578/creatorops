@@ -4,10 +4,17 @@ import {
   type CampaignRelatedRecordsBundle,
   resolveCampaignRelatedRecords,
 } from "@/lib/campaign-launch-dashboard"
+import {
+  DEFAULT_CAMPAIGN_PACK_TEMPLATE_ID,
+  getCampaignPackTemplate,
+  type CampaignPackSectionKey,
+  type CampaignPackTemplateId,
+} from "@/lib/data/campaign-pack-templates"
 import type {
   AnalyticsRecord,
   ArtistRecord,
   CampaignLinkedRecord,
+  CampaignLinkedRecordType,
   CampaignRecord,
   CampaignTask,
   EmailCampaignRecord,
@@ -28,8 +35,22 @@ export interface CampaignExportMissingAsset {
   suggestedAction?: string
 }
 
+export interface CampaignExportSectionContext {
+  campaign: CampaignRecord
+  relatedRecords: CampaignRelatedRecordsBundle
+  missingAssets: CampaignExportMissingAsset[]
+  readinessLabel: string
+  taskProgress: string
+  healthNotes: string
+  generatedAt: Date
+  templateId: CampaignPackTemplateId
+  templateName: string
+}
+
 export interface CampaignExportPackResult {
   campaign: CampaignRecord
+  templateId: CampaignPackTemplateId
+  templateName: string
   relatedRecords: CampaignRelatedRecordsBundle
   missingAssets: CampaignExportMissingAsset[]
   markdown: string
@@ -106,19 +127,32 @@ function formatTasksSection(tasks: CampaignTask[]): string {
 function formatLinkedRecordsSection(records: CampaignLinkedRecord[]): string {
   if (!records.length) return "No linked records.\n"
 
-  return records
-    .map((record) => {
-      const lines = [
-        `- Type: ${mdValue(record.type)}`,
-        `  Title: ${mdValue(record.title)}`,
-        `  Href: ${mdValue(record.href)}`,
-      ]
-      if (record.notes.trim()) {
-        lines.push(`  Notes: ${record.notes.trim()}`)
-      }
-      return lines.join("\n")
-    })
-    .join("\n\n") + "\n"
+  return (
+    records
+      .map((record) => {
+        const lines = [
+          `- Type: ${mdValue(record.type)}`,
+          `  Title: ${mdValue(record.title)}`,
+          `  Href: ${mdValue(record.href)}`,
+        ]
+        if (record.notes.trim()) {
+          lines.push(`  Notes: ${record.notes.trim()}`)
+        }
+        return lines.join("\n")
+      })
+      .join("\n\n") + "\n"
+  )
+}
+
+function formatLinkedRecordsByTypes(
+  records: CampaignLinkedRecord[],
+  types: CampaignLinkedRecordType[],
+): string {
+  const filtered = records.filter((record) => types.includes(record.type))
+  if (!filtered.length) {
+    return `No ${types.join(" / ")} records linked.\n`
+  }
+  return formatLinkedRecordsSection(filtered)
 }
 
 function formatMissingAssetsSection(missingAssets: CampaignExportMissingAsset[]): string {
@@ -130,12 +164,18 @@ function formatMissingAssetsSection(missingAssets: CampaignExportMissingAsset[])
     missingAssets
       .map((asset) => {
         const action = asset.suggestedAction?.trim()
-        return action
-          ? `- ${asset.label} — ${action}`
-          : `- ${asset.label}`
+        return action ? `- ${asset.label} — ${action}` : `- ${asset.label}`
       })
       .join("\n") + "\n"
   )
+}
+
+function filterMissingAssets(
+  missingAssets: CampaignExportMissingAsset[],
+  keys: string[],
+): CampaignExportMissingAsset[] {
+  const keySet = new Set(keys)
+  return missingAssets.filter((asset) => keySet.has(asset.key))
 }
 
 const DEFAULT_ANALYTICS_CHECKLIST = [
@@ -148,6 +188,39 @@ const DEFAULT_ANALYTICS_CHECKLIST = [
   "Note what worked",
   "Note what to improve",
 ]
+
+const ANALYTICS_24H_CHECKLIST = [
+  "Record views at 24 hours",
+  "Record CTR at 24 hours",
+  "Record likes and comments at 24 hours",
+  "Capture top traffic sources",
+  "Note early audience retention",
+]
+
+const ANALYTICS_7D_CHECKLIST = [
+  "Record 7-day views",
+  "Record 7-day CTR",
+  "Compare performance vs. first 24 hours",
+  "Review comments and community response",
+  "Identify best-performing distribution channel",
+]
+
+const ANALYTICS_30D_CHECKLIST = [
+  "Record 30-day views and engagement",
+  "Review long-tail traffic patterns",
+  "Assess conversion to streams/sales",
+  "Document sustained vs. spike performance",
+  "Plan follow-up content or resend",
+]
+
+function formatChecklist(heading: string, items: string[]): string {
+  const lines = [`## ${heading}`, ""]
+  for (const item of items) {
+    lines.push(`- [ ] ${item}`)
+  }
+  lines.push("")
+  return lines.join("\n")
+}
 
 function sectionArtist(artist: ArtistRecord | null): string {
   if (!artist) {
@@ -214,6 +287,22 @@ function sectionYouTubePackage(pkg: YouTubePackage | null): string {
   ].join("\n")
 }
 
+function sectionYouTubePackageSummary(pkg: YouTubePackage | null): string {
+  if (!pkg) {
+    return "## YouTube Upload Package Summary\n\nNo YouTube package linked yet.\n"
+  }
+
+  return [
+    "## YouTube Upload Package Summary",
+    "",
+    mdBullet("Title", pkg.finalTitle),
+    mdMultiline("Description", pkg.finalDescription),
+    mdBullet("Tags", pkg.finalTags),
+    mdBullet("Hashtags", pkg.finalHashtags),
+    "",
+  ].join("\n")
+}
+
 function sectionThumbnail(thumbnail: YouTubeThumbnailRecord | null): string {
   if (!thumbnail) {
     return "## Thumbnail Package\n\nNo YouTube thumbnail linked yet.\n"
@@ -231,6 +320,24 @@ function sectionThumbnail(thumbnail: YouTubeThumbnailRecord | null): string {
     mdMultiline("Final Shorts Version", thumbnail.finalShortsVersion),
     "",
   ].join("\n")
+}
+
+function sectionThumbnailTextConcept(
+  thumbnail: YouTubeThumbnailRecord | null,
+  youtubePackage: YouTubePackage | null,
+): string {
+  const concept = thumbnail?.finalConcept?.trim() || thumbnail?.finalTextOverlay?.trim()
+  const ytText = youtubePackage?.finalThumbnailText?.trim()
+
+  if (!concept && !ytText) {
+    return "## Thumbnail Text / Concept\n\nNo thumbnail concept or text linked yet.\n"
+  }
+
+  const lines = ["## Thumbnail Text / Concept", ""]
+  if (concept) lines.push(mdMultiline("Concept", concept))
+  if (ytText) lines.push(mdMultiline("Thumbnail Text", ytText))
+  lines.push("")
+  return lines.join("\n")
 }
 
 function sectionSocial(social: SocialRepurposingRecord | null): string {
@@ -380,50 +487,190 @@ function sectionAnalytics(analytics: AnalyticsRecord | null): string {
   return lines.join("\n")
 }
 
-export function campaignExportPackFilename(
-  campaignName: string,
-  date = new Date(),
+function sectionAnalyticsRecord(analytics: AnalyticsRecord | null): string {
+  if (!analytics) {
+    return "## Analytics Record\n\nNo analytics record linked yet.\n"
+  }
+
+  return [
+    "## Analytics Record",
+    "",
+    mdBullet("Item Name", analytics.itemName),
+    mdBullet("Item Type", analytics.itemType),
+    mdBullet("Platform", analytics.platform),
+    mdBullet("Related Campaign", analytics.relatedCampaign),
+    mdBullet("Related Artist", analytics.relatedArtist),
+    mdBullet("Related Song", analytics.relatedSong),
+    mdBullet("Title Used", analytics.titleUsed),
+    mdBullet("Thumbnail Text", analytics.thumbnailText),
+    mdBullet("Tags Used", analytics.tagsUsed),
+    mdBullet("CTA", analytics.callToAction),
+    "",
+  ].join("\n")
+}
+
+function sectionAnalyticsCurrentMetrics(analytics: AnalyticsRecord | null): string {
+  if (!analytics) {
+    return "## Current Metrics\n\nNo analytics record linked yet.\n"
+  }
+
+  return [
+    "## Current Metrics",
+    "",
+    mdBullet("Views", analytics.views),
+    mdBullet("Impressions", analytics.impressions),
+    mdBullet("Clicks", analytics.clicks),
+    mdBullet("Click-Through Rate", analytics.clickThroughRate),
+    mdBullet("Likes", analytics.likes),
+    mdBullet("Comments", analytics.comments),
+    mdBullet("Shares", analytics.shares),
+    mdBullet("Saves", analytics.saves),
+    mdBullet("Subscribers Gained", analytics.subscribersGained),
+    mdBullet("Watch Time (hours)", analytics.watchTimeHours),
+    mdBullet("Revenue", analytics.revenue),
+    mdBullet("Sales", analytics.sales),
+    mdBullet("Conversion Rate", analytics.conversionRate),
+    "",
+  ].join("\n")
+}
+
+function sectionArtistField(
+  heading: string,
+  artist: ArtistRecord | null,
+  field: keyof ArtistRecord,
+  multiline = false,
 ): string {
-  const slug =
-    campaignName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 80) || "campaign"
-  const stamp = date.toISOString().slice(0, 10)
-  return `creatorops-${slug}-export-pack-${stamp}.md`
+  if (!artist) {
+    return `## ${heading}\n\nNo linked artist profile found.\n`
+  }
+  const value = artist[field]
+  if (typeof value !== "string") {
+    return `## ${heading}\n\nNot provided.\n`
+  }
+  return multiline
+    ? [`## ${heading}`, "", mdMultiline(heading, value), ""].join("\n")
+    : [`## ${heading}`, "", mdBullet(heading, value), ""].join("\n")
 }
 
-export function markdownToPlainText(markdown: string): string {
-  return markdown
-    .replace(/^#{1,6}\s+/gm, "")
-    .replace(/\*\*(.*?)\*\*/g, "$1")
-    .replace(/^\s*[-*+]\s+\[[ x]\]\s+/gm, "- ")
-    .replace(/^\s*[-*+]\s+/gm, "- ")
-    .trim()
+function sectionEmailRelatedLink(
+  campaign: CampaignRecord,
+  youtubePackage: YouTubePackage | null,
+  productListing: ProductListing | null,
+): string {
+  const lines = ["## Related Product / Release Link", ""]
+  const streaming = youtubePackage?.streamingLink?.trim()
+  const product = campaign.productName.trim() || productListing?.finalTitle?.trim()
+  const song = campaign.songTitle.trim()
+
+  if (streaming) lines.push(mdBullet("Streaming Link", streaming))
+  if (song) lines.push(mdBullet("Release / Song", song))
+  if (product) lines.push(mdBullet("Product", product))
+  if (lines.length === 2) {
+    lines.push("No related product or release link provided.")
+  }
+  lines.push("")
+  return lines.join("\n")
 }
 
-export function generateCampaignExportMarkdown(input: {
-  campaign: CampaignRecord
-  relatedRecords: CampaignRelatedRecordsBundle
-  missingAssets: CampaignExportMissingAsset[]
-  readinessLabel: string
-  assetScore: string
-  taskProgress: string
-  healthNotes: string
-  generatedAt: Date
-}): string {
-  const { campaign, relatedRecords, missingAssets, generatedAt } = input
-  const missingSummary =
-    missingAssets.length > 0
-      ? missingAssets.map((asset) => asset.label).join(", ")
-      : "None"
+function sectionCommerceStoreDetails(
+  listing: ProductListing | null,
+  merch: MerchIdea | null,
+  artist: ArtistRecord | null,
+): string {
+  const lines = ["## Store / Product Details", ""]
+  if (listing) {
+    lines.push(
+      mdBullet("Product Title", listing.finalTitle),
+      mdMultiline("Short Description", listing.finalShortDescription),
+      mdBullet("Collection", listing.finalCollection),
+      mdBullet("CTA", listing.finalCTA),
+    )
+  } else if (merch) {
+    lines.push(
+      mdBullet("Product Title", merch.selectedProductTitle),
+      mdMultiline("Product Description", merch.selectedProductDescription),
+      mdBullet("Tags", merch.selectedTags),
+    )
+  } else {
+    lines.push("No product listing or merch idea linked yet.")
+  }
+  if (artist?.merchStoreLink?.trim()) {
+    lines.push(mdBullet("Merch Store", artist.merchStoreLink))
+  }
+  lines.push("")
+  return lines.join("\n")
+}
 
-  const sections = [
-    `# Campaign Export Pack: ${mdValue(campaign.campaignName, "Untitled Campaign")}`,
-    "",
-    `Generated: ${formatGeneratedAt(generatedAt)}`,
-    "",
+function sectionMerchSocialCaption(
+  merch: MerchIdea | null,
+  listing: ProductListing | null,
+): string {
+  const caption =
+    listing?.finalSocialCaption?.trim() || merch?.selectedSocialCaption?.trim()
+  const text = caption?.trim()
+  if (!text) return "## Social Caption\n\nNot provided.\n"
+  return `## Social Caption\n\n${text}\n`
+}
+
+function sectionMerchEmailSubject(
+  listing: ProductListing | null,
+  email: EmailCampaignRecord | null,
+): string {
+  const subject =
+    listing?.finalEmailSubject?.trim() || email?.finalSubjectLine?.trim()
+  const text = subject?.trim()
+  if (!text) return "## Email Subject\n\nNot provided.\n"
+  return `## Email Subject\n\n${text}\n`
+}
+
+function youtubeFieldSection(
+  heading: string,
+  pkg: YouTubePackage | null,
+  field: keyof YouTubePackage,
+): string {
+  if (!pkg) {
+    return `## ${heading}\n\nNo YouTube package linked yet.\n`
+  }
+  const value = pkg[field]
+  if (typeof value !== "string") {
+    return `## ${heading}\n\nNot provided.\n`
+  }
+  return [`## ${heading}`, "", mdMultiline(heading, value), ""].join("\n")
+}
+
+function socialFieldSection(
+  heading: string,
+  social: SocialRepurposingRecord | null,
+  field: keyof SocialRepurposingRecord,
+): string {
+  if (!social) {
+    return `## ${heading}\n\nNo social repurposing record linked yet.\n`
+  }
+  const value = social[field]
+  if (typeof value !== "string") {
+    return `## ${heading}\n\nNot provided.\n`
+  }
+  return [`## ${heading}`, "", mdMultiline(heading, value), ""].join("\n")
+}
+
+function emailFieldSection(
+  heading: string,
+  email: EmailCampaignRecord | null,
+  field: keyof EmailCampaignRecord,
+): string {
+  if (!email) {
+    return `## ${heading}\n\nNo email campaign linked yet.\n`
+  }
+  const value = email[field]
+  if (typeof value !== "string") {
+    return `## ${heading}\n\nNot provided.\n`
+  }
+  return [`## ${heading}`, "", mdMultiline(heading, value), ""].join("\n")
+}
+
+export function renderCampaignSummary(ctx: CampaignExportSectionContext): string {
+  const { campaign } = ctx
+  return [
     "## Campaign Summary",
     "",
     mdBullet("Campaign Type", campaign.campaignType),
@@ -437,42 +684,440 @@ export function generateCampaignExportMarkdown(input: {
     mdBullet("Primary Goal", campaign.primaryGoal),
     mdBullet("Target Audience", campaign.targetAudience),
     "",
+  ].join("\n")
+}
+
+export function renderReadinessSummary(ctx: CampaignExportSectionContext): string {
+  const missingSummary =
+    ctx.missingAssets.length > 0
+      ? ctx.missingAssets.map((asset) => asset.label).join(", ")
+      : "None"
+
+  return [
     "## Readiness Summary",
     "",
-    mdBullet("Asset Readiness", input.readinessLabel),
-    mdBullet("Task Progress", input.taskProgress),
+    mdBullet("Asset Readiness", ctx.readinessLabel),
+    mdBullet("Task Progress", ctx.taskProgress),
     mdBullet("Missing Assets", missingSummary),
-    mdMultiline("Data Health Notes", input.healthNotes),
+    mdMultiline("Data Health Notes", ctx.healthNotes),
     "",
-    sectionArtist(relatedRecords.artist),
-    sectionReleasePlan(relatedRecords.releasePlan),
-    sectionYouTubePackage(relatedRecords.youtubePackage),
-    sectionThumbnail(relatedRecords.youtubeThumbnail),
-    sectionSocial(relatedRecords.socialRepurposing),
-    sectionEmail(relatedRecords.emailCampaign),
-    sectionMerch(relatedRecords.merchIdea),
-    sectionProductListing(relatedRecords.productListing),
-    sectionMockup(relatedRecords.mockupPrompt),
-    sectionAnalytics(relatedRecords.analytics),
-    "## Launch Task Checklist",
-    "",
-    formatTasksSection(campaign.tasks),
+  ].join("\n")
+}
+
+export function renderArtistContext(ctx: CampaignExportSectionContext): string {
+  return sectionArtist(ctx.relatedRecords.artist)
+}
+
+export function renderReleasePlan(ctx: CampaignExportSectionContext): string {
+  return sectionReleasePlan(ctx.relatedRecords.releasePlan)
+}
+
+export function renderYouTubePackage(ctx: CampaignExportSectionContext): string {
+  return sectionYouTubePackage(ctx.relatedRecords.youtubePackage)
+}
+
+export function renderThumbnailPackage(ctx: CampaignExportSectionContext): string {
+  return sectionThumbnail(ctx.relatedRecords.youtubeThumbnail)
+}
+
+export function renderSocialPackage(ctx: CampaignExportSectionContext): string {
+  return sectionSocial(ctx.relatedRecords.socialRepurposing)
+}
+
+export function renderEmailCampaign(ctx: CampaignExportSectionContext): string {
+  return sectionEmail(ctx.relatedRecords.emailCampaign)
+}
+
+export function renderMerchIdea(ctx: CampaignExportSectionContext): string {
+  return sectionMerch(ctx.relatedRecords.merchIdea)
+}
+
+export function renderProductListing(ctx: CampaignExportSectionContext): string {
+  return sectionProductListing(ctx.relatedRecords.productListing)
+}
+
+export function renderMockupPrompt(ctx: CampaignExportSectionContext): string {
+  return sectionMockup(ctx.relatedRecords.mockupPrompt)
+}
+
+export function renderAnalyticsChecklist(ctx: CampaignExportSectionContext): string {
+  return sectionAnalytics(ctx.relatedRecords.analytics)
+}
+
+export function renderLaunchTasks(ctx: CampaignExportSectionContext): string {
+  return ["## Launch Task Checklist", "", formatTasksSection(ctx.campaign.tasks)].join("\n")
+}
+
+export function renderMissingAssets(ctx: CampaignExportSectionContext): string {
+  return [
     "## Missing Assets / Next Actions",
     "",
-    formatMissingAssetsSection(missingAssets),
+    formatMissingAssetsSection(ctx.missingAssets),
+  ].join("\n")
+}
+
+export function renderLinkedRecords(ctx: CampaignExportSectionContext): string {
+  return [
     "## Linked Records",
     "",
-    formatLinkedRecordsSection(campaign.linkedRecords),
+    formatLinkedRecordsSection(ctx.campaign.linkedRecords),
+  ].join("\n")
+}
+
+const YOUTUBE_MISSING_KEYS = ["youtube-package", "youtube-thumbnail"]
+const SOCIAL_MISSING_KEYS = ["social-repurposing"]
+const COMMERCE_MISSING_KEYS = ["merch-idea", "product-listing", "mockup-prompt"]
+
+function renderPackSection(
+  key: CampaignPackSectionKey,
+  ctx: CampaignExportSectionContext,
+): string {
+  const { relatedRecords, campaign, missingAssets } = ctx
+
+  switch (key) {
+    case "campaign-summary":
+      return renderCampaignSummary(ctx)
+    case "readiness-summary":
+      return renderReadinessSummary(ctx)
+    case "artist-context":
+      return renderArtistContext(ctx)
+    case "release-plan":
+      return renderReleasePlan(ctx)
+    case "youtube-package":
+      return renderYouTubePackage(ctx)
+    case "youtube-package-summary":
+      return sectionYouTubePackageSummary(relatedRecords.youtubePackage)
+    case "thumbnail-package":
+      return renderThumbnailPackage(ctx)
+    case "thumbnail-text-concept":
+      return sectionThumbnailTextConcept(
+        relatedRecords.youtubeThumbnail,
+        relatedRecords.youtubePackage,
+      )
+    case "youtube-shorts-caption":
+      return youtubeFieldSection("Shorts Caption", relatedRecords.youtubePackage, "finalShortsCaption")
+    case "youtube-community-post":
+      return youtubeFieldSection(
+        "Community Post",
+        relatedRecords.youtubePackage,
+        "finalCommunityPost",
+      )
+    case "youtube-pinned-comment":
+      return youtubeFieldSection(
+        "Pinned Comment",
+        relatedRecords.youtubePackage,
+        "finalPinnedComment",
+      )
+    case "youtube-tags-hashtags":
+      return [
+        "## Tags / Hashtags",
+        "",
+        mdMultiline("Tags", relatedRecords.youtubePackage?.finalTags),
+        mdMultiline("Hashtags", relatedRecords.youtubePackage?.finalHashtags),
+        "",
+      ].join("\n")
+    case "social-package":
+      return renderSocialPackage(ctx)
+    case "social-shorts-ideas":
+      return socialFieldSection(
+        "Shorts Ideas",
+        relatedRecords.socialRepurposing,
+        "finalYouTubeShortsIdea",
+      )
+    case "social-tiktok-caption":
+      return socialFieldSection(
+        "TikTok Caption",
+        relatedRecords.socialRepurposing,
+        "finalTikTokCaption",
+      )
+    case "social-instagram-caption":
+      return socialFieldSection(
+        "Instagram Caption",
+        relatedRecords.socialRepurposing,
+        "finalInstagramCaption",
+      )
+    case "social-x-post":
+      return socialFieldSection("X Post", relatedRecords.socialRepurposing, "finalXPost")
+    case "social-youtube-community":
+      return socialFieldSection(
+        "YouTube Community Post",
+        relatedRecords.socialRepurposing,
+        "finalYouTubeCommunityPost",
+      )
+    case "social-email-snippet":
+      return socialFieldSection(
+        "Email Snippet",
+        relatedRecords.socialRepurposing,
+        "finalEmailSnippet",
+      )
+    case "social-hashtags":
+      return socialFieldSection("Hashtags", relatedRecords.socialRepurposing, "finalHashtags")
+    case "social-cta":
+      return [
+        "## CTA",
+        "",
+        mdBullet("CTA", relatedRecords.socialRepurposing?.finalCTA),
+        "",
+      ].join("\n")
+    case "email-campaign":
+      return renderEmailCampaign(ctx)
+    case "email-subject-line":
+      return emailFieldSection(
+        "Subject Line",
+        relatedRecords.emailCampaign,
+        "finalSubjectLine",
+      )
+    case "email-preview-text":
+      return emailFieldSection(
+        "Preview Text",
+        relatedRecords.emailCampaign,
+        "finalPreviewText",
+      )
+    case "email-body":
+      return emailFieldSection("Email Body", relatedRecords.emailCampaign, "finalEmailBody")
+    case "email-cta":
+      return [
+        "## CTA",
+        "",
+        mdBullet("CTA", relatedRecords.emailCampaign?.finalCTA),
+        "",
+      ].join("\n")
+    case "email-follow-up":
+      return emailFieldSection(
+        "Follow-Up Email",
+        relatedRecords.emailCampaign,
+        "finalFollowUpEmail",
+      )
+    case "email-resend-subject":
+      return emailFieldSection(
+        "Resend Subject",
+        relatedRecords.emailCampaign,
+        "finalResendSubject",
+      )
+    case "email-resend-body":
+      return emailFieldSection("Resend Body", relatedRecords.emailCampaign, "finalResendBody")
+    case "email-related-link":
+      return sectionEmailRelatedLink(
+        campaign,
+        relatedRecords.youtubePackage,
+        relatedRecords.productListing,
+      )
+    case "merch-idea":
+      return renderMerchIdea(ctx)
+    case "product-listing":
+      return renderProductListing(ctx)
+    case "mockup-prompt":
+      return renderMockupPrompt(ctx)
+    case "merch-social-caption":
+      return sectionMerchSocialCaption(relatedRecords.merchIdea, relatedRecords.productListing)
+    case "merch-email-subject":
+      return sectionMerchEmailSubject(relatedRecords.productListing, relatedRecords.emailCampaign)
+    case "commerce-store-details":
+      return sectionCommerceStoreDetails(
+        relatedRecords.productListing,
+        relatedRecords.merchIdea,
+        relatedRecords.artist,
+      )
+    case "analytics-checklist":
+      return renderAnalyticsChecklist(ctx)
+    case "analytics-record":
+      return sectionAnalyticsRecord(relatedRecords.analytics)
+    case "analytics-current-metrics":
+      return sectionAnalyticsCurrentMetrics(relatedRecords.analytics)
+    case "analytics-24h-checklist":
+      return formatChecklist("24-hour Review Checklist", ANALYTICS_24H_CHECKLIST)
+    case "analytics-7d-checklist":
+      return formatChecklist("7-day Review Checklist", ANALYTICS_7D_CHECKLIST)
+    case "analytics-30d-checklist":
+      return formatChecklist("30-day Review Checklist", ANALYTICS_30D_CHECKLIST)
+    case "analytics-what-worked":
+      return [
+        "## What Worked",
+        "",
+        (relatedRecords.analytics?.whatWorked ?? "").trim() || "Not provided.",
+        "",
+      ].join("\n")
+    case "analytics-what-to-improve":
+      return [
+        "## What To Improve",
+        "",
+        (
+          relatedRecords.analytics?.improvementIdeas ??
+          relatedRecords.analytics?.whatDidNotWork ??
+          ""
+        ).trim() || "Not provided.",
+        "",
+      ].join("\n")
+    case "analytics-next-actions":
+      return [
+        "## Next Actions",
+        "",
+        formatMissingAssetsSection(missingAssets),
+      ].join("\n")
+    case "artist-visual-identity":
+      return sectionArtistField(
+        "Visual Identity",
+        relatedRecords.artist,
+        "visualIdentity",
+        true,
+      )
+    case "artist-target-audience":
+      return sectionArtistField(
+        "Target Audience",
+        relatedRecords.artist,
+        "targetAudience",
+      )
+    case "artist-content-style":
+      return sectionArtistField("Content Style", relatedRecords.artist, "contentStyle")
+    case "artist-platform-links":
+      return relatedRecords.artist
+        ? [
+            "## Platform Links",
+            "",
+            formatArtistPlatformLinks(relatedRecords.artist),
+            "",
+          ].join("\n")
+        : "## Platform Links\n\nNo linked artist profile found.\n"
+    case "artist-related-campaigns":
+      return [
+        "## Related Campaigns",
+        "",
+        mdBullet("Current Campaign", campaign.campaignName),
+        formatLinkedRecordsByTypes(campaign.linkedRecords, ["workflow", "workflow-run", "prompt-run"]),
+      ].join("\n")
+    case "artist-related-releases":
+      return [
+        "## Related Releases",
+        "",
+        formatLinkedRecordsByTypes(campaign.linkedRecords, ["release-plan"]),
+      ].join("\n")
+    case "artist-related-youtube":
+      return [
+        "## Related YouTube Assets",
+        "",
+        formatLinkedRecordsByTypes(campaign.linkedRecords, [
+          "youtube-package",
+          "youtube-thumbnail",
+        ]),
+      ].join("\n")
+    case "artist-related-merch":
+      return [
+        "## Related Merch / Product Assets",
+        "",
+        formatLinkedRecordsByTypes(campaign.linkedRecords, [
+          "merch-idea",
+          "product-listing",
+          "mockup-prompt",
+        ]),
+      ].join("\n")
+    case "launch-tasks":
+      return renderLaunchTasks(ctx)
+    case "missing-assets":
+      return renderMissingAssets(ctx)
+    case "missing-youtube-assets":
+      return [
+        "## Missing YouTube Assets",
+        "",
+        formatMissingAssetsSection(filterMissingAssets(missingAssets, YOUTUBE_MISSING_KEYS)),
+      ].join("\n")
+    case "missing-social-assets":
+      return [
+        "## Missing Social Assets",
+        "",
+        formatMissingAssetsSection(filterMissingAssets(missingAssets, SOCIAL_MISSING_KEYS)),
+      ].join("\n")
+    case "missing-commerce-assets":
+      return [
+        "## Missing Commerce Assets",
+        "",
+        formatMissingAssetsSection(filterMissingAssets(missingAssets, COMMERCE_MISSING_KEYS)),
+      ].join("\n")
+    case "linked-records":
+      return renderLinkedRecords(ctx)
+    default:
+      return ""
+  }
+}
+
+function renderPackTitle(ctx: CampaignExportSectionContext): string {
+  const name = mdValue(ctx.campaign.campaignName, "Untitled Campaign")
+  if (ctx.templateId === "full-release-pack") {
+    return `# Campaign Export Pack: ${name}`
+  }
+  return `# ${ctx.templateName}: ${name}`
+}
+
+export function generateCampaignExportMarkdown(ctx: CampaignExportSectionContext): string {
+  const template = getCampaignPackTemplate(ctx.templateId)
+  const sections = [
+    renderPackTitle(ctx),
+    "",
+    `Generated: ${formatGeneratedAt(ctx.generatedAt)}`,
+    "",
+    ...template.sections.map((key) => renderPackSection(key, ctx)),
   ]
 
   return sections.join("\n").trim() + "\n"
 }
 
+/** @deprecated Use generateCampaignExportMarkdown with CampaignExportSectionContext */
+export function generateCampaignExportMarkdownLegacy(input: {
+  campaign: CampaignRecord
+  relatedRecords: CampaignRelatedRecordsBundle
+  missingAssets: CampaignExportMissingAsset[]
+  readinessLabel: string
+  assetScore: string
+  taskProgress: string
+  healthNotes: string
+  generatedAt: Date
+}): string {
+  return generateCampaignExportMarkdown({
+    campaign: input.campaign,
+    relatedRecords: input.relatedRecords,
+    missingAssets: input.missingAssets,
+    readinessLabel: input.readinessLabel,
+    taskProgress: input.taskProgress,
+    healthNotes: input.healthNotes,
+    generatedAt: input.generatedAt,
+    templateId: DEFAULT_CAMPAIGN_PACK_TEMPLATE_ID,
+    templateName: "Full Release Pack",
+  })
+}
+
+export function campaignExportPackFilename(
+  campaignName: string,
+  templateSlug = "full-release-pack",
+  date = new Date(),
+): string {
+  const slug =
+    campaignName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80) || "campaign"
+  const stamp = date.toISOString().slice(0, 10)
+  return `creatorops-${slug}-${templateSlug}-${stamp}.md`
+}
+
+export function markdownToPlainText(markdown: string): string {
+  return markdown
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/^\s*[-*+]\s+\[[ x]\]\s+/gm, "- ")
+    .replace(/^\s*[-*+]\s+/gm, "- ")
+    .trim()
+}
+
 export function buildCampaignExportPack(
   campaign: CampaignRecord,
   store: CampaignLinkableStoreSlice,
-  generatedAt = new Date(),
+  options?: {
+    templateId?: CampaignPackTemplateId | string
+    generatedAt?: Date
+  },
 ): CampaignExportPackResult {
+  const template = getCampaignPackTemplate(options?.templateId)
+  const generatedAt = options?.generatedAt ?? new Date()
   const relatedRecords = resolveCampaignRelatedRecords(campaign, store)
   const dashboard = buildLaunchDashboardData(campaign, store)
 
@@ -494,19 +1139,24 @@ export function buildCampaignExportPack(
   const assetScore = `${dashboard.readiness.label} (${dashboard.readiness.completed}/${dashboard.readiness.total} assets)`
   const taskProgress = `${dashboard.taskProgress.percent}% (${dashboard.taskProgress.completed}/${dashboard.taskProgress.total} tasks)`
 
-  const markdown = generateCampaignExportMarkdown({
+  const sectionContext: CampaignExportSectionContext = {
     campaign,
     relatedRecords,
     missingAssets,
     readinessLabel: assetScore,
-    assetScore,
     taskProgress,
     healthNotes,
     generatedAt,
-  })
+    templateId: template.id,
+    templateName: template.name,
+  }
+
+  const markdown = generateCampaignExportMarkdown(sectionContext)
 
   return {
     campaign,
+    templateId: template.id,
+    templateName: template.name,
     relatedRecords,
     missingAssets,
     markdown,

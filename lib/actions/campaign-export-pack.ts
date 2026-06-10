@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma"
 /** Build a publish-ready export pack for a campaign and its linked records. */
 export async function getCampaignExportPack(
   campaignId: string,
+  templateId?: string,
 ): Promise<CampaignExportPackResult> {
   const trimmedId = campaignId.trim()
   if (!trimmedId) {
@@ -27,5 +28,5 @@ export async function getCampaignExportPack(
   }
 
   const campaign = prismaCampaignToCampaignRecord(row)
-  return buildCampaignExportPack(campaign, store)
+  return buildCampaignExportPack(campaign, store, { templateId })
 }
