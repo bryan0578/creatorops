@@ -197,7 +197,12 @@ function CampaignBoardCard({
           </div>
           <div>
             <span className="block text-foreground/80">{readiness.taskProgressPercent}%</span>
-            Task progress
+            <Link
+              href={`/tasks?campaignId=${encodeURIComponent(campaign.id)}`}
+              className="hover:text-foreground hover:underline"
+            >
+              Task progress
+            </Link>
           </div>
           <div>
             <span className="block text-foreground/80">{readiness.linkedRecordCount}</span>

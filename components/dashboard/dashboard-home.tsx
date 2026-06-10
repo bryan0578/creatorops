@@ -9,6 +9,7 @@ import {
   ImagePlus,
   LayoutGrid,
   Library,
+  ListChecks,
   Megaphone,
   Mail,
   Play,
@@ -37,6 +38,10 @@ import {
   sortActiveCampaigns,
 } from "@/lib/dashboard"
 import { normalizeStatusToStage } from "@/lib/data/campaign-board"
+import {
+  buildWorkspaceTasks,
+  getWorkspaceTaskSummary,
+} from "@/lib/data/tasks"
 
 import { PageHeader } from "@/components/app-shell"
 import {
@@ -212,6 +217,11 @@ export function DashboardHome() {
     [campaigns],
   )
 
+  const taskSummary = React.useMemo(
+    () => getWorkspaceTaskSummary(buildWorkspaceTasks(campaigns)),
+    [campaigns],
+  )
+
   const upcomingLaunches = React.useMemo(
     () => getUpcomingLaunches(campaigns, releasePlans, 6),
     [campaigns, releasePlans],
@@ -318,6 +328,18 @@ export function DashboardHome() {
           value={pipelineCampaignCount}
           icon={LayoutGrid}
           href="/campaign-board"
+        />
+        <CompactStatCard
+          label="Tasks due today"
+          value={taskSummary.today}
+          icon={ListChecks}
+          href="/tasks?tab=today"
+        />
+        <CompactStatCard
+          label="Overdue tasks"
+          value={taskSummary.overdue}
+          icon={ListChecks}
+          href="/tasks?tab=overdue"
         />
         <CompactStatCard
           label="Total prompts"

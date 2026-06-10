@@ -112,6 +112,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { title: "Campaigns", href: "/campaigns", icon: Megaphone },
       { title: "Campaign Board", href: "/campaign-board", icon: LayoutGrid },
+      { title: "Tasks", href: "/tasks", icon: ListChecks },
       { title: "Analytics Tracker", href: "/analytics", icon: BarChart3 },
       { title: "Artist CRM", href: "/artist-crm", icon: Users },
       { title: "Backup Center", href: "/backups", icon: HardDrive },

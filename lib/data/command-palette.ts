@@ -55,6 +55,31 @@ export const COMMAND_PALETTE_GROUP_LABELS: Record<CommandPaletteGroupId, string>
 
 export const COMMAND_PALETTE_QUICK_ACTIONS: CommandPaletteStaticItem[] = [
   {
+    id: "qa-tasks",
+    group: "quick-actions",
+    title: "Open Tasks",
+    subtitle: "Task Command Center",
+    href: "/tasks",
+    icon: ListChecks,
+    keywords: "tasks todo overdue today command center",
+  },
+  {
+    id: "qa-tasks-today",
+    group: "quick-actions",
+    title: "Today's Tasks",
+    href: "/tasks?tab=today",
+    icon: ListChecks,
+    keywords: "tasks due today",
+  },
+  {
+    id: "qa-tasks-overdue",
+    group: "quick-actions",
+    title: "Overdue Tasks",
+    href: "/tasks?tab=overdue",
+    icon: ListChecks,
+    keywords: "tasks overdue late",
+  },
+  {
     id: "qa-campaign-board",
     group: "quick-actions",
     title: "Open Campaign Board",
@@ -208,6 +233,13 @@ export const COMMAND_PALETTE_MODULES: CommandPaletteStaticItem[] = [
     group: "modules",
     title: "Workflow Runner",
     href: "/workflow-runner",
+    icon: ListChecks,
+  },
+  {
+    id: "mod-tasks",
+    group: "modules",
+    title: "Tasks",
+    href: "/tasks",
     icon: ListChecks,
   },
   {

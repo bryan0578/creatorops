@@ -12,7 +12,7 @@ import { CampaignDatabaseError } from "@/lib/errors/campaign-database-error"
 import { prisma } from "@/lib/prisma"
 import type { CampaignRecord } from "@/lib/types"
 
-const CAMPAIGN_PATHS = ["/campaigns", "/campaign-board", "/", "/search", "/backups"]
+const CAMPAIGN_PATHS = ["/campaigns", "/campaign-board", "/tasks", "/", "/search", "/backups"]
 
 function assertCampaignPrismaReady(): void {
   const client = prisma as typeof prisma & { campaign?: unknown }

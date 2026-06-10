@@ -33,6 +33,8 @@ export const ARTIST_CRM_WORKFLOW_TABS = [
   { value: "saved", label: "Saved Artists" },
 ] as const
 
+export { TASK_COMMAND_CENTER_TABS } from "@/lib/data/tasks"
+
 export const CAMPAIGN_BUILDER_TABS = [
   { value: "launch", label: "Launch Dashboard" },
   { value: "overview", label: "Overview" },
