@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/card"
 import { RECENT_RECORDS_CARD_CLASS } from "@/components/module/form-layout"
 import { cn } from "@/lib/utils"
+import { CampaignExperimentsSection } from "@/components/campaigns/launch-dashboard/campaign-experiments-section"
 import { CampaignExportPackSection } from "@/components/campaigns/launch-dashboard/campaign-export-pack-section"
 
 function formatLaunchDate(value: string) {
@@ -420,10 +421,16 @@ export function CampaignLaunchDashboard({
 
       <CampaignNextActions actions={data.nextActions} onGoToTasks={onGoToTasks} />
 
-      <CampaignExportPackSection
-        campaignId={campaign.id}
-        campaignName={campaign.campaignName}
-      />
+      <div className="grid gap-4 xl:grid-cols-2">
+        <CampaignExportPackSection
+          campaignId={campaign.id}
+          campaignName={campaign.campaignName}
+        />
+        <CampaignExperimentsSection
+          campaignId={campaign.id}
+          campaignName={campaign.campaignName}
+        />
+      </div>
 
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onGoToSaved}>

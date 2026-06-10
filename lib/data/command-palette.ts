@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react"
 import {
   BarChart3,
   CalendarDays,
+  FlaskConical,
   HardDrive,
   ImageIcon,
   ImagePlus,
@@ -145,6 +146,20 @@ export const COMMAND_PALETTE_QUICK_ACTIONS: CommandPaletteStaticItem[] = [
     title: "Add Analytics Record",
     href: "/analytics",
     keywords: "analytics tracker metrics",
+  },
+  {
+    id: "qa-open-experiments",
+    group: "quick-actions",
+    title: "Open Experiments",
+    href: "/experiments",
+    keywords: "experiment tracker version test",
+  },
+  {
+    id: "qa-new-experiment",
+    group: "quick-actions",
+    title: "New Experiment",
+    href: "/experiments",
+    keywords: "experiment tracker variant ab test create",
   },
   {
     id: "qa-backups",
@@ -318,6 +333,13 @@ export const COMMAND_PALETTE_MODULES: CommandPaletteStaticItem[] = [
     title: "Analytics Tracker",
     href: "/analytics",
     icon: BarChart3,
+  },
+  {
+    id: "mod-experiments",
+    group: "modules",
+    title: "Experiments",
+    href: "/experiments",
+    icon: FlaskConical,
   },
   {
     id: "mod-artist-crm",

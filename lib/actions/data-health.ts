@@ -17,6 +17,7 @@ import {
   type DataHealthScanInput,
 } from "@/lib/data/data-health"
 import { prismaEmailCampaignToEmailCampaignRecord } from "@/lib/data/email-campaigns"
+import { prismaExperimentToExperimentRecord } from "@/lib/data/experiments"
 import { prismaMerchIdeaToMerchIdea } from "@/lib/data/merch-ideas"
 import { prismaMockupPromptToMockupPromptRecord } from "@/lib/data/mockup-prompts"
 import { prismaPresetToPresetRecord } from "@/lib/data/presets"
@@ -175,6 +176,7 @@ async function loadScanInput(): Promise<{
     productListings,
     mockupPrompts,
     analyticsRecords,
+    experiments,
     presets,
     prompts,
     promptRuns,
@@ -292,6 +294,15 @@ async function loadScanInput(): Promise<{
       [],
     ),
     safeLoad(
+      "Experiments",
+      async () => {
+        const rows = await prisma.experiment.findMany({ orderBy: { updatedAt: "desc" } })
+        return rows.map(prismaExperimentToExperimentRecord)
+      },
+      loadIssues,
+      [],
+    ),
+    safeLoad(
       "Presets",
       async () => {
         const rows = await prisma.preset.findMany({ orderBy: { updatedAt: "desc" } })
@@ -369,6 +380,7 @@ async function loadScanInput(): Promise<{
       productListings,
       mockupPrompts,
       analyticsRecords,
+      experiments,
       presets,
       prompts,
       promptRuns,

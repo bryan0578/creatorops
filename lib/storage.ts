@@ -2,6 +2,7 @@ import type {
   AnalyticsRecord,
   ArtistRecord,
   CampaignRecord,
+  ExperimentRecord,
   PresetRecord,
   EmailCampaignRecord,
   MerchIdea,
@@ -21,6 +22,7 @@ import { normalizePresetRecord } from "@/lib/presets"
 import { normalizeAnalyticsRecord } from "@/lib/analytics-tracker"
 import { normalizeArtistRecord } from "@/lib/artist-crm"
 import { normalizeEmailCampaignRecord } from "@/lib/email-campaigns"
+import { normalizeExperimentRecord } from "@/lib/experiments"
 import { normalizeMockupPromptRecord } from "@/lib/mockup-prompts"
 import { SEED_PROMPTS, SEED_WORKFLOWS } from "@/lib/seed-data"
 import { normalizeMerchIdea } from "@/lib/merch-ideas"
@@ -46,6 +48,7 @@ export const ARTIST_CRM_KEY = "creatorops:artist-crm"
 export const YOUTUBE_THUMBNAILS_KEY = "creatorops:youtube-thumbnails"
 export const CAMPAIGNS_KEY = "creatorops:campaigns"
 export const PRESETS_KEY = "creatorops:presets"
+export const EXPERIMENTS_KEY = "creatorops:experiments"
 
 export function loadPrompts(): Prompt[] {
   if (typeof window === "undefined") return SEED_PROMPTS
@@ -309,6 +312,24 @@ export function loadMockupPromptRecords(): MockupPromptRecord[] {
 export function saveMockupPromptRecords(records: MockupPromptRecord[]): void {
   if (typeof window === "undefined") return
   localStorage.setItem(MOCKUP_PROMPTS_KEY, JSON.stringify(records))
+}
+
+export function loadExperiments(): ExperimentRecord[] {
+  if (typeof window === "undefined") return []
+  try {
+    const raw = localStorage.getItem(EXPERIMENTS_KEY)
+    const parsed = raw ? (JSON.parse(raw) as Partial<ExperimentRecord>[]) : []
+    return parsed.map((record) =>
+      normalizeExperimentRecord(record as Partial<ExperimentRecord> & { id: string }),
+    )
+  } catch {
+    return []
+  }
+}
+
+export function saveExperiments(records: ExperimentRecord[]): void {
+  if (typeof window === "undefined") return
+  localStorage.setItem(EXPERIMENTS_KEY, JSON.stringify(records))
 }
 
 export function loadEmailCampaignRecords(): EmailCampaignRecord[] {

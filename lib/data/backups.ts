@@ -20,6 +20,7 @@ export type BackupDataKey =
   | "analyticsRecords"
   | "mockupPrompts"
   | "emailCampaigns"
+  | "experiments"
   | "campaigns"
   | "presets"
   | "workspaceSettings"
@@ -41,6 +42,7 @@ export interface BackupRecordCounts {
   analyticsRecords: number
   mockupPrompts: number
   emailCampaigns: number
+  experiments: number
   campaigns: number
   presets: number
   workspaceSettings: number
@@ -61,6 +63,7 @@ export interface CreatorOpsBackupData {
   analyticsRecords: unknown[]
   mockupPrompts: unknown[]
   emailCampaigns: unknown[]
+  experiments: unknown[]
   campaigns: unknown[]
   presets: unknown[]
   workspaceSettings: unknown[]
@@ -96,6 +99,7 @@ export const BACKUP_MODULE_META: BackupModuleMeta[] = [
   { key: "analyticsRecords", label: "Analytics Records", exportFilename: "creatorops-analytics.json", category: "operations" },
   { key: "mockupPrompts", label: "Mockup Prompts", exportFilename: "creatorops-mockup-prompts.json", category: "commerce" },
   { key: "emailCampaigns", label: "Email Campaigns", exportFilename: "creatorops-email-campaigns.json", category: "marketing" },
+  { key: "experiments", label: "Experiments", exportFilename: "creatorops-experiments.json", category: "marketing" },
   { key: "campaigns", label: "Campaigns", exportFilename: "creatorops-campaigns.json", category: "operations" },
   { key: "presets", label: "Presets", exportFilename: "creatorops-presets.json", category: "core" },
   {
@@ -124,6 +128,7 @@ export function emptyBackupData(): CreatorOpsBackupData {
     analyticsRecords: [],
     mockupPrompts: [],
     emailCampaigns: [],
+    experiments: [],
     campaigns: [],
     presets: [],
     workspaceSettings: [],
@@ -146,6 +151,7 @@ export function countBackupData(data: CreatorOpsBackupData): BackupRecordCounts 
     analyticsRecords: data.analyticsRecords.length,
     mockupPrompts: data.mockupPrompts.length,
     emailCampaigns: data.emailCampaigns.length,
+    experiments: data.experiments.length,
     campaigns: data.campaigns.length,
     presets: data.presets.length,
     workspaceSettings: data.workspaceSettings.length,

@@ -149,7 +149,8 @@ export function DemoTestingSection({
                   status.recordCounts.merch +
                   status.recordCounts.productListing +
                   status.recordCounts.mockup +
-                  status.recordCounts.analytics}
+                  status.recordCounts.analytics +
+                  status.recordCounts.experiment}
               </p>
             </div>
             <div className="rounded-lg border border-border/80 px-3 py-2">

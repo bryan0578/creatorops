@@ -12,6 +12,7 @@ import {
   RefreshCw,
   ShieldCheck,
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
 import { getDataHealthReport, removeBrokenCampaignLink } from "@/lib/actions/data-health"
@@ -25,7 +26,7 @@ import { EmptyState } from "@/components/empty-state"
 import { ModuleShell } from "@/components/module/form-layout"
 import { ModuleTabPanel, ModuleWorkflowTabs } from "@/components/module/workflow-tabs"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -180,12 +181,13 @@ function IssueRepairActions({
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <Button variant="outline" size="sm" asChild>
-        <Link href={issue.href}>
-          Open Record
-          <ExternalLink className="size-3.5" />
-        </Link>
-      </Button>
+      <Link
+        href={issue.href}
+        className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+      >
+        Open Record
+        <ExternalLink className="size-3.5" />
+      </Link>
       {repair?.kind === "remove-broken-link" ? (
         <Button
           type="button"
@@ -201,14 +203,20 @@ function IssueRepairActions({
         </Button>
       ) : null}
       {repair?.kind === "create-asset" ? (
-        <Button variant="secondary" size="sm" asChild>
-          <Link href={repair.href}>{repair.label}</Link>
-        </Button>
+        <Link
+          href={repair.href}
+          className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}
+        >
+          {repair.label}
+        </Link>
       ) : null}
       {issue.relatedHref ? (
-        <Button variant="ghost" size="sm" asChild>
-          <Link href={issue.relatedHref}>Related link</Link>
-        </Button>
+        <Link
+          href={issue.relatedHref}
+          className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+        >
+          Related link
+        </Link>
       ) : null}
     </div>
   )

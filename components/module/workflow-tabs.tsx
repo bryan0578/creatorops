@@ -24,6 +24,12 @@ export const ANALYTICS_WORKFLOW_TABS = [
   { value: "saved", label: "Saved Records" },
 ] as const
 
+export const EXPERIMENT_WORKFLOW_TABS = [
+  { value: "experiment", label: "Experiment" },
+  { value: "results", label: "Results" },
+  { value: "saved", label: "Saved Experiments" },
+] as const
+
 export const ARTIST_CRM_WORKFLOW_TABS = [
   { value: "profile", label: "Profile" },
   { value: "releases", label: "Releases" },

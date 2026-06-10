@@ -633,6 +633,71 @@ export interface AnalyticsRecord {
   updatedAt: number
 }
 
+export const EXPERIMENT_TYPES = [
+  "YouTube Title",
+  "Thumbnail",
+  "Thumbnail Text",
+  "Description",
+  "Pinned Comment",
+  "Shorts Hook",
+  "Social Caption",
+  "Email Subject",
+  "Merch Copy",
+  "Product Listing",
+  "Other",
+] as const
+
+export const EXPERIMENT_STATUSES = [
+  "Idea",
+  "Running",
+  "Reviewing",
+  "Winner Chosen",
+  "Archived",
+] as const
+
+export const EXPERIMENT_METRIC_FOCUS = [
+  "CTR",
+  "Views",
+  "Watch Time",
+  "Comments",
+  "Likes",
+  "Subscribers",
+  "Sales",
+  "Conversion Rate",
+  "Email Open Rate",
+  "Email Click Rate",
+  "Other",
+] as const
+
+export interface ExperimentRecord {
+  id: string
+  campaignId: string
+  campaignName: string
+  experimentName: string
+  experimentType: string
+  status: string
+  platform: string
+  hypothesis: string
+  variantA: string
+  variantB: string
+  variantC: string
+  winner: string
+  resultSummary: string
+  metricFocus: string
+  startDate: string
+  endDate: string
+  notes: string
+  whatWorked: string
+  whatDidNotWork: string
+  nextTestIdea: string
+  relatedAnalyticsNotes: string
+  variantAMetric: string
+  variantBMetric: string
+  variantCMetric: string
+  createdAt: number
+  updatedAt: number
+}
+
 export type MockupType =
   | "T-Shirt Mockup"
   | "Hoodie Mockup"

@@ -37,6 +37,7 @@ export type RelatedRecordType =
   | "mockup-prompt"
   | "email-campaign"
   | "analytics"
+  | "experiment"
   | "artist"
 
 export type RelatedModuleContext =
@@ -99,6 +100,7 @@ export const RELATED_TYPE_LABELS: Record<RelatedRecordType, string> = {
   "mockup-prompt": "Mockup Prompt",
   "email-campaign": "Email Campaign",
   analytics: "Analytics",
+  experiment: "Experiment",
   artist: "Artist",
 }
 
@@ -199,6 +201,8 @@ export function buildRecordHref(type: RelatedRecordType, id: string): string {
       return `/email-campaigns?recordId=${encodeURIComponent(id)}`
     case "analytics":
       return `/analytics?recordId=${encodeURIComponent(id)}`
+    case "experiment":
+      return `/experiments?recordId=${encodeURIComponent(id)}`
     case "artist":
       return `/artist-crm?recordId=${encodeURIComponent(id)}`
     default:

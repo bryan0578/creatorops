@@ -161,6 +161,7 @@ export { ModulePageHeader } from "@/components/app-shell"
 export {
   ANALYTICS_WORKFLOW_TABS,
   ARTIST_CRM_WORKFLOW_TABS,
+  EXPERIMENT_WORKFLOW_TABS,
   CAMPAIGN_BUILDER_TABS,
   GENERATOR_WORKFLOW_TABS,
   ModuleTabPanel,

@@ -50,20 +50,40 @@ function Button({
   variant = "default",
   size = "default",
   asChild = false,
+  render,
+  nativeButton,
   ...props
 }: ButtonPrimitive.Props &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
   }) {
-  const Comp = asChild ? Slot : ButtonPrimitive
+  const classes = cn(buttonVariants({ variant, size, className }))
+
+  // Convention: use Button for actions; prefer Link + buttonVariants for navigation.
+  // asChild merges styles onto a single child via Slot (e.g. Next.js Link).
+  if (asChild) {
+    return <Slot data-slot="button" className={classes} {...props} />
+  }
+
+  // Base UI requires nativeButton={false} when render targets a non-<button> element.
+  const usesCustomRender = render != null
+  const resolvedNativeButton = nativeButton ?? !usesCustomRender
 
   return (
-    <Comp
+    <ButtonPrimitive
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={classes}
+      render={render}
+      nativeButton={resolvedNativeButton}
       {...props}
     />
   )
 }
 
+/**
+ * UI convention:
+ * - Use `Button` for actions (onClick, form submit, dialogs).
+ * - Use `Link` + `buttonVariants()` for navigation.
+ * - Use `Button asChild` only when Slot composition is intentional; avoid nesting Link inside Button.
+ */
 export { Button, buttonVariants }

@@ -617,6 +617,46 @@ model Preset {
   @@index([updatedAt])
 }
 
+/// Creative variation / A-B test tracked in the Experiment Tracker.
+model Experiment {
+  id                    String   @id
+  campaignId            String   @default("")
+  campaignName          String   @default("")
+  experimentName        String   @default("")
+  experimentType        String   @default("")
+  status                String   @default("Idea")
+  platform              String   @default("")
+  hypothesis            String   @default("")
+  variantA              String   @default("")
+  variantB              String   @default("")
+  variantC              String   @default("")
+  winner                String   @default("")
+  resultSummary         String   @default("")
+  metricFocus           String   @default("")
+  startDate             String   @default("")
+  endDate               String   @default("")
+  notes                 String   @default("")
+  whatWorked            String   @default("")
+  whatDidNotWork        String   @default("")
+  nextTestIdea          String   @default("")
+  relatedAnalyticsNotes String   @default("")
+  variantAMetric        String   @default("")
+  variantBMetric        String   @default("")
+  variantCMetric        String   @default("")
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@index([experimentName])
+  @@index([experimentType])
+  @@index([status])
+  @@index([campaignId])
+  @@index([campaignName])
+  @@index([platform])
+  @@index([metricFocus])
+  @@index([winner])
+  @@index([updatedAt])
+}
+
 /// Singleton workspace defaults for CreatorOps (single row id: creatorops-workspace-default).
 model WorkspaceSettings {
   id                    String   @id

@@ -36,6 +36,7 @@ const RECORD_ID_MODULES: ActivityType[] = [
   "mockup-prompt",
   "email-campaign",
   "analytics",
+  "experiment",
   "artist",
   "prompt-run",
   "workflow-run",

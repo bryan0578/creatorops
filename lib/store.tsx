@@ -8,6 +8,7 @@ import type {
   PresetRecord,
   WorkspaceSettingsRecord,
   EmailCampaignRecord,
+  ExperimentRecord,
   MerchIdea,
   MockupPromptRecord,
   ProductListing,
@@ -26,6 +27,7 @@ import {
   loadCampaigns,
   loadPresets,
   loadEmailCampaignRecords,
+  loadExperiments,
   loadMerchIdeas,
   loadMockupPromptRecords,
   loadProductListings,
@@ -60,6 +62,13 @@ import {
   importEmailCampaignRecords as importEmailCampaignRecordsToDb,
   upsertEmailCampaignRecord,
 } from "@/lib/actions/email-campaigns"
+import {
+  createExperiment,
+  deleteExperiment,
+  getExperiments,
+  importExperiments as importExperimentsToDb,
+  updateExperiment,
+} from "@/lib/actions/experiments"
 import {
   deleteMockupPromptRecordById,
   getMockupPromptRecords,
@@ -154,6 +163,7 @@ interface StoreContextValue {
   analyticsRecords: AnalyticsRecord[]
   mockupPromptRecords: MockupPromptRecord[]
   emailCampaignRecords: EmailCampaignRecord[]
+  experiments: ExperimentRecord[]
   campaigns: CampaignRecord[]
   presets: PresetRecord[]
   workspaceSettings: WorkspaceSettingsRecord | null
@@ -174,6 +184,7 @@ interface StoreContextValue {
   analyticsRecordsUseDatabase: boolean
   mockupPromptRecordsUseDatabase: boolean
   emailCampaignRecordsUseDatabase: boolean
+  experimentsUseDatabase: boolean
   campaignsUseDatabase: boolean
   presetsUseDatabase: boolean
   addPrompt: (p: Prompt) => Promise<void>
@@ -237,6 +248,11 @@ interface StoreContextValue {
   deleteEmailCampaignRecord: (id: string) => Promise<void>
   importEmailCampaignRecords: (items: EmailCampaignRecord[]) => Promise<void>
   reloadEmailCampaignRecords: () => Promise<void>
+  addExperiment: (record: ExperimentRecord) => Promise<void>
+  updateExperiment: (record: ExperimentRecord) => Promise<void>
+  deleteExperiment: (id: string) => Promise<void>
+  importExperiments: (items: ExperimentRecord[]) => Promise<void>
+  reloadExperiments: () => Promise<void>
   addCampaign: (record: CampaignRecord) => Promise<void>
   updateCampaign: (record: CampaignRecord) => Promise<void>
   deleteCampaign: (id: string) => Promise<void>
@@ -295,6 +311,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [emailCampaignRecords, setEmailCampaignRecords] = React.useState<
     EmailCampaignRecord[]
   >([])
+  const [experiments, setExperiments] = React.useState<ExperimentRecord[]>([])
   const [campaigns, setCampaigns] = React.useState<CampaignRecord[]>([])
   const [presets, setPresets] = React.useState<PresetRecord[]>([])
   const [workspaceSettings, setWorkspaceSettings] =
@@ -329,6 +346,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     React.useState(true)
   const [emailCampaignRecordsUseDatabase, setEmailCampaignRecordsUseDatabase] =
     React.useState(true)
+  const [experimentsUseDatabase, setExperimentsUseDatabase] = React.useState(true)
   const [campaignsUseDatabase, setCampaignsUseDatabase] = React.useState(true)
   const [presetsUseDatabase, setPresetsUseDatabase] = React.useState(true)
 
@@ -542,6 +560,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       )
       setEmailCampaignRecords(loadEmailCampaignRecords())
       setEmailCampaignRecordsUseDatabase(false)
+      throw error
+    }
+  }, [])
+
+  const reloadExperiments = React.useCallback(async () => {
+    try {
+      const next = await getExperiments()
+      setExperiments(next)
+      setExperimentsUseDatabase(true)
+    } catch (error) {
+      console.error(
+        "[CreatorOps] Failed to reload experiments from database; using localStorage.",
+        error,
+      )
+      setExperiments(loadExperiments())
+      setExperimentsUseDatabase(false)
       throw error
     }
   }, [])
@@ -823,6 +857,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (!cancelled) {
           setEmailCampaignRecords(loadEmailCampaignRecords())
           setEmailCampaignRecordsUseDatabase(false)
+        }
+      }
+
+      if (cancelled) return
+
+      try {
+        const dbExperiments = await getExperiments()
+        if (!cancelled) {
+          setExperiments(dbExperiments)
+          setExperimentsUseDatabase(true)
+        }
+      } catch (error) {
+        console.error(
+          "[CreatorOps] Failed to load experiments from database; using localStorage.",
+          error,
+        )
+        if (!cancelled) {
+          setExperiments(loadExperiments())
+          setExperimentsUseDatabase(false)
         }
       }
 
@@ -1273,6 +1326,30 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [],
   )
 
+  const addExperiment = React.useCallback(async (record: ExperimentRecord) => {
+    const saved = await createExperiment(record)
+    setExperiments((prev) => [saved, ...prev.filter((x) => x.id !== saved.id)])
+    setExperimentsUseDatabase(true)
+  }, [])
+
+  const updateExperimentRecord = React.useCallback(async (record: ExperimentRecord) => {
+    const saved = await updateExperiment(record)
+    setExperiments((prev) => prev.map((x) => (x.id === saved.id ? saved : x)))
+    setExperimentsUseDatabase(true)
+  }, [])
+
+  const deleteExperimentRecord = React.useCallback(async (id: string) => {
+    await deleteExperiment(id)
+    setExperiments((prev) => prev.filter((x) => x.id !== id))
+    setExperimentsUseDatabase(true)
+  }, [])
+
+  const importExperiments = React.useCallback(async (items: ExperimentRecord[]) => {
+    const merged = await importExperimentsToDb(items)
+    setExperiments(merged)
+    setExperimentsUseDatabase(true)
+  }, [])
+
   const addCampaign = React.useCallback(async (record: CampaignRecord) => {
     const saved = await upsertCampaign(record)
     setCampaigns((prev) => [saved, ...prev.filter((x) => x.id !== saved.id)])
@@ -1396,6 +1473,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     analyticsRecords,
     mockupPromptRecords,
     emailCampaignRecords,
+    experiments,
     campaigns,
     presets,
     workspaceSettings,
@@ -1416,6 +1494,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     analyticsRecordsUseDatabase,
     mockupPromptRecordsUseDatabase,
     emailCampaignRecordsUseDatabase,
+    experimentsUseDatabase,
     campaignsUseDatabase,
     presetsUseDatabase,
     addPrompt,
@@ -1479,6 +1558,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     deleteEmailCampaignRecord,
     importEmailCampaignRecords,
     reloadEmailCampaignRecords,
+    addExperiment,
+    updateExperiment: updateExperimentRecord,
+    deleteExperiment: deleteExperimentRecord,
+    importExperiments,
+    reloadExperiments,
     addCampaign,
     updateCampaign,
     deleteCampaign,

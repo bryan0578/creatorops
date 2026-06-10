@@ -21,6 +21,7 @@ export type WorkspaceDefaultsModule =
   | "product-listing"
   | "mockup-prompt"
   | "campaign"
+  | "experiments"
 
 function isEmpty(value: string | undefined | null): boolean {
   return !String(value ?? "").trim()
@@ -171,6 +172,18 @@ export function applyWorkspaceDefaultsToCampaign(
   })
 }
 
+export function applyWorkspaceDefaultsToExperiments<T extends Record<string, string>>(
+  form: T,
+  settings: WorkspaceSettingsRecord,
+): T {
+  const platform =
+    settings.defaultPlatforms.split(",")[0]?.trim() || settings.defaultYouTubeChannel
+  return fillEmptyStringFields(form, {
+    platform,
+    notes: settings.notes,
+  } as Partial<T>)
+}
+
 export function applyWorkspaceDefaults<T extends Record<string, string>>(
   module: WorkspaceDefaultsModule,
   form: T,
@@ -222,6 +235,8 @@ export function applyWorkspaceDefaults<T extends Record<string, string>>(
         form as CampaignFormValues,
         settings,
       ) as T
+    case "experiments":
+      return applyWorkspaceDefaultsToExperiments(form, settings)
     default:
       return form
   }

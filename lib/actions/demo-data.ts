@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 
 import { deleteAnalyticsRecordById, upsertAnalyticsRecord } from "@/lib/actions/analytics-records"
+import { createExperiment, deleteExperiment } from "@/lib/actions/experiments"
 import { deleteArtistById, upsertArtist } from "@/lib/actions/artists"
 import { deleteCampaignById, upsertCampaign } from "@/lib/actions/campaigns"
 import {
@@ -53,6 +54,7 @@ const REVALIDATE_PATHS = [
   "/product-listings",
   "/mockup-prompts",
   "/analytics",
+  "/experiments",
   "/search",
   "/backups",
   "/activity",
@@ -73,6 +75,7 @@ export type DemoDataStatus = {
     productListing: number
     mockup: number
     analytics: number
+    experiment: number
   }
   lastSeededAt: number | null
 }
@@ -96,6 +99,7 @@ async function countDemoRows() {
     productListings,
     mockups,
     analytics,
+    experiments,
   ] = await Promise.all([
     prisma.artist.count({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
     prisma.campaign.count({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
@@ -108,6 +112,7 @@ async function countDemoRows() {
     prisma.productListing.count({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
     prisma.mockupPrompt.count({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
     prisma.analyticsRecord.count({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
+    prisma.experiment.count({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
   ])
 
   const recordCounts = {
@@ -122,6 +127,7 @@ async function countDemoRows() {
     productListing: productListings,
     mockup: mockups,
     analytics,
+    experiment: experiments,
   }
 
   const totalRecords = Object.values(recordCounts).reduce((sum, n) => sum + n, 0)
@@ -163,6 +169,7 @@ async function findRowNotesById(
     prisma.productListing.findUnique({ where: { id }, select: { id: true, notes: true } }),
     prisma.mockupPrompt.findUnique({ where: { id }, select: { id: true, notes: true } }),
     prisma.analyticsRecord.findUnique({ where: { id }, select: { id: true, notes: true } }),
+    prisma.experiment.findUnique({ where: { id }, select: { id: true, notes: true } }),
   ]
 
   for (const query of queries) {
@@ -190,6 +197,7 @@ export async function seedDemoData(): Promise<{
       DEMO_IDS.productListing,
       DEMO_IDS.mockup,
       DEMO_IDS.analytics,
+      DEMO_IDS.experiment,
     ]
 
     for (const id of demoIds) {
@@ -215,6 +223,7 @@ export async function seedDemoData(): Promise<{
     await upsertProductListing(demo.productListing)
     await upsertMockupPromptRecord(demo.mockup)
     await upsertAnalyticsRecord(demo.analytics)
+    await createExperiment(demo.experiment)
     await upsertArtist(demo.artist)
     await upsertCampaign(demo.campaign)
 
@@ -271,6 +280,7 @@ export async function deleteDemoData(): Promise<{
       productListings,
       mockups,
       analytics,
+      experiments,
       artists,
     ] = await Promise.all([
       prisma.releasePlan.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
@@ -282,6 +292,7 @@ export async function deleteDemoData(): Promise<{
       prisma.productListing.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
       prisma.mockupPrompt.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
       prisma.analyticsRecord.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
+      prisma.experiment.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
       prisma.artist.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
     ])
 
@@ -294,6 +305,7 @@ export async function deleteDemoData(): Promise<{
     await deleteMarked(productListings, deleteProductListingById)
     await deleteMarked(mockups, deleteMockupPromptRecordById)
     await deleteMarked(analytics, deleteAnalyticsRecordById)
+    await deleteMarked(experiments, deleteExperiment)
     await deleteMarked(artists, deleteArtistById)
 
     revalidateDemoRoutes()

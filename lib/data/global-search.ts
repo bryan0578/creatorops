@@ -28,6 +28,7 @@ export type GlobalSearchResultType =
   | "analytics"
   | "mockup-prompt"
   | "email-campaign"
+  | "experiment"
   | "campaign"
   | "preset"
 
@@ -125,6 +126,11 @@ export const GLOBAL_SEARCH_TYPE_META: Record<
     category: "marketing",
     href: "/email-campaigns",
   },
+  experiment: {
+    typeLabel: "Experiment",
+    category: "marketing",
+    href: "/experiments",
+  },
   campaign: {
     typeLabel: "Campaign",
     category: "operations",
@@ -197,6 +203,13 @@ export function buildResultHref(
   if (type === "campaign") {
     return {
       href: `${base}?campaignId=${encodeURIComponent(id)}`,
+      directOpen: true,
+    }
+  }
+
+  if (type === "experiment") {
+    return {
+      href: `${base}?recordId=${encodeURIComponent(id)}`,
       directOpen: true,
     }
   }

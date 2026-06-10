@@ -10,6 +10,7 @@ import {
 } from "@/lib/demo-data/constants"
 import type {
   AnalyticsRecord,
+  ExperimentRecord,
   ArtistRecord,
   CampaignLinkedRecord,
   CampaignRecord,
@@ -576,6 +577,36 @@ export function buildPrettyWiseDemoRecords(now = new Date()) {
     updatedAt: ts,
   }
 
+  const experiment: ExperimentRecord = {
+    id: DEMO_IDS.experiment,
+    campaignId: DEMO_IDS.campaign,
+    campaignName: DEMO_CAMPAIGN_NAME,
+    experimentName: "Cotton Candy Skies Thumbnail Text Test",
+    experimentType: "Thumbnail Text",
+    status: "Idea",
+    platform: "YouTube",
+    hypothesis:
+      "A short mysterious title overlay will improve CTR compared to a longer descriptive overlay.",
+    metricFocus: "CTR",
+    variantA: "COTTON CANDY SKIES",
+    variantB: "SWEET SKIES. DARK SECRETS.",
+    variantC: "THE SKY IS LYING",
+    winner: "",
+    resultSummary: "",
+    startDate: dates.startDate,
+    endDate: dates.endDate,
+    notes: DEMO_DATA_MARKER,
+    whatWorked: "",
+    whatDidNotWork: "",
+    nextTestIdea: "",
+    relatedAnalyticsNotes: "",
+    variantAMetric: "",
+    variantBMetric: "",
+    variantCMetric: "",
+    createdAt: ts,
+    updatedAt: ts,
+  }
+
   return {
     artist,
     campaign,
@@ -588,5 +619,6 @@ export function buildPrettyWiseDemoRecords(now = new Date()) {
     productListing,
     mockup,
     analytics,
+    experiment,
   }
 }

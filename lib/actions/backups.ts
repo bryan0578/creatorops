@@ -8,6 +8,7 @@ import { importCampaigns } from "@/lib/actions/campaigns"
 import { importPresets } from "@/lib/actions/presets"
 import { importWorkspaceSettings } from "@/lib/actions/workspace-settings"
 import { importEmailCampaignRecords } from "@/lib/actions/email-campaigns"
+import { getExperiments, importExperiments } from "@/lib/actions/experiments"
 import { importMerchIdeas } from "@/lib/actions/merch-ideas"
 import { importMockupPromptRecords } from "@/lib/actions/mockup-prompts"
 import { importProductListings } from "@/lib/actions/product-listings"
@@ -55,6 +56,7 @@ import { getYouTubePackages } from "@/lib/actions/youtube-packages"
 import { getYouTubeThumbnails } from "@/lib/actions/youtube-thumbnails"
 import { prisma } from "@/lib/prisma"
 import type {
+  ExperimentRecord,
   AnalyticsRecord,
   ArtistRecord,
   CampaignRecord,
@@ -91,6 +93,7 @@ const REVALIDATE_PATHS = [
   "/analytics",
   "/mockup-prompts",
   "/email-campaigns",
+  "/experiments",
   "/campaigns",
   "/presets",
   "/search",
@@ -135,6 +138,7 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     analyticsRecords,
     mockupPrompts,
     emailCampaigns,
+    experiments,
     campaigns,
     presets,
     workspaceSettingsRow,
@@ -153,6 +157,7 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     getAnalyticsRecords(),
     getMockupPromptRecords(),
     getEmailCampaignRecords(),
+    getExperiments(),
     getCampaigns(),
     getPresets(),
     getWorkspaceSettings(),
@@ -175,6 +180,7 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     analyticsRecords,
     mockupPrompts,
     emailCampaigns,
+    experiments,
     campaigns,
     presets,
     workspaceSettings,
@@ -236,6 +242,7 @@ async function clearAllBackupTables(): Promise<void> {
   await prisma.analyticsRecord.deleteMany()
   await prisma.mockupPrompt.deleteMany()
   await prisma.emailCampaign.deleteMany()
+  await prisma.experiment.deleteMany()
   await prisma.campaign.deleteMany()
   await prisma.preset.deleteMany()
   await prisma.workspaceSettings.deleteMany()
@@ -292,6 +299,9 @@ async function importBackupData(
   }
   if (data.emailCampaigns.length > 0) {
     await importEmailCampaignRecords(data.emailCampaigns as EmailCampaignRecord[])
+  }
+  if (data.experiments.length > 0) {
+    await importExperiments(data.experiments as ExperimentRecord[])
   }
   if (data.campaigns.length > 0) {
     await importCampaigns(data.campaigns as CampaignRecord[])

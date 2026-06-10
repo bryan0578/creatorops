@@ -27,6 +27,7 @@ export const DEMO_IDS = {
   productListing: `${DEMO_ID_PREFIX}prettywise-product-listing`,
   mockup: `${DEMO_ID_PREFIX}prettywise-mockup`,
   analytics: `${DEMO_ID_PREFIX}prettywise-analytics`,
+  experiment: `${DEMO_ID_PREFIX}prettywise-experiment`,
 } as const
 
 export function isDemoDataNotes(notes: string | null | undefined): boolean {

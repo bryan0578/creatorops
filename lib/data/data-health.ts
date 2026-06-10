@@ -9,6 +9,7 @@ import {
 } from "@/lib/data/data-health-repairs"
 import type {
   AnalyticsRecord,
+  ExperimentRecord,
   ArtistRecord,
   CampaignLinkedRecordType,
   CampaignRecord,
@@ -107,6 +108,7 @@ export interface DataHealthScanInput {
   productListings: ProductListing[]
   mockupPrompts: MockupPromptRecord[]
   analyticsRecords: AnalyticsRecord[]
+  experiments: ExperimentRecord[]
   presets: PresetRecord[]
   prompts: Prompt[]
   promptRuns: PromptRun[]
@@ -810,6 +812,23 @@ function scanIncompleteRecords(
     )
   }
 
+  for (const experiment of input.experiments) {
+    flagMissing(
+      "experiment",
+      experiment.id,
+      experiment.experimentName || "Experiment",
+      buildRecordHref("experiment", experiment.id),
+      [
+        !hasText(experiment.experimentName) ? "experimentName" : "",
+        !hasText(experiment.experimentType) ? "experimentType" : "",
+        !hasText(experiment.hypothesis) ? "hypothesis" : "",
+        !hasText(experiment.variantA) ? "variantA" : "",
+        !hasText(experiment.variantB) ? "variantB" : "",
+        !hasText(experiment.metricFocus) ? "metricFocus" : "",
+      ].filter(Boolean),
+    )
+  }
+
   if (input.workspaceSettings) {
     const ws = input.workspaceSettings
     flagMissing(
@@ -907,6 +926,7 @@ export function countScannableRecords(input: DataHealthScanInput): number {
     input.productListings.length +
     input.mockupPrompts.length +
     input.analyticsRecords.length +
+    input.experiments.length +
     input.presets.length +
     input.prompts.length +
     input.promptRuns.length +

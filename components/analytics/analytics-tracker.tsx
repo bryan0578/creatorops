@@ -49,6 +49,7 @@ import { ModulePageHeader } from "@/components/app-shell"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { CampaignPromptOutputSection } from "@/components/campaigns/campaign-context-prompt-controls"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
+import { RelatedExperimentsPanel } from "@/components/experiments/related-experiments-panel"
 import { RelationshipPanel } from "@/components/relationships/relationship-panel"
 import {
   ANALYTICS_WORKFLOW_TABS,
@@ -771,6 +772,12 @@ export function AnalyticsTracker() {
         </ModuleTabPanel>
 
         <ModuleTabPanel value="related">
+          <RelatedExperimentsPanel
+            relatedCampaign={form.relatedCampaign}
+            relatedSong={form.relatedSong}
+            titleUsed={form.titleUsed}
+            itemName={form.itemName}
+          />
           <RelationshipPanel
             input={{
               currentType: "analytics",

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import {
   BarChart3,
   CalendarDays,
+  FlaskConical,
   ChevronDown,
   HardDrive,
   ImageIcon,
@@ -104,6 +105,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { title: "Social Repurposing", href: "/social-repurposing", icon: Share2 },
       { title: "Email Campaigns", href: "/email-campaigns", icon: Mail },
+      { title: "Experiments", href: "/experiments", icon: FlaskConical },
     ],
   },
   {
