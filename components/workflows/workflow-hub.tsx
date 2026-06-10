@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useSearchParams } from "next/navigation"
 import { Database, Download, Plus, Search, Upload } from "lucide-react"
 import { toast } from "sonner"
 
@@ -34,6 +35,7 @@ import { WorkflowFormDialog } from "@/components/workflows/workflow-form-dialog"
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel"
 
 export function WorkflowHub() {
+  const searchParams = useSearchParams()
   const {
     workflows,
     prompts,
@@ -61,6 +63,14 @@ export function WorkflowHub() {
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   const detailWorkflow = workflows.find((w) => w.id === detailId) ?? null
+
+  React.useEffect(() => {
+    if (!hydrated) return
+    const id = searchParams.get("recordId") ?? searchParams.get("workflowId")
+    if (!id) return
+    const workflow = workflows.find((item) => item.id === id)
+    if (workflow) openDetail(workflow)
+  }, [hydrated, searchParams, workflows])
 
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase()

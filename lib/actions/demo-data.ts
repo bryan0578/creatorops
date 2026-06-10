@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 
 import { deleteAnalyticsRecordById, upsertAnalyticsRecord } from "@/lib/actions/analytics-records"
 import { createAsset, deleteAsset } from "@/lib/actions/assets"
+import { createLearning, deleteLearning } from "@/lib/actions/learnings"
 import { createQualityReview, deleteQualityReview } from "@/lib/actions/quality-reviews"
 import { createExperiment, deleteExperiment } from "@/lib/actions/experiments"
 import { deleteArtistById, upsertArtist } from "@/lib/actions/artists"
@@ -63,6 +64,7 @@ const REVALIDATE_PATHS = [
   "/backups",
   "/assets",
   "/quality",
+  "/learnings",
   "/activity",
 ]
 
@@ -85,6 +87,7 @@ export type DemoDataStatus = {
     promptRun: number
     asset: number
     qualityReview: number
+    learning: number
   }
   lastSeededAt: number | null
 }
@@ -112,6 +115,7 @@ async function countDemoRows() {
     promptRuns,
     assets,
     qualityReviews,
+    learnings,
   ] = await Promise.all([
     prisma.artist.count({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
     prisma.campaign.count({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
@@ -128,6 +132,7 @@ async function countDemoRows() {
     prisma.promptRun.count({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
     prisma.asset.count({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
     prisma.qualityReview.count({ where: { reviewerNotes: { contains: DEMO_DATA_MARKER } } }),
+    prisma.learning.count({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
   ])
 
   const recordCounts = {
@@ -146,6 +151,7 @@ async function countDemoRows() {
     promptRun: promptRuns,
     asset: assets,
     qualityReview: qualityReviews,
+    learning: learnings,
   }
 
   const totalRecords = Object.values(recordCounts).reduce((sum, n) => sum + n, 0)
@@ -194,6 +200,7 @@ async function findRowNotesById(
       where: { id },
       select: { id: true, reviewerNotes: true },
     }).then((row) => (row ? { id: row.id, notes: row.reviewerNotes } : null)),
+    prisma.learning.findUnique({ where: { id }, select: { id: true, notes: true } }),
   ]
 
   for (const query of queries) {
@@ -228,6 +235,8 @@ export async function seedDemoData(): Promise<{
       DEMO_IDS.assetMockup,
       DEMO_IDS.qualityReviewYoutube,
       DEMO_IDS.qualityReviewThumbnail,
+      DEMO_IDS.learningThumbnailText,
+      DEMO_IDS.learningVisualStyle,
     ]
 
     for (const id of demoIds) {
@@ -264,6 +273,9 @@ export async function seedDemoData(): Promise<{
     }
     for (const review of demo.qualityReviews) {
       await createQualityReview(review)
+    }
+    for (const learning of demo.learnings) {
+      await createLearning(learning)
     }
 
     revalidateDemoRoutes()
@@ -324,6 +336,7 @@ export async function deleteDemoData(): Promise<{
       promptRunRows,
       assetRows,
       qualityReviewRows,
+      learningRows,
     ] = await Promise.all([
       prisma.releasePlan.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
       prisma.youTubePackage.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
@@ -341,8 +354,12 @@ export async function deleteDemoData(): Promise<{
       prisma.qualityReview.findMany({
         where: { reviewerNotes: { contains: DEMO_DATA_MARKER } },
       }),
+      prisma.learning.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
     ])
 
+    await deleteMarked(learningRows, async (id) => {
+      await deleteLearning(id)
+    })
     await deleteMarked(qualityReviewRows, async (id) => {
       await deleteQualityReview(id)
     })

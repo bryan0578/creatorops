@@ -86,6 +86,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { useSmartDefaultTab } from "@/hooks/use-smart-default-tab"
 
 const ASSET_WORKFLOW_TABS = [
   { value: "details", label: "Asset Details" },
@@ -269,11 +270,17 @@ function buildRelatedLinks(form: AssetFormValues): RelatedLinkItem[] {
 export function AssetLibrary() {
   const { campaigns } = useStore()
   const searchParams = useSearchParams()
-  const initialTab = searchParams.get("tab")
-  const defaultTab = initialTab === "saved" ? "saved" : "details"
 
   const [assets, setAssets] = React.useState<AssetRecord[]>([])
   const [loading, setLoading] = React.useState(true)
+
+  const { activeTab, setActiveTab } = useSmartDefaultTab({
+    validTabs: ASSET_WORKFLOW_TABS.map((tab) => tab.value),
+    detailsTab: "details",
+    savedTab: "saved",
+    recordsLoaded: !loading,
+    hasRecords: assets.length > 0,
+  })
   const [saving, setSaving] = React.useState(false)
   const [form, setForm] = React.useState<AssetFormValues>(emptyAssetForm())
   const [editingId, setEditingId] = React.useState<string | null>(null)
@@ -754,7 +761,11 @@ export function AssetLibrary() {
         </Card>
       </div>
 
-      <ModuleWorkflowTabs defaultTab={defaultTab} tabs={ASSET_WORKFLOW_TABS}>
+      <ModuleWorkflowTabs
+        tabs={ASSET_WORKFLOW_TABS}
+        value={activeTab}
+        onValueChange={setActiveTab}
+      >
         <ModuleTabPanel value="details">
           <Card className={RECENT_RECORDS_CARD_CLASS}>
             <CardHeader>

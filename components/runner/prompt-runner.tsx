@@ -38,11 +38,14 @@ import { ModulePageHeader } from "@/components/app-shell"
 import { QualityReviewActionLink } from "@/components/quality/quality-review-action"
 import {
   FormSection,
+  ModuleTabPanel,
+  ModuleWorkflowTabs,
   OutputSection,
   PromptPreviewBlock,
   RECENT_RECORDS_CARD_CLASS,
   StickyActionBar,
 } from "@/components/module/form-layout"
+import { useSmartDefaultTab } from "@/hooks/use-smart-default-tab"
 import {
   Card,
   CardContent,
@@ -108,6 +111,15 @@ export function PromptRunner() {
   )
   const [migrating, setMigrating] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+  const { activeTab, setActiveTab, setActiveTabSilent } = useSmartDefaultTab({
+    validTabs: ["run", "saved"],
+    detailsTab: "run",
+    savedTab: "saved",
+    recordsLoaded: hydrated,
+    hasRecords: runs.length > 0,
+    campaignOpensSaved: true,
+  })
 
   const selectedPrompt = prompts.find((p) => p.id === selectedPromptId) ?? null
 
@@ -280,6 +292,7 @@ export function PromptRunner() {
     setAiResponse(run.aiResponse)
     setRunNotes(run.notes)
     setEditingRunId(run.id)
+    setActiveTabSilent("run")
     window.scrollTo({ top: 0, behavior: "smooth" })
     toast.success("Run loaded")
   }
@@ -419,6 +432,15 @@ export function PromptRunner() {
         </Card>
       ) : null}
 
+      <ModuleWorkflowTabs
+        tabs={[
+          { value: "run", label: "Run Prompt" },
+          { value: "saved", label: "Saved Runs" },
+        ]}
+        value={activeTab}
+        onValueChange={setActiveTab}
+      >
+      <ModuleTabPanel value="run">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="flex flex-col gap-6">
           <Card>
@@ -641,7 +663,9 @@ export function PromptRunner() {
           </StickyActionBar>
         </div>
       </div>
+      </ModuleTabPanel>
 
+      <ModuleTabPanel value="saved">
       <Card className={RECENT_RECORDS_CARD_CLASS}>
         <CardHeader className="flex-row flex-wrap items-start justify-between gap-3 space-y-0">
           <div>
@@ -800,6 +824,8 @@ export function PromptRunner() {
           )}
         </CardContent>
       </Card>
+      </ModuleTabPanel>
+      </ModuleWorkflowTabs>
 
       <Dialog
         open={!!pendingDelete}

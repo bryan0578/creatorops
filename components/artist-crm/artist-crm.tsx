@@ -88,6 +88,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { useSmartDefaultTab } from "@/hooks/use-smart-default-tab"
 import {
   Select,
   SelectContent,
@@ -226,7 +227,16 @@ export function ArtistCrm() {
     deleteArtistRecord,
     importArtistRecords,
     reloadArtistRecords,
+    hydrated,
   } = useStore()
+
+  const { activeTab, setActiveTab } = useSmartDefaultTab({
+    validTabs: ["profile", "releases", "products", "campaigns", "related", "saved"],
+    detailsTab: "profile",
+    savedTab: "saved",
+    recordsLoaded: hydrated,
+    hasRecords: artistRecords.length > 0,
+  })
 
   const [form, setForm] = React.useState<ArtistFormValues>(emptyArtistForm())
   const [releases, setReleases] = React.useState<ArtistRelease[]>([])
@@ -477,7 +487,11 @@ export function ArtistCrm() {
         }
       />
 
-      <ModuleWorkflowTabs defaultTab="profile" tabs={ARTIST_CRM_WORKFLOW_TABS}>
+      <ModuleWorkflowTabs
+        tabs={ARTIST_CRM_WORKFLOW_TABS}
+        value={activeTab}
+        onValueChange={setActiveTab}
+      >
         <ModuleTabPanel value="profile">
           <Card>
             <CardHeader>

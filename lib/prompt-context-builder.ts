@@ -192,7 +192,29 @@ export function buildCampaignContextBlock(context: CampaignContextBundle): strin
       ? context.missingAssets.map((asset) => `- ${asset.label}`).join("\n")
       : "None"
 
-  lines.push("MISSING ASSETS", missing)
+  lines.push("MISSING ASSETS", missing, "")
+
+  if (context.reusableLearnings.length > 0) {
+    lines.push("LEARNINGS TO APPLY", "")
+    for (const learning of context.reusableLearnings) {
+      lines.push(
+        `- ${learning.title} (${learning.learningType}, ${learning.confidence} confidence, ${learning.impact} impact)`,
+        `  Insight: ${(learning.insight || "Not provided").trim()}`,
+      )
+      if (learning.recommendation?.trim()) {
+        lines.push(`  Recommendation: ${learning.recommendation.trim()}`)
+      }
+      if (learning.repeatWhen?.trim()) {
+        lines.push(`  Repeat when: ${learning.repeatWhen.trim()}`)
+      }
+      if (learning.avoidWhen?.trim()) {
+        lines.push(`  Avoid when: ${learning.avoidWhen.trim()}`)
+      }
+      lines.push("")
+    }
+  } else {
+    lines.push("LEARNINGS TO APPLY", "No high-confidence learnings found for this campaign.", "")
+  }
 
   return lines.join("\n").trim()
 }

@@ -42,10 +42,13 @@ import {
 import { ModulePageHeader } from "@/components/app-shell"
 import {
   FormSection,
+  ModuleTabPanel,
+  ModuleWorkflowTabs,
   PromptPreviewBlock,
   RECENT_RECORDS_CARD_CLASS,
   StickyActionBar,
 } from "@/components/module/form-layout"
+import { useSmartDefaultTab } from "@/hooks/use-smart-default-tab"
 import {
   Card,
   CardContent,
@@ -113,6 +116,14 @@ export function WorkflowRunner() {
   const [viewingPrompt, setViewingPrompt] = React.useState<Prompt | null>(null)
   const [migrating, setMigrating] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+  const { activeTab, setActiveTab, setActiveTabSilent } = useSmartDefaultTab({
+    validTabs: ["run", "saved"],
+    detailsTab: "run",
+    savedTab: "saved",
+    recordsLoaded: hydrated,
+    hasRecords: workflowRuns.length > 0,
+  })
 
   const selectedWorkflow =
     workflows.find((w) => w.id === selectedWorkflowId) ?? null
@@ -204,6 +215,7 @@ export function WorkflowRunner() {
   function openRun(run: WorkflowRun) {
     setSelectedWorkflowId(run.workflowId)
     setActiveRun(run)
+    setActiveTabSilent("run")
     window.scrollTo({ top: 0, behavior: "smooth" })
     toast.success("Workflow run loaded")
   }
@@ -314,6 +326,15 @@ export function WorkflowRunner() {
         description="Select a workflow, run each step in order, and track your progress locally."
       />
 
+      <ModuleWorkflowTabs
+        tabs={[
+          { value: "run", label: "Run Workflow" },
+          { value: "saved", label: "Saved Runs" },
+        ]}
+        value={activeTab}
+        onValueChange={setActiveTab}
+      >
+      <ModuleTabPanel value="run">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="flex flex-col gap-6">
           <Card>
@@ -611,7 +632,9 @@ export function WorkflowRunner() {
           )}
         </div>
       </div>
+      </ModuleTabPanel>
 
+      <ModuleTabPanel value="saved">
       <Card className={RECENT_RECORDS_CARD_CLASS}>
         <CardHeader className="flex-row flex-wrap items-start justify-between gap-3 space-y-0">
           <div>
@@ -739,6 +762,8 @@ export function WorkflowRunner() {
           )}
         </CardContent>
       </Card>
+      </ModuleTabPanel>
+      </ModuleWorkflowTabs>
 
       {/* View prompt dialog */}
       <Dialog

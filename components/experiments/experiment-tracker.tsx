@@ -30,6 +30,7 @@ import {
 } from "@/lib/types"
 
 import { ModulePageHeader } from "@/components/app-shell"
+import { CreateLearningButton } from "@/components/learnings/learning-action-link"
 import { QualityReviewActionLink } from "@/components/quality/quality-review-action"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { ExperimentAnalyticsLinkSection } from "@/components/experiments/experiment-analytics-link-section"
@@ -70,6 +71,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { useSmartDefaultTab } from "@/hooks/use-smart-default-tab"
 
 type ExperimentFormState = Omit<ExperimentRecord, "id" | "createdAt" | "updatedAt">
 
@@ -139,7 +141,16 @@ export function ExperimentTracker() {
     deleteExperiment,
     importExperiments,
     reloadExperiments,
+    hydrated,
   } = useStore()
+
+  const { activeTab, setActiveTab } = useSmartDefaultTab({
+    validTabs: ["experiment", "results", "saved"],
+    detailsTab: "experiment",
+    savedTab: "saved",
+    recordsLoaded: hydrated,
+    hasRecords: experiments.length > 0,
+  })
 
   const searchParams = useSearchParams()
   const [form, setForm] = React.useState<ExperimentFormState>(
@@ -528,7 +539,11 @@ export function ExperimentTracker() {
         </Card>
       </div>
 
-      <ModuleWorkflowTabs defaultTab="experiment" tabs={EXPERIMENT_WORKFLOW_TABS}>
+      <ModuleWorkflowTabs
+        tabs={EXPERIMENT_WORKFLOW_TABS}
+        value={activeTab}
+        onValueChange={setActiveTab}
+      >
         <ModuleTabPanel value="experiment">
           <Card className={RECENT_RECORDS_CARD_CLASS}>
             <CardHeader className="flex flex-row items-start justify-between gap-3">
@@ -570,6 +585,13 @@ export function ExperimentTracker() {
                   reviewType="Experiment Variant"
                   label="Review Experiment Variant"
                   contextTitle={form.experimentName}
+                />
+                <CreateLearningButton
+                  source="experiment"
+                  sourceId={editingId}
+                  campaignId={form.campaignId}
+                  campaignName={form.campaignName}
+                  label="Create Learning from Experiment"
                 />
               </div>
             </CardContent>

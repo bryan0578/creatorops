@@ -63,6 +63,7 @@ import { AssetDashboardCard } from "@/components/assets/asset-widgets"
 import { PlaybookDashboardCard } from "@/components/playbooks/playbook-widgets"
 import { AutomationDashboardCard } from "@/components/automation/automation-suggestions-card"
 import { CalendarDashboardCard } from "@/components/calendar/calendar-widgets"
+import { LearningsDashboardCard } from "@/components/learnings/learning-widgets"
 import { QualityDashboardCard } from "@/components/quality/quality-widgets"
 
 function CompactStatCard({
@@ -492,6 +493,7 @@ export function DashboardHome() {
         <AssetDashboardCard />
         <PlaybookDashboardCard />
         <QualityDashboardCard />
+        <LearningsDashboardCard />
       </div>
 
       <Card className="border-border/80">

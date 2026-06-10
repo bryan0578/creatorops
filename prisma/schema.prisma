@@ -796,6 +796,53 @@ model QualityReview {
   @@index([updatedAt])
 }
 
+/// Analytics learning library entry — insights from campaigns, analytics, experiments, and quality reviews.
+model Learning {
+  id                String   @id
+  title             String   @default("")
+  learningType      String   @default("Other")
+  category          String   @default("")
+  confidence        String   @default("Medium")
+  impact            String   @default("Unknown")
+  status            String   @default("Active")
+  campaignId        String   @default("")
+  campaignName      String   @default("")
+  artistName        String   @default("")
+  songTitle         String   @default("")
+  productName       String   @default("")
+  platform          String   @default("")
+  sourceType        String   @default("")
+  sourceId          String   @default("")
+  analyticsRecordId String   @default("")
+  experimentId      String   @default("")
+  qualityReviewId   String   @default("")
+  assetId           String   @default("")
+  promptRunId       String   @default("")
+  playbookId        String   @default("")
+  insight           String   @default("")
+  evidence          String   @default("")
+  recommendation    String   @default("")
+  repeatWhen        String   @default("")
+  avoidWhen         String   @default("")
+  tags              String   @default("[]")
+  notes             String   @default("")
+  createdAt         DateTime
+  updatedAt         DateTime
+
+  @@index([title])
+  @@index([learningType])
+  @@index([category])
+  @@index([campaignId])
+  @@index([campaignName])
+  @@index([artistName])
+  @@index([songTitle])
+  @@index([platform])
+  @@index([confidence])
+  @@index([impact])
+  @@index([status])
+  @@index([updatedAt])
+}
+
 /// Singleton workspace defaults for CreatorOps (single row id: creatorops-workspace-default).
 model WorkspaceSettings {
   id                    String   @id

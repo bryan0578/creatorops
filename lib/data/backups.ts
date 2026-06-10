@@ -26,6 +26,7 @@ export type BackupDataKey =
   | "playbooks"
   | "assets"
   | "qualityReviews"
+  | "learnings"
   | "workspaceSettings"
 
 export type BackupImportMode = "merge" | "replace"
@@ -51,6 +52,7 @@ export interface BackupRecordCounts {
   playbooks: number
   assets: number
   qualityReviews: number
+  learnings: number
   workspaceSettings: number
 }
 
@@ -75,6 +77,7 @@ export interface CreatorOpsBackupData {
   playbooks: unknown[]
   assets: unknown[]
   qualityReviews: unknown[]
+  learnings: unknown[]
   workspaceSettings: unknown[]
 }
 
@@ -120,6 +123,12 @@ export const BACKUP_MODULE_META: BackupModuleMeta[] = [
     category: "operations",
   },
   {
+    key: "learnings",
+    label: "Learnings",
+    exportFilename: "creatorops-learnings.json",
+    category: "operations",
+  },
+  {
     key: "workspaceSettings",
     label: "Workspace Settings",
     exportFilename: "creatorops-workspace-settings.json",
@@ -151,6 +160,7 @@ export function emptyBackupData(): CreatorOpsBackupData {
     playbooks: [],
     assets: [],
     qualityReviews: [],
+    learnings: [],
     workspaceSettings: [],
   }
 }
@@ -177,6 +187,7 @@ export function countBackupData(data: CreatorOpsBackupData): BackupRecordCounts 
     playbooks: data.playbooks.length,
     assets: data.assets.length,
     qualityReviews: data.qualityReviews.length,
+    learnings: data.learnings.length,
     workspaceSettings: data.workspaceSettings.length,
   }
 }

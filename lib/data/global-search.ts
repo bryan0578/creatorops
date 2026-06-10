@@ -36,6 +36,7 @@ export type GlobalSearchResultType =
   | "playbook"
   | "asset"
   | "quality-review"
+  | "learning"
 
 export interface GlobalSearchResult {
   id: string
@@ -161,6 +162,11 @@ export const GLOBAL_SEARCH_TYPE_META: Record<
     category: "operations",
     href: "/quality",
   },
+  learning: {
+    typeLabel: "Learning",
+    category: "operations",
+    href: "/learnings",
+  },
 }
 
 export function normalizeSearchQuery(raw: string): string {
@@ -216,6 +222,7 @@ const GLOBAL_SEARCH_RECORD_ID_TYPES = new Set<GlobalSearchResultType>([
   "asset",
   "playbook",
   "quality-review",
+  "learning",
 ])
 
 export function buildResultHref(

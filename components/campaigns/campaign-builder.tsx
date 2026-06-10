@@ -94,6 +94,7 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select"
+import { useSmartDefaultTab } from "@/hooks/use-smart-default-tab"
 
 function formatDate(ts: number) {
   return new Date(ts).toLocaleString(undefined, {
@@ -132,7 +133,17 @@ export function CampaignBuilder() {
     React.useState<PublishingChecklist>(emptyPublishingChecklist)
   const [saving, setSaving] = React.useState(false)
   const [savedFilter, setSavedFilter] = React.useState("")
-  const [activeTab, setActiveTab] = React.useState("overview")
+
+  const { activeTab, setActiveTab, setActiveTabSilent } = useSmartDefaultTab({
+    validTabs: CAMPAIGN_BUILDER_TABS.map((tab) => tab.value),
+    detailsTab: "overview",
+    savedTab: "saved",
+    launchTab: "launch",
+    overviewTab: "overview",
+    recordsLoaded: store.hydrated,
+    hasRecords: store.campaigns.length > 0,
+    mode: "campaign",
+  })
 
   const [linkType, setLinkType] =
     React.useState<CampaignLinkedRecordType>("release-plan")
@@ -393,17 +404,6 @@ export function CampaignBuilder() {
 
   React.useEffect(() => {
     if (!store.hydrated) return
-    const tab = searchParams.get("tab")
-    if (
-      tab &&
-      CAMPAIGN_BUILDER_TABS.some((item) => item.value === tab)
-    ) {
-      setActiveTab(tab)
-    }
-  }, [searchParams, store.hydrated])
-
-  React.useEffect(() => {
-    if (!store.hydrated) return
     const paramId =
       searchParams.get("campaignId") ?? searchParams.get("recordId")
     if (!paramId) return
@@ -433,7 +433,7 @@ export function CampaignBuilder() {
     })
     if (presetContext) {
       setPresetPrefill(presetContext)
-      setActiveTab("overview")
+      setActiveTabSilent("overview")
       toast.success(presetPrefillToastMessage(presetContext.presetName))
     }
   }, [store.hydrated, searchParams, store.campaigns, recordId, form.campaignName])

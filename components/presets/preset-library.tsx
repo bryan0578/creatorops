@@ -53,6 +53,7 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select"
+import { useSmartDefaultTab } from "@/hooks/use-smart-default-tab"
 
 function formatDate(ts: number) {
   return new Date(ts).toLocaleString(undefined, {
@@ -70,7 +71,15 @@ export function PresetLibrary() {
   const store = useStore()
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
-  const [activeTab, setActiveTab] = React.useState("library")
+  const { activeTab, setActiveTab } = useSmartDefaultTab({
+    validTabs: ["library", "edit", "starters"],
+    detailsTab: "edit",
+    savedTab: "library",
+    recordsLoaded: store.hydrated,
+    hasRecords: store.presets.length > 0,
+    mode: "preset",
+    hasStarters: STARTER_PRESETS.length > 0,
+  })
   const [libraryQuery, setLibraryQuery] = React.useState("")
   const [libraryType, setLibraryType] = React.useState<PresetType | "all">("all")
   const [recordId, setRecordId] = React.useState(() => createId("preset"))

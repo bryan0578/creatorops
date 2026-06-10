@@ -1013,6 +1013,67 @@ async function searchQualityReviews(query: string): Promise<GlobalSearchResult[]
   )
 }
 
+async function searchLearnings(query: string): Promise<GlobalSearchResult[]> {
+  const rows = await prisma.learning.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: GLOBAL_SEARCH_FETCH_BATCH,
+  })
+
+  return pushMatches(
+    rows.map((row) => ({
+      ...row,
+      tagsText: parseTagsJson(row.tags),
+    })),
+    query,
+    [
+      "title",
+      "learningType",
+      "category",
+      "campaignName",
+      "artistName",
+      "songTitle",
+      "platform",
+      "insight",
+      "evidence",
+      "recommendation",
+      "repeatWhen",
+      "avoidWhen",
+      "tagsText",
+      "notes",
+    ],
+    {
+      title: "Title",
+      learningType: "Learning type",
+      category: "Category",
+      campaignName: "Campaign",
+      artistName: "Artist",
+      songTitle: "Song",
+      platform: "Platform",
+      insight: "Insight",
+      evidence: "Evidence",
+      recommendation: "Recommendation",
+      repeatWhen: "Repeat when",
+      avoidWhen: "Avoid when",
+      tagsText: "Tags",
+      notes: "Notes",
+    },
+    (row, matchedFields) =>
+      makeResult(
+        "learning",
+        row.id as string,
+        row.title as string,
+        [row.learningType, row.category, row.campaignName, row.impact]
+          .filter(Boolean)
+          .join(" · "),
+        previewText(row.insight) || previewText(row.recommendation),
+        row.createdAt as Date,
+        row.updatedAt as Date,
+        matchedFields,
+      ),
+    GLOBAL_SEARCH_LIMIT_PER_TYPE,
+  )
+}
+
 const SEARCHERS: {
   type: GlobalSearchResultType
   search: (query: string) => Promise<GlobalSearchResult[]>
@@ -1037,6 +1098,7 @@ const SEARCHERS: {
   { type: "playbook", search: searchPlaybooks },
   { type: "asset", search: searchAssets },
   { type: "quality-review", search: searchQualityReviews },
+  { type: "learning", search: searchLearnings },
 ]
 
 /**

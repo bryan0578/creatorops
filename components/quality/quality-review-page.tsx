@@ -58,6 +58,7 @@ import { downloadJson } from "@/lib/storage"
 import { createId, useStore } from "@/lib/store"
 import type { QualityCriterionScore, QualityReviewFormValues, QualityReviewRecord } from "@/lib/types"
 import { ModulePageHeader } from "@/components/app-shell"
+import { CreateLearningButton } from "@/components/learnings/learning-action-link"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { EmptyState } from "@/components/empty-state"
 import {
@@ -87,6 +88,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { useSmartDefaultTab } from "@/hooks/use-smart-default-tab"
 
 const QUALITY_TABS = [
   { value: "setup", label: "Review Setup" },
@@ -224,9 +226,16 @@ export function QualityReviewPage() {
   const [loading, setLoading] = React.useState(true)
   const [saving, setSaving] = React.useState(false)
   const [generating, setGenerating] = React.useState(false)
-  const [activeTab, setActiveTab] = React.useState("setup")
   const [recordId, setRecordId] = React.useState<string | null>(null)
   const [form, setForm] = React.useState<QualityReviewFormValues>(() => emptyQualityReviewForm())
+
+  const { activeTab, setActiveTab } = useSmartDefaultTab({
+    validTabs: QUALITY_TABS.map((tab) => tab.value),
+    detailsTab: "setup",
+    savedTab: "saved",
+    recordsLoaded: !loading,
+    hasRecords: reviews.length > 0,
+  })
   const [savedSearch, setSavedSearch] = React.useState("")
   const importRef = React.useRef<HTMLInputElement>(null)
 
@@ -576,6 +585,14 @@ export function QualityReviewPage() {
             />
             {isEditingSaved ? (
               <>
+                <CreateLearningButton
+                  source="quality-review"
+                  sourceId={recordId}
+                  campaignId={form.campaignId}
+                  campaignName={form.campaignName}
+                  label="Create Learning from Quality Review"
+                  requireSavedRecord={false}
+                />
                 <Button type="button" variant="outline" size="sm" onClick={() => void handleDuplicate()}>
                   <Copy className="size-4" />
                   Duplicate

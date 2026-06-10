@@ -35,6 +35,7 @@ import type {
   ProductListing,
   Prompt,
   PromptRun,
+  LearningRecord,
   QualityReviewRecord,
   ReleasePlan,
   SocialRepurposingRecord,
@@ -134,6 +135,7 @@ export interface DataHealthScanInput {
   workspaceSettings: WorkspaceSettingsRecord | null
   assets: AssetRecord[]
   qualityReviews: QualityReviewRecord[]
+  learnings: LearningRecord[]
   jsonFields: DataHealthJsonField[]
 }
 
@@ -1242,7 +1244,9 @@ function scanJsonIssues(input: DataHealthScanInput, issues: DataHealthIssue[]): 
                 ? campaignHref(field.sourceId)
                 : field.sourceType === "quality-review"
                   ? `/quality?recordId=${encodeURIComponent(field.sourceId)}`
-                  : "/backups",
+                  : field.sourceType === "learning"
+                    ? `/learnings?recordId=${encodeURIComponent(field.sourceId)}`
+                    : "/backups",
       suggestedAction: "Open Backup Center to export, repair JSON manually, and re-import.",
       relatedHref: "/backups",
     })
@@ -1298,6 +1302,7 @@ export function countScannableRecords(input: DataHealthScanInput): number {
     input.workflowRuns.length +
     input.assets.length +
     input.qualityReviews.length +
+    input.learnings.length +
     (input.workspaceSettings ? 1 : 0)
   )
 }
@@ -1802,6 +1807,129 @@ export function scanQualityReviewWarnings(
   return issues
 }
 
+export function scanLearningWarnings(
+  input: DataHealthScanInput,
+  sets: RecordIdSets,
+  issues: DataHealthIssue[],
+): DataHealthIssue[] {
+  const campaignIds = sets.campaign
+  const analyticsIds = sets.analytics
+  const experimentIds = new Set(input.experiments.map((e) => e.id))
+  const qualityReviewIds = new Set(input.qualityReviews.map((r) => r.id))
+
+  for (const learning of input.learnings) {
+    const title = learning.title || "Untitled learning"
+    const href = `/learnings?recordId=${encodeURIComponent(learning.id)}`
+
+    if (!hasText(learning.title)) {
+      issues.push({
+        id: issueId(["learning-missing-title", learning.id]),
+        severity: "warning",
+        category: "incomplete-records",
+        title: "Learning missing title",
+        description: `Learning ${learning.id} has no title.`,
+        sourceType: "learning",
+        sourceId: learning.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Add a title in Learnings.",
+      })
+    }
+
+    if (!hasText(learning.insight)) {
+      issues.push({
+        id: issueId(["learning-missing-insight", learning.id]),
+        severity: "warning",
+        category: "incomplete-records",
+        title: "Learning missing insight",
+        description: `"${title}" has no insight text.`,
+        sourceType: "learning",
+        sourceId: learning.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Add the core insight in Learnings.",
+      })
+    }
+
+    if (learning.campaignId && !campaignIds.has(learning.campaignId)) {
+      issues.push({
+        id: issueId(["learning-missing-campaign", learning.id, learning.campaignId]),
+        severity: "warning",
+        category: "broken-links",
+        title: "Learning linked to missing campaign",
+        description: `"${title}" references campaign ${learning.campaignId} which was not found.`,
+        sourceType: "learning",
+        sourceId: learning.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Link to an existing campaign or clear campaignId.",
+      })
+    }
+
+    if (learning.analyticsRecordId && !analyticsIds.has(learning.analyticsRecordId)) {
+      issues.push({
+        id: issueId(["learning-missing-analytics", learning.id, learning.analyticsRecordId]),
+        severity: "warning",
+        category: "broken-links",
+        title: "Learning linked to missing analytics record",
+        description: `"${title}" references missing analytics ${learning.analyticsRecordId}.`,
+        sourceType: "learning",
+        sourceId: learning.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Update or clear the analytics link.",
+      })
+    }
+
+    if (learning.experimentId && !experimentIds.has(learning.experimentId)) {
+      issues.push({
+        id: issueId(["learning-missing-experiment", learning.id, learning.experimentId]),
+        severity: "warning",
+        category: "broken-links",
+        title: "Learning linked to missing experiment",
+        description: `"${title}" references missing experiment ${learning.experimentId}.`,
+        sourceType: "learning",
+        sourceId: learning.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Update or clear the experiment link.",
+      })
+    }
+
+    if (learning.qualityReviewId && !qualityReviewIds.has(learning.qualityReviewId)) {
+      issues.push({
+        id: issueId(["learning-missing-quality-review", learning.id, learning.qualityReviewId]),
+        severity: "warning",
+        category: "broken-links",
+        title: "Learning linked to missing quality review",
+        description: `"${title}" references missing quality review ${learning.qualityReviewId}.`,
+        sourceType: "learning",
+        sourceId: learning.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Update or clear the quality review link.",
+      })
+    }
+
+    if (learning.status === "Validated" && learning.confidence === "Low") {
+      issues.push({
+        id: issueId(["learning-validated-low-confidence", learning.id]),
+        severity: "info",
+        category: "incomplete-records",
+        title: "Validated learning has low confidence",
+        description: `"${title}" is Validated but confidence is Low.`,
+        sourceType: "learning",
+        sourceId: learning.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Raise confidence or change status to Needs Validation.",
+      })
+    }
+  }
+
+  return issues
+}
+
 export function buildDataHealthReport(
   input: DataHealthScanInput,
   preflightIssues: DataHealthIssue[] = [],
@@ -1831,6 +1959,7 @@ export function buildDataHealthReport(
   safeScan("Asset library", issues, () => scanAssetWarnings(input, sets, issues))
   safeScan("Playbooks", issues, () => scanPlaybookWarnings(input, sets, issues))
   safeScan("Quality reviews", issues, () => scanQualityReviewWarnings(input, sets, issues))
+  safeScan("Learnings", issues, () => scanLearningWarnings(input, sets, issues))
   safeScan("JSON / data issues", issues, () => scanJsonIssues(input, issues))
 
   return {

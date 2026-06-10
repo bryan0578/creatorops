@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useSearchParams } from "next/navigation"
 import { Download, Database, Plus, Search, Upload } from "lucide-react"
 import { toast } from "sonner"
 
@@ -34,6 +35,7 @@ import { PromptFormDialog } from "@/components/prompts/prompt-form-dialog"
 import { PromptDetailPanel } from "@/components/prompts/prompt-detail-panel"
 
 export function PromptLibrary() {
+  const searchParams = useSearchParams()
   const {
     prompts,
     hydrated,
@@ -60,6 +62,14 @@ export function PromptLibrary() {
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   const detailPrompt = prompts.find((p) => p.id === detailId) ?? null
+
+  React.useEffect(() => {
+    if (!hydrated) return
+    const id = searchParams.get("recordId") ?? searchParams.get("promptId")
+    if (!id) return
+    const prompt = prompts.find((item) => item.id === id)
+    if (prompt) openDetail(prompt)
+  }, [hydrated, searchParams, prompts])
 
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase()

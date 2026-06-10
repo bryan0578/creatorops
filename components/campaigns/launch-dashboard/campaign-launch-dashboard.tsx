@@ -38,6 +38,7 @@ import { CampaignPublishingChecklistCard } from "@/components/campaigns/launch-d
 import { CampaignPromptHistoryCard } from "@/components/campaigns/launch-dashboard/campaign-prompt-history-card"
 import { CampaignAssetLibraryCard } from "@/components/assets/asset-widgets"
 import { CampaignPlaybookCard } from "@/components/playbooks/playbook-widgets"
+import { CampaignLearningLibraryCard } from "@/components/learnings/learning-widgets"
 import { CampaignQualityReviewCard } from "@/components/quality/quality-widgets"
 import { CampaignAutomationSuggestionsCard } from "@/components/automation/automation-suggestions-card"
 import { CampaignCalendarTimelineCard } from "@/components/calendar/calendar-widgets"
@@ -445,6 +446,10 @@ export function CampaignLaunchDashboard({
           campaignId={campaign.id}
           campaignName={campaign.campaignName}
           linkedRecords={campaign.linkedRecords}
+        />
+        <CampaignLearningLibraryCard
+          campaignId={campaign.id}
+          campaignName={campaign.campaignName}
         />
       </div>
 

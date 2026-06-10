@@ -11,6 +11,7 @@ import {
 import { buildMissingAssetRepair } from "@/lib/data/data-health-repairs"
 import type { DataHealthReport } from "@/lib/data/data-health"
 import { filterAssetsForCampaign } from "@/lib/assets"
+import { filterLearningsForCampaign } from "@/lib/learnings"
 import { filterQualityReviewsForCampaign } from "@/lib/quality-reviews"
 import { normalizeStatusToStage } from "@/lib/data/campaign-board"
 import {
@@ -21,7 +22,7 @@ import {
   isReadyToPublishCampaignStatus,
 } from "@/lib/data/publishing-checklist"
 import { extractPlaybookIdFromNotes } from "@/lib/playbooks"
-import type { CampaignLinkedRecordType, CampaignRecord, ExperimentRecord, AssetRecord, PromptRun, QualityReviewRecord } from "@/lib/types"
+import type { CampaignLinkedRecordType, CampaignRecord, ExperimentRecord, AssetRecord, LearningRecord, PromptRun, QualityReviewRecord } from "@/lib/types"
 
 export type AutomationPriority = "high" | "medium" | "low" | "info"
 
@@ -107,6 +108,7 @@ export interface AutomationEvaluationContext {
     runs: PromptRun[]
     assets: AssetRecord[]
     qualityReviews: QualityReviewRecord[]
+    learnings: LearningRecord[]
   }
   dataHealth: DataHealthReport | null
   dataHealthFailed: boolean
@@ -334,6 +336,46 @@ export const BUILTIN_AUTOMATION_RULES: BuiltinAutomationRule[] = [
     description: "Campaign readiness reviews below 70 suggest fixes before publish.",
     category: "Publishing Checklist",
     priority: "high",
+    enabled: true,
+  },
+  {
+    id: "learning-missing-from-analytics",
+    name: "Analytics Without Learning",
+    description: "Analytics records with what worked / did not work but no linked learning.",
+    category: "Task Automation",
+    priority: "info",
+    enabled: true,
+  },
+  {
+    id: "learning-missing-from-experiment",
+    name: "Experiment Winner Without Learning",
+    description: "Experiments with winners or learning summaries but no linked learning.",
+    category: "Task Automation",
+    priority: "info",
+    enabled: true,
+  },
+  {
+    id: "learning-missing-from-low-quality",
+    name: "Low Quality Score Without Learning",
+    description: "Quality reviews below 60 without a captured learning.",
+    category: "Campaign Stage",
+    priority: "medium",
+    enabled: true,
+  },
+  {
+    id: "learning-missing-campaign-final",
+    name: "Completed Campaign Without Final Learning",
+    description: "Archived or completed campaigns without a campaign strategy learning.",
+    category: "Task Automation",
+    priority: "info",
+    enabled: true,
+  },
+  {
+    id: "learning-apply-high-impact",
+    name: "Apply High-Impact Learning",
+    description: "High-impact learnings exist that may apply to similar campaigns.",
+    category: "Task Automation",
+    priority: "info",
     enabled: true,
   },
   {
@@ -936,6 +978,147 @@ function campaignHasReview(
   })
 }
 
+function hasLearningForSource(
+  learnings: LearningRecord[],
+  sourceType: string,
+  sourceId: string,
+): boolean {
+  return learnings.some(
+    (learning) => learning.sourceType === sourceType && learning.sourceId === sourceId,
+  )
+}
+
+function evaluateLearnings(ctx: AutomationEvaluationContext, suggestions: AutomationSuggestion[]) {
+  const learnings = ctx.store.learnings ?? []
+  const analytics = ctx.store.analyticsRecords ?? []
+
+  for (const record of analytics) {
+    const hasNotes = Boolean(record.whatWorked?.trim() || record.whatDidNotWork?.trim())
+    if (hasNotes && !hasLearningForSource(learnings, "analytics", record.id)) {
+      suggestions.push({
+        id: suggestionId(["learning-missing-from-analytics", record.id]),
+        ruleId: "learning-missing-from-analytics",
+        priority: "info",
+        category: "Task Automation",
+        title: "Capture analytics learning",
+        description: `"${record.itemName || "Analytics"}" has performance notes but no learning entry.`,
+        suggestedActionLabel: "Create Learning",
+        actionType: "navigate",
+        actionPayload: {
+          href: `/learnings?analyticsRecordId=${encodeURIComponent(record.id)}&learningType=${encodeURIComponent("Analytics Review")}`,
+        },
+        href: `/learnings?analyticsRecordId=${encodeURIComponent(record.id)}&learningType=${encodeURIComponent("Analytics Review")}`,
+        canApply: false,
+        reason: "Capture what worked for future campaigns.",
+      })
+    }
+  }
+
+  for (const experiment of ctx.store.experiments ?? []) {
+    const hasSummary = Boolean(experiment.learningSummary?.trim() || experiment.winner)
+    if (
+      hasSummary &&
+      !hasLearningForSource(learnings, "experiment", experiment.id) &&
+      !learnings.some((l) => l.experimentId === experiment.id)
+    ) {
+      suggestions.push({
+        id: suggestionId(["learning-missing-from-experiment", experiment.id]),
+        ruleId: "learning-missing-from-experiment",
+        priority: "info",
+        category: "Task Automation",
+        title: "Capture experiment learning",
+        description: `"${experiment.experimentName || "Experiment"}" has results but no learning entry.`,
+        campaignId: experiment.campaignId,
+        campaignName: experiment.campaignName,
+        suggestedActionLabel: "Create Learning",
+        actionType: "navigate",
+        actionPayload: {
+          href: `/learnings?experimentId=${encodeURIComponent(experiment.id)}&learningType=${encodeURIComponent("Experiment Result")}`,
+        },
+        href: `/learnings?experimentId=${encodeURIComponent(experiment.id)}&learningType=${encodeURIComponent("Experiment Result")}`,
+        canApply: false,
+        reason: "Document experiment winners for reuse.",
+      })
+    }
+  }
+
+  const reviews = ctx.store.qualityReviews ?? []
+  for (const review of reviews) {
+    if (
+      review.overallScore > 0 &&
+      review.overallScore < 60 &&
+      !learnings.some((l) => l.qualityReviewId === review.id)
+    ) {
+      suggestions.push({
+        id: suggestionId(["learning-missing-from-low-quality", review.id]),
+        ruleId: "learning-missing-from-low-quality",
+        priority: "medium",
+        category: "Campaign Stage",
+        title: "Capture low-score learning",
+        description: `"${review.reviewName || review.reviewType}" scored ${review.overallScore}/100 — document what to fix.`,
+        campaignId: review.campaignId,
+        campaignName: review.campaignName,
+        suggestedActionLabel: "Create Learning",
+        actionType: "navigate",
+        actionPayload: { href: `/learnings?qualityReviewId=${encodeURIComponent(review.id)}` },
+        href: `/learnings?qualityReviewId=${encodeURIComponent(review.id)}`,
+        canApply: false,
+        reason: "Low scores should inform future creative decisions.",
+      })
+    }
+  }
+
+  for (const campaign of ctx.campaigns) {
+    const scoped = filterLearningsForCampaign(learnings, campaign.id, campaign.campaignName)
+    if (
+      (campaign.status === "Archived" || campaign.status === "Completed") &&
+      !scoped.some((l) => l.learningType === "Campaign Strategy")
+    ) {
+      suggestions.push({
+        id: suggestionId(["learning-missing-campaign-final", campaign.id]),
+        ruleId: "learning-missing-campaign-final",
+        priority: "info",
+        category: "Task Automation",
+        title: "Add final campaign learning",
+        description: `${campaign.campaignName || "Campaign"} is complete but has no campaign strategy learning.`,
+        campaignId: campaign.id,
+        campaignName: campaign.campaignName,
+        suggestedActionLabel: "Create Learning",
+        actionType: "navigate",
+        actionPayload: {
+          href: `/learnings?campaignId=${encodeURIComponent(campaign.id)}&learningType=${encodeURIComponent("Campaign Strategy")}`,
+        },
+        href: `/learnings?campaignId=${encodeURIComponent(campaign.id)}&learningType=${encodeURIComponent("Campaign Strategy")}`,
+        canApply: false,
+        reason: "Archive campaigns with a final learning summary.",
+      })
+    }
+
+    const highImpact = scoped.filter(
+      (l) => l.impact === "High" && l.confidence !== "Low" && l.status === "Active",
+    )
+    if (highImpact.length > 0) {
+      const top = highImpact[0]
+      suggestions.push({
+        id: suggestionId(["learning-apply-high-impact", campaign.id, top.id]),
+        ruleId: "learning-apply-high-impact",
+        priority: "info",
+        category: "Task Automation",
+        title: "Apply high-impact learning",
+        description: `"${top.title}" may apply to ${campaign.campaignName || "this campaign"}.`,
+        campaignId: campaign.id,
+        campaignName: campaign.campaignName,
+        suggestedActionLabel: "View Learning",
+        actionType: "navigate",
+        actionPayload: { href: `/learnings?recordId=${encodeURIComponent(top.id)}` },
+        href: `/learnings?recordId=${encodeURIComponent(top.id)}`,
+        canApply: false,
+        reason: "Reuse proven tactics in campaign context prompts.",
+      })
+    }
+  }
+}
+
 function evaluateQualityReviews(
   ctx: AutomationEvaluationContext,
   suggestions: AutomationSuggestion[],
@@ -1184,6 +1367,7 @@ const RULE_EVALUATORS: Array<(ctx: AutomationEvaluationContext, out: AutomationS
   evaluatePromptHistory,
   evaluateExportBundle,
   evaluateQualityReviews,
+  evaluateLearnings,
   evaluateIncompleteCampaignFields,
   evaluatePrePublishChecklist,
   evaluateReviewDue,

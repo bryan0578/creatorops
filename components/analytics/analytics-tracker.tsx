@@ -47,6 +47,7 @@ import {
 } from "@/lib/preset-prefill"
 
 import { ModulePageHeader } from "@/components/app-shell"
+import { CreateLearningButton } from "@/components/learnings/learning-action-link"
 import { SaveLinkedPromptRunButton } from "@/components/module/save-linked-prompt-run-button"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { CampaignPromptOutputSection } from "@/components/campaigns/campaign-context-prompt-controls"
@@ -74,6 +75,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { useSmartDefaultTab } from "@/hooks/use-smart-default-tab"
 import {
   Select,
   SelectContent,
@@ -212,7 +214,16 @@ export function AnalyticsTracker() {
     updateCampaign,
     experiments,
     updateExperiment,
+    hydrated,
   } = useStore()
+
+  const { activeTab, setActiveTab } = useSmartDefaultTab({
+    validTabs: ["details", "metrics", "review", "insights", "related", "saved"],
+    detailsTab: "details",
+    savedTab: "saved",
+    recordsLoaded: hydrated,
+    hasRecords: analyticsRecords.length > 0,
+  })
 
   const [form, setForm] = React.useState<AnalyticsFormState>(
     formFromRecord(normalizeAnalyticsRecord({ ...emptyAnalyticsRecord(), id: "" })),
@@ -603,6 +614,13 @@ export function AnalyticsTracker() {
                 New record
               </Button>
             ) : null}
+            <CreateLearningButton
+              source="analytics"
+              sourceId={editingId}
+              campaignId={campaignPrefill.campaignId}
+              campaignName={campaignPrefill.campaignName}
+              label="Create Learning from Analytics"
+            />
           </div>
         }
       />
@@ -653,7 +671,11 @@ export function AnalyticsTracker() {
         />
       </div>
 
-      <ModuleWorkflowTabs defaultTab="details" tabs={ANALYTICS_WORKFLOW_TABS}>
+      <ModuleWorkflowTabs
+        tabs={ANALYTICS_WORKFLOW_TABS}
+        value={activeTab}
+        onValueChange={setActiveTab}
+      >
         <ModuleTabPanel value="details">
           <Card>
             <CardHeader>

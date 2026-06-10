@@ -97,6 +97,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { useGeneratorDefaultTab } from "@/hooks/use-smart-default-tab"
 
 function formatDate(ts: number) {
   return new Date(ts).toLocaleString(undefined, {
@@ -208,7 +209,13 @@ export function YouTubeThumbnailGenerator() {
     reloadYouTubeThumbnailRecords,
     campaigns,
     updateCampaign,
+    hydrated,
   } = useStore()
+
+  const { activeTab, setActiveTab } = useGeneratorDefaultTab(
+    youtubeThumbnailRecords.length,
+    hydrated,
+  )
 
   const [form, setForm] = React.useState<YouTubeThumbnailFormValues>(
     emptyYouTubeThumbnailForm(),
@@ -618,7 +625,11 @@ export function YouTubeThumbnailGenerator() {
         campaignName={campaignPrefill.campaignName}
       />
 
-      <ModuleWorkflowTabs defaultTab="details" tabs={GENERATOR_WORKFLOW_TABS}>
+      <ModuleWorkflowTabs
+        tabs={GENERATOR_WORKFLOW_TABS}
+        value={activeTab}
+        onValueChange={setActiveTab}
+      >
         <ModuleTabPanel value="details">
           <Card>
             <CardContent className="space-y-4 pt-6">

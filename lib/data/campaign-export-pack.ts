@@ -13,6 +13,7 @@ import {
 import { formatPublishingChecklistMarkdown } from "@/lib/data/publishing-checklist"
 import { filterExperimentsForCampaign } from "@/lib/experiments"
 import { filterAssetsForCampaign } from "@/lib/assets"
+import { filterLearningsForCampaign } from "@/lib/learnings"
 import {
   filterQualityReviewsForCampaign,
   filterQualityReviewsForSource,
@@ -30,6 +31,7 @@ import type {
   MerchIdea,
   MockupPromptRecord,
   ProductListing,
+  LearningRecord,
   QualityReviewRecord,
   ReleasePlan,
   SocialRepurposingRecord,
@@ -49,6 +51,7 @@ export interface CampaignExportSectionContext {
   campaign: CampaignRecord
   relatedRecords: CampaignRelatedRecordsBundle
   qualityReviews: QualityReviewRecord[]
+  learnings: LearningRecord[]
   experiments: ExperimentRecord[]
   assets: AssetRecord[]
   missingAssets: CampaignExportMissingAsset[]
@@ -1036,6 +1039,141 @@ function sectionQualityReviewEmpty(heading: string): string {
   return `## ${heading}\n\nNo quality reviews linked yet.\n`
 }
 
+function sectionCampaignLearnings(learnings: LearningRecord[]): string {
+  const lines = ["## Campaign Learnings", ""]
+  if (learnings.length === 0) {
+    lines.push("No learnings captured for this campaign yet.", "")
+    return lines.join("\n")
+  }
+
+  const highImpactWins = learnings.filter(
+    (l) => l.category === "Win" && (l.impact === "High" || l.impact === "Medium"),
+  )
+  const warnings = learnings.filter(
+    (l) => l.category === "Warning" || l.category === "Avoid",
+  )
+  const tactics = learnings.filter(
+    (l) => l.category === "Repeatable Tactic" || l.category === "Pattern",
+  )
+
+  if (highImpactWins.length > 0) {
+    lines.push("### High Impact Wins", "")
+    for (const learning of highImpactWins) {
+      lines.push(
+        `#### ${learning.title}`,
+        "",
+        mdBullet("Type", learning.learningType),
+        mdMultiline("Insight", learning.insight),
+        mdMultiline("Recommendation", learning.recommendation),
+        "",
+      )
+    }
+  }
+
+  if (warnings.length > 0) {
+    lines.push("### Warnings & Avoid Notes", "")
+    for (const learning of warnings) {
+      lines.push(
+        `#### ${learning.title}`,
+        "",
+        mdMultiline("Insight", learning.insight),
+        mdMultiline("Avoid when", learning.avoidWhen),
+        "",
+      )
+    }
+  }
+
+  if (tactics.length > 0) {
+    lines.push("### Repeatable Tactics", "")
+    for (const learning of tactics) {
+      lines.push(
+        `#### ${learning.title}`,
+        "",
+        mdMultiline("Recommendation", learning.recommendation),
+        mdMultiline("Repeat when", learning.repeatWhen),
+        "",
+      )
+    }
+  }
+
+  const other = learnings.filter(
+    (l) =>
+      !highImpactWins.includes(l) && !warnings.includes(l) && !tactics.includes(l),
+  )
+  if (other.length > 0) {
+    lines.push("### Other Learnings", "")
+    for (const learning of other) {
+      lines.push(
+        `#### ${learning.title}`,
+        "",
+        mdBullet("Type", learning.learningType),
+        mdBullet("Category", learning.category),
+        mdMultiline("Insight", learning.insight),
+        mdMultiline("Recommendation", learning.recommendation),
+        "",
+      )
+    }
+  }
+
+  return lines.join("\n")
+}
+
+function sectionAnalyticsReviewLearnings(
+  learnings: LearningRecord[],
+  experiments: ExperimentRecord[],
+): string {
+  const lines = ["## Campaign Learnings", ""]
+  const analyticsLearnings = learnings.filter(
+    (l) =>
+      l.learningType === "Analytics Review" ||
+      l.learningType === "Experiment Result" ||
+      l.learningType === "Quality Review" ||
+      Boolean(l.analyticsRecordId || l.experimentId || l.qualityReviewId),
+  )
+
+  if (analyticsLearnings.length === 0) {
+    lines.push("No learnings from analytics, experiments, or quality reviews yet.", "")
+  } else {
+    for (const learning of analyticsLearnings) {
+      lines.push(
+        `### ${learning.title}`,
+        "",
+        mdBullet("Type", learning.learningType),
+        mdBullet("Category", learning.category),
+        mdMultiline("Insight", learning.insight),
+        mdMultiline("Evidence", learning.evidence),
+        mdMultiline("Recommendation", learning.recommendation),
+        "",
+      )
+    }
+  }
+
+  const nextIdeas = experiments
+    .map((e) => e.nextTestIdea?.trim())
+    .filter(Boolean)
+  if (nextIdeas.length > 0) {
+    lines.push("### Next Experiment Ideas", "")
+    for (const idea of nextIdeas) {
+      lines.push(`- ${idea}`)
+    }
+    lines.push("")
+  }
+
+  const futureRecs = learnings
+    .map((l) => l.recommendation?.trim())
+    .filter(Boolean)
+    .slice(0, 8)
+  if (futureRecs.length > 0) {
+    lines.push("### Future Campaign Recommendations", "")
+    for (const rec of futureRecs) {
+      lines.push(`- ${rec}`)
+    }
+    lines.push("")
+  }
+
+  return lines.join("\n")
+}
+
 function sectionQualityReviewSummary(reviews: QualityReviewRecord[]): string {
   if (!reviews.length) {
     return sectionQualityReviewEmpty("Quality Review Summary")
@@ -1502,6 +1640,10 @@ function renderPackSection(
       return sectionQualityReviewMerch(ctx.qualityReviews, relatedRecords)
     case "quality-review-analytics":
       return sectionQualityReviewAnalytics(ctx.qualityReviews)
+    case "campaign-learnings":
+      return sectionCampaignLearnings(ctx.learnings)
+    case "analytics-review-learnings":
+      return sectionAnalyticsReviewLearnings(ctx.learnings, ctx.experiments)
     default:
       return ""
   }
@@ -1543,6 +1685,7 @@ export function generateCampaignExportMarkdownLegacy(input: {
     campaign: input.campaign,
     relatedRecords: input.relatedRecords,
     qualityReviews: [],
+    learnings: [],
     experiments: [],
     assets: [],
     missingAssets: input.missingAssets,
@@ -1588,6 +1731,7 @@ export function buildCampaignExportPack(
     experiments?: ExperimentRecord[]
     assets?: AssetRecord[]
     qualityReviews?: QualityReviewRecord[]
+    learnings?: LearningRecord[]
   },
 ): CampaignExportPackResult {
   const template = getCampaignPackTemplate(options?.templateId)
@@ -1606,6 +1750,11 @@ export function buildCampaignExportPack(
   const dashboard = buildLaunchDashboardData(campaign, store)
   const qualityReviews = filterQualityReviewsForCampaign(
     options?.qualityReviews ?? [],
+    campaign.id,
+    campaign.campaignName,
+  )
+  const learnings = filterLearningsForCampaign(
+    options?.learnings ?? [],
     campaign.id,
     campaign.campaignName,
   )
@@ -1632,6 +1781,7 @@ export function buildCampaignExportPack(
     campaign,
     relatedRecords,
     qualityReviews,
+    learnings,
     experiments: campaignExperiments,
     assets: campaignAssets,
     missingAssets,

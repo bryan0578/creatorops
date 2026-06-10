@@ -4,6 +4,7 @@
 
 import { normalizeCampaignRecord } from "@/lib/campaigns"
 import { filterAssetsForCampaign, normalizeAssetRecord } from "@/lib/assets"
+import { filterLearningsForCampaign, normalizeLearningRecord } from "@/lib/learnings"
 import { filterQualityReviewsForCampaign, normalizeQualityReviewRecord } from "@/lib/quality-reviews"
 import { normalizeAnalyticsRecord } from "@/lib/analytics-tracker"
 import { normalizeArtistRecord } from "@/lib/artist-crm"
@@ -43,6 +44,7 @@ import type {
   PresetRecord,
   ProductListing,
   PromptRun,
+  LearningRecord,
   QualityReviewRecord,
   ReleasePlan,
   SocialRepurposingRecord,
@@ -82,6 +84,7 @@ export interface CampaignBundleLinkedRecords {
   presets: PresetRecord[]
   assets: AssetRecord[]
   qualityReviews: QualityReviewRecord[]
+  learnings: LearningRecord[]
 }
 
 export interface CampaignBundleRelationship {
@@ -135,6 +138,7 @@ export interface CampaignBundleSummaryCounts {
   presets: number
   assets: number
   qualityReviews: number
+  learnings: number
 }
 
 export interface CampaignBundleConflict {
@@ -179,6 +183,7 @@ export interface CampaignBundleStore extends CampaignLinkableStoreSlice {
   presets: PresetRecord[]
   assets: AssetRecord[]
   qualityReviews: QualityReviewRecord[]
+  learnings: LearningRecord[]
 }
 
 function norm(value: string | undefined | null): string {
@@ -209,6 +214,7 @@ export function emptyCampaignBundleLinkedRecords(): CampaignBundleLinkedRecords 
     presets: [],
     assets: [],
     qualityReviews: [],
+    learnings: [],
   }
 }
 
@@ -233,6 +239,7 @@ export function countCampaignBundleLinkedRecords(
     presets: linked.presets.length,
     assets: linked.assets.length,
     qualityReviews: linked.qualityReviews.length,
+    learnings: linked.learnings.length,
   }
 }
 
@@ -254,7 +261,8 @@ export function totalLinkedBundleRecords(linked: CampaignBundleLinkedRecords): n
     counts.workflowRuns +
     counts.presets +
     counts.assets +
-    counts.qualityReviews
+    counts.qualityReviews +
+    counts.learnings
   )
 }
 
@@ -665,6 +673,18 @@ function collectCampaignScopedRecords(
       recordTitle: review.reviewName,
     })
   }
+
+  const campaignLearnings = filterLearningsForCampaign(
+    store.learnings ?? [],
+    campaign.id,
+    campaign.campaignName,
+  )
+  for (const learning of campaignLearnings) {
+    collector.track("learnings", learning, {
+      source: "campaign-field",
+      recordTitle: learning.title,
+    })
+  }
 }
 
 /** Build a portable campaign bundle without mutating source records. */
@@ -819,6 +839,8 @@ export function parseCampaignBundleJson(
     "workflowRuns",
     "presets",
     "assets",
+    "qualityReviews",
+    "learnings",
   ]
 
   for (const key of arrayKeys) {
@@ -1175,6 +1197,11 @@ function buildImportPlan(
     bundle.linkedRecords.qualityReviews,
     (r) => (r as QualityReviewRecord).reviewName,
   )
+  addItems(
+    "learning",
+    bundle.linkedRecords.learnings,
+    (r) => (r as LearningRecord).title,
+  )
 
   return plan
 }
@@ -1239,6 +1266,10 @@ function prefixForRecordType(recordType: string): string {
       return "preset"
     case "asset":
       return "asset"
+    case "quality-review":
+      return "quality-review"
+    case "learning":
+      return "learning"
     default:
       return "record"
   }
@@ -1430,6 +1461,25 @@ export function remapCampaignBundleForImport(
         sourceExperimentId: r.sourceExperimentId
           ? remapId(idMap, r.sourceExperimentId)
           : r.sourceExperimentId,
+      }),
+    ),
+    learnings: bundle.linkedRecords.learnings.map((r) =>
+      normalizeLearningRecord({
+        ...r,
+        id: remapId(idMap, r.id),
+        campaignId: newCampaignId,
+        campaignName,
+        sourceId: r.sourceId ? remapId(idMap, r.sourceId) : r.sourceId,
+        analyticsRecordId: r.analyticsRecordId
+          ? remapId(idMap, r.analyticsRecordId)
+          : r.analyticsRecordId,
+        experimentId: r.experimentId ? remapId(idMap, r.experimentId) : r.experimentId,
+        qualityReviewId: r.qualityReviewId
+          ? remapId(idMap, r.qualityReviewId)
+          : r.qualityReviewId,
+        assetId: r.assetId ? remapId(idMap, r.assetId) : r.assetId,
+        promptRunId: r.promptRunId ? remapId(idMap, r.promptRunId) : r.promptRunId,
+        playbookId: r.playbookId ? remapId(idMap, r.playbookId) : r.playbookId,
       }),
     ),
   }

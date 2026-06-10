@@ -5,6 +5,7 @@ import {
   buildCampaignContext,
   type CampaignContextBundle,
 } from "@/lib/data/campaign-context"
+import { getLearnings } from "@/lib/actions/learnings"
 import { loadCampaignLinkableStoreSlice } from "@/lib/data/campaign-linkable-store"
 import { prismaWorkspaceSettingsToRecord } from "@/lib/data/workspace-settings"
 import { prisma } from "@/lib/prisma"
@@ -19,10 +20,11 @@ export async function getCampaignContext(
     throw new Error("Campaign id is required.")
   }
 
-  const [row, store, settingsRow] = await Promise.all([
+  const [row, store, settingsRow, learnings] = await Promise.all([
     prisma.campaign.findUnique({ where: { id: trimmedId } }),
     loadCampaignLinkableStoreSlice(),
     prisma.workspaceSettings.findUnique({ where: { id: WORKSPACE_SETTINGS_ID } }),
+    getLearnings(),
   ])
 
   if (!row) {
@@ -34,5 +36,5 @@ export async function getCampaignContext(
     ? prismaWorkspaceSettingsToRecord(settingsRow)
     : null
 
-  return buildCampaignContext(campaign, store, workspaceSettings)
+  return buildCampaignContext(campaign, store, workspaceSettings, learnings)
 }

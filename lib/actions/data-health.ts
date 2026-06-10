@@ -6,6 +6,7 @@ import { getCampaigns, upsertCampaign } from "@/lib/actions/campaigns"
 import { normalizeCampaignRecord } from "@/lib/campaigns"
 import { prismaAnalyticsRecordToAnalyticsRecord } from "@/lib/data/analytics-records"
 import { prismaAssetToAssetRecord } from "@/lib/data/assets"
+import { prismaLearningToRecord } from "@/lib/data/learnings"
 import { prismaQualityReviewToRecord } from "@/lib/data/quality-reviews"
 import { prismaArtistToArtistRecord } from "@/lib/data/artists"
 import { prismaCampaignToCampaignRecord } from "@/lib/data/campaigns"
@@ -69,7 +70,7 @@ async function safeLoad<T>(
 async function loadJsonFields(): Promise<DataHealthJsonField[]> {
   const fields: DataHealthJsonField[] = []
 
-  const [campaignRows, presetRows, promptRows, promptRunRows, qualityReviewRows] =
+  const [campaignRows, presetRows, promptRows, promptRunRows, qualityReviewRows, learningRows] =
     await Promise.all([
     prisma.campaign.findMany({
       select: {
@@ -99,6 +100,13 @@ async function loadJsonFields(): Promise<DataHealthJsonField[]> {
         id: true,
         reviewName: true,
         scoreBreakdown: true,
+        tags: true,
+      },
+    }),
+    prisma.learning.findMany({
+      select: {
+        id: true,
+        title: true,
         tags: true,
       },
     }),
@@ -196,6 +204,17 @@ async function loadJsonFields(): Promise<DataHealthJsonField[]> {
     )
   }
 
+  for (const row of learningRows) {
+    fields.push({
+      sourceType: "learning",
+      sourceId: row.id,
+      sourceTitle: row.title || "Untitled learning",
+      fieldName: "tags",
+      raw: row.tags,
+      expected: "array",
+    })
+  }
+
   for (const row of qualityReviewRows) {
     fields.push(
       {
@@ -248,6 +267,7 @@ async function loadScanInput(): Promise<{
     workspaceSettings,
     assets,
     qualityReviews,
+    learnings,
     jsonFields,
   ] = await Promise.all([
     safeLoad(
@@ -456,6 +476,15 @@ async function loadScanInput(): Promise<{
       loadIssues,
       [],
     ),
+    safeLoad(
+      "Learnings",
+      async () => {
+        const rows = await prisma.learning.findMany({ orderBy: { updatedAt: "desc" } })
+        return rows.map(prismaLearningToRecord)
+      },
+      loadIssues,
+      [],
+    ),
     safeLoad("JSON fields", loadJsonFields, loadIssues, []),
   ])
 
@@ -482,6 +511,7 @@ async function loadScanInput(): Promise<{
       workspaceSettings,
       assets,
       qualityReviews,
+      learnings,
       jsonFields,
     },
     loadIssues,

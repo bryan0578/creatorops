@@ -26,6 +26,7 @@ import type {
   SocialRepurposingRecord,
   YouTubePackage,
   YouTubeThumbnailRecord,
+  LearningRecord,
   QualityReviewRecord,
 } from "@/lib/types"
 
@@ -811,6 +812,64 @@ export function buildPrettyWiseDemoRecords(now = new Date()) {
     },
   ]
 
+  const learnings: LearningRecord[] = [
+    {
+      id: DEMO_IDS.learningThumbnailText,
+      title: "Mystery Thumbnail Text Works for Dark Pop",
+      learningType: "Thumbnail Text",
+      category: "Win",
+      confidence: "High",
+      impact: "High",
+      status: "Active",
+      campaignId: DEMO_IDS.campaign,
+      campaignName: DEMO_CAMPAIGN_NAME,
+      artistName: DEMO_ARTIST_NAME,
+      songTitle: DEMO_SONG_TITLE,
+      platform: "YouTube",
+      insight:
+        "Mystery-driven thumbnail text performed better than literal song-title text for this dark pop concept.",
+      evidence:
+        'Variant B "Sweet Skies. Dark Secrets." had stronger curiosity and was selected as the winning experiment direction.',
+      recommendation:
+        "Use short mystery-driven thumbnail text for dark PrettyWise releases when the visual concept is stronger than the title alone.",
+      repeatWhen:
+        "Horror pop, dark K-pop, villaincore, creepy-cute, or story-driven releases.",
+      avoidWhen:
+        "The song title itself is highly recognizable or already has strong search demand.",
+      tags: ["prettywise", "thumbnail", "ctr", "dark pop", "mystery text"],
+      notes: DEMO_DATA_MARKER,
+      createdAt: ts,
+      updatedAt: ts,
+    },
+    {
+      id: DEMO_IDS.learningVisualStyle,
+      title: "Creepy-Cute Visual Contrast Strengthens PrettyWise Branding",
+      learningType: "Visual Style",
+      category: "Pattern",
+      confidence: "Medium",
+      impact: "Medium",
+      status: "Active",
+      campaignId: DEMO_IDS.campaign,
+      campaignName: DEMO_CAMPAIGN_NAME,
+      artistName: DEMO_ARTIST_NAME,
+      songTitle: DEMO_SONG_TITLE,
+      platform: "YouTube",
+      insight:
+        "Candy-colored visuals paired with dark horror elements create a stronger PrettyWise identity than generic dark visuals alone.",
+      evidence:
+        "Quality reviews favored the contrast between sweet imagery and darker danger cues.",
+      recommendation:
+        "Keep pairing sweet colors with unsettling details in PrettyWise thumbnails, mockups, and social visuals.",
+      repeatWhen:
+        "PrettyWise releases with horror, candy, carnival, villain, or surreal pop themes.",
+      avoidWhen: "The song mood is fully serious, minimal, or non-horror.",
+      tags: ["prettywise", "visual style", "creepy cute", "branding"],
+      notes: DEMO_DATA_MARKER,
+      createdAt: ts,
+      updatedAt: ts,
+    },
+  ]
+
   return {
     artist,
     campaign,
@@ -827,5 +886,6 @@ export function buildPrettyWiseDemoRecords(now = new Date()) {
     promptRuns,
     assets: [assetThumbnail, assetMockup],
     qualityReviews,
+    learnings,
   }
 }

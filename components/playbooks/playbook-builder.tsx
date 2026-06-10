@@ -95,6 +95,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { useSmartDefaultTab } from "@/hooks/use-smart-default-tab"
 
 const PLAYBOOK_WORKFLOW_TABS = [
   { value: "details", label: "Playbook Details" },
@@ -183,12 +184,21 @@ function emptyExperimentItem(): PlaybookExperimentTemplateItem {
 export function PlaybookBuilder() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const initialTab = searchParams.get("tab")
-  const defaultTab = initialTab === "saved" ? "saved" : "details"
 
   const [playbooks, setPlaybooks] = React.useState<PlaybookRecord[]>([])
   const [starters, setStarters] = React.useState<PlaybookRecord[]>([])
   const [loading, setLoading] = React.useState(true)
+
+  const { activeTab, setActiveTab } = useSmartDefaultTab({
+    validTabs: PLAYBOOK_WORKFLOW_TABS.map((tab) => tab.value),
+    detailsTab: "details",
+    savedTab: "saved",
+    recordsLoaded: !loading,
+    hasRecords: playbooks.length > 0,
+    mode: "playbook",
+    hasStarters: starters.length > 0,
+    startersTab: "starters",
+  })
   const [saving, setSaving] = React.useState(false)
   const [recordId, setRecordId] = React.useState(() => createId("playbook"))
   const [createdAt, setCreatedAt] = React.useState(() => Date.now())
@@ -613,7 +623,11 @@ export function PlaybookBuilder() {
         </p>
       ) : null}
 
-      <ModuleWorkflowTabs defaultTab={defaultTab} tabs={PLAYBOOK_WORKFLOW_TABS}>
+      <ModuleWorkflowTabs
+        tabs={PLAYBOOK_WORKFLOW_TABS}
+        value={activeTab}
+        onValueChange={setActiveTab}
+      >
         <ModuleTabPanel value="details">
           <Card className={RECENT_RECORDS_CARD_CLASS}>
             <CardHeader>

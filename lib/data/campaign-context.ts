@@ -3,12 +3,14 @@ import {
   buildLaunchDashboardData,
   resolveCampaignRelatedRecords,
 } from "@/lib/campaign-launch-dashboard"
+import { filterReusableLearnings } from "@/lib/learnings"
 import type {
   AnalyticsRecord,
   ArtistRecord,
   CampaignLinkedRecord,
   CampaignRecord,
   EmailCampaignRecord,
+  LearningRecord,
   MerchIdea,
   MockupPromptRecord,
   ProductListing,
@@ -35,6 +37,7 @@ export interface CampaignContextBundle {
   analyticsRecord: AnalyticsRecord | null
   linkedRecords: CampaignLinkedRecord[]
   missingAssets: CampaignExportMissingAsset[]
+  reusableLearnings: LearningRecord[]
 }
 
 function norm(value: string | undefined | null): string {
@@ -129,6 +132,7 @@ export function buildCampaignContext(
   campaign: CampaignRecord,
   store: CampaignLinkableStoreSlice,
   workspaceSettings: WorkspaceSettingsRecord | null,
+  learnings: LearningRecord[] = [],
 ): CampaignContextBundle {
   const related = resolveCampaignRelatedRecords(campaign, store)
   const dashboard = buildLaunchDashboardData(campaign, store)
@@ -140,6 +144,17 @@ export function buildCampaignContext(
       label: asset.label,
       suggestedAction: asset.createLabel,
     }))
+
+  const reusableLearnings = filterReusableLearnings(learnings, {
+    campaignId: campaign.id,
+    campaignName: campaign.campaignName,
+    artistName: campaign.artistName,
+    limit: 8,
+  }).filter(
+    (learning) =>
+      (learning.confidence === "High" || learning.impact === "High") &&
+      learning.status !== "Archived",
+  )
 
   return {
     campaign,
@@ -156,5 +171,6 @@ export function buildCampaignContext(
     analyticsRecord: related.analytics,
     linkedRecords: campaign.linkedRecords,
     missingAssets,
+    reusableLearnings,
   }
 }

@@ -7,6 +7,7 @@ import { getAssets, importAssets } from "@/lib/actions/assets"
 import { importArtists } from "@/lib/actions/artists"
 import { importCampaigns } from "@/lib/actions/campaigns"
 import { importPlaybooks } from "@/lib/actions/playbooks"
+import { getLearnings, importLearnings } from "@/lib/actions/learnings"
 import { getQualityReviews, importQualityReviews } from "@/lib/actions/quality-reviews"
 import { importWorkspaceSettings } from "@/lib/actions/workspace-settings"
 import { importEmailCampaignRecords } from "@/lib/actions/email-campaigns"
@@ -66,6 +67,7 @@ import type {
   CampaignRecord,
   PresetRecord,
   PlaybookRecord,
+  LearningRecord,
   QualityReviewRecord,
   WorkspaceSettingsRecord,
   EmailCampaignRecord,
@@ -105,6 +107,7 @@ const REVALIDATE_PATHS = [
   "/playbooks",
   "/assets",
   "/quality",
+  "/learnings",
   "/search",
   "/settings",
 ]
@@ -153,6 +156,7 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     playbooks,
     assets,
     qualityReviews,
+    learnings,
     workspaceSettingsRow,
   ] = await Promise.all([
     getPrompts(),
@@ -175,6 +179,7 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     getPlaybooks(),
     getAssets(),
     getQualityReviews(),
+    getLearnings(),
     getWorkspaceSettings(),
   ])
 
@@ -201,6 +206,7 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     playbooks,
     assets,
     qualityReviews,
+    learnings,
     workspaceSettings,
   }
 }
@@ -266,6 +272,7 @@ async function clearAllBackupTables(): Promise<void> {
   await prisma.playbook.deleteMany()
   await prisma.asset.deleteMany()
   await prisma.qualityReview.deleteMany()
+  await prisma.learning.deleteMany()
   await prisma.workspaceSettings.deleteMany()
 }
 
@@ -338,6 +345,12 @@ async function importBackupData(
   }
   if (data.qualityReviews.length > 0) {
     await importQualityReviews(data.qualityReviews as QualityReviewRecord[])
+  }
+  if (data.learnings.length > 0) {
+    const result = await importLearnings(data.learnings)
+    if (result.imported === 0 && data.learnings.length > 0) {
+      console.warn("[CreatorOps] Learnings import returned 0 items.")
+    }
   }
   if (data.workspaceSettings.length > 0) {
     await importWorkspaceSettings(data.workspaceSettings as WorkspaceSettingsRecord[])

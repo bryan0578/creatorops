@@ -1925,3 +1925,148 @@ export interface GenerateQualityReviewDraftInput {
   sourceExperimentId?: string
   platform?: string
 }
+
+export const LEARNING_TYPES = [
+  "YouTube Title",
+  "Thumbnail",
+  "Thumbnail Text",
+  "YouTube Description",
+  "Pinned Comment",
+  "Shorts Hook",
+  "Social Caption",
+  "Email Subject",
+  "Merch Copy",
+  "Product Listing",
+  "Campaign Strategy",
+  "Audience Insight",
+  "Visual Style",
+  "Prompt Pattern",
+  "Experiment Result",
+  "Analytics Review",
+  "Quality Review",
+  "Playbook Insight",
+  "Other",
+] as const
+
+export type LearningType = (typeof LEARNING_TYPES)[number]
+
+export const LEARNING_CATEGORIES = [
+  "Win",
+  "Loss",
+  "Pattern",
+  "Warning",
+  "Opportunity",
+  "Repeatable Tactic",
+  "Avoid",
+  "Hypothesis",
+  "Audience Signal",
+] as const
+
+export type LearningCategory = (typeof LEARNING_CATEGORIES)[number]
+
+export const LEARNING_CONFIDENCE_LEVELS = ["Low", "Medium", "High"] as const
+
+export type LearningConfidence = (typeof LEARNING_CONFIDENCE_LEVELS)[number]
+
+export const LEARNING_IMPACT_LEVELS = ["Unknown", "Low", "Medium", "High"] as const
+
+export type LearningImpact = (typeof LEARNING_IMPACT_LEVELS)[number]
+
+export const LEARNING_STATUSES = [
+  "Active",
+  "Needs Validation",
+  "Validated",
+  "Archived",
+] as const
+
+export type LearningStatus = (typeof LEARNING_STATUSES)[number]
+
+export interface LearningRecord {
+  id: string
+  title: string
+  learningType: string
+  category: string
+  confidence: string
+  impact: string
+  status: string
+  campaignId: string
+  campaignName: string
+  artistName: string
+  songTitle: string
+  productName: string
+  platform: string
+  sourceType: string
+  sourceId: string
+  analyticsRecordId: string
+  experimentId: string
+  qualityReviewId: string
+  assetId: string
+  promptRunId: string
+  playbookId: string
+  insight: string
+  evidence: string
+  recommendation: string
+  repeatWhen: string
+  avoidWhen: string
+  tags: string[]
+  notes: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface LearningFormValues {
+  title: string
+  learningType: string
+  category: string
+  confidence: string
+  impact: string
+  status: string
+  campaignId: string
+  campaignName: string
+  artistName: string
+  songTitle: string
+  productName: string
+  platform: string
+  sourceType: string
+  sourceId: string
+  analyticsRecordId: string
+  experimentId: string
+  qualityReviewId: string
+  assetId: string
+  promptRunId: string
+  playbookId: string
+  insight: string
+  evidence: string
+  recommendation: string
+  repeatWhen: string
+  avoidWhen: string
+  tags: string
+  notes: string
+}
+
+export interface CreateLearningFromAnalyticsInput {
+  analyticsRecordId: string
+  campaignId?: string
+  campaignName?: string
+}
+
+export interface CreateLearningFromExperimentInput {
+  experimentId: string
+  campaignId?: string
+  campaignName?: string
+}
+
+export interface CreateLearningFromQualityReviewInput {
+  qualityReviewId: string
+  campaignId?: string
+  campaignName?: string
+}
+
+export interface GetReusableLearningsInput {
+  campaignId?: string
+  campaignName?: string
+  artistName?: string
+  learningType?: string
+  platform?: string
+  limit?: number
+}

@@ -80,6 +80,8 @@ export type CampaignPackSectionKey =
   | "quality-review-youtube"
   | "quality-review-merch"
   | "quality-review-analytics"
+  | "campaign-learnings"
+  | "analytics-review-learnings"
 
 export interface CampaignPackTemplate {
   id: CampaignPackTemplateId
@@ -116,6 +118,7 @@ export const CAMPAIGN_PACK_TEMPLATES: CampaignPackTemplate[] = [
       "analytics-checklist",
       "experiments-overview",
       "experiment-winners-learnings",
+      "campaign-learnings",
       "launch-tasks",
       "publishing-checklist",
       "missing-assets",
@@ -228,6 +231,7 @@ export const CAMPAIGN_PACK_TEMPLATES: CampaignPackTemplate[] = [
       "analytics-next-actions",
       "experiment-analytics-linked",
       "experiment-variant-results",
+      "analytics-review-learnings",
     ],
   },
   {

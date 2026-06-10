@@ -8,6 +8,7 @@ import {
   type CampaignExportPackResult,
 } from "@/lib/data/campaign-export-pack"
 import { loadCampaignLinkableStoreSlice } from "@/lib/data/campaign-linkable-store"
+import { getLearnings } from "@/lib/actions/learnings"
 import { getQualityReviews } from "@/lib/actions/quality-reviews"
 import { prisma } from "@/lib/prisma"
 
@@ -21,12 +22,13 @@ export async function getCampaignExportPack(
     throw new Error("Campaign id is required.")
   }
 
-  const [row, store, experimentRows, assets, qualityReviews] = await Promise.all([
+  const [row, store, experimentRows, assets, qualityReviews, learnings] = await Promise.all([
     prisma.campaign.findUnique({ where: { id: trimmedId } }),
     loadCampaignLinkableStoreSlice(),
     prisma.experiment.findMany({ orderBy: { updatedAt: "desc" } }),
     getAssets(),
     getQualityReviews(),
+    getLearnings(),
   ])
 
   if (!row) {
@@ -40,5 +42,6 @@ export async function getCampaignExportPack(
     experiments,
     assets,
     qualityReviews,
+    learnings,
   })
 }

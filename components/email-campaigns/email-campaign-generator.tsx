@@ -90,6 +90,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { useGeneratorDefaultTab } from "@/hooks/use-smart-default-tab"
 
 function formatDate(ts: number) {
   return new Date(ts).toLocaleString(undefined, {
@@ -190,7 +191,13 @@ export function EmailCampaignGenerator() {
     reloadEmailCampaignRecords,
     campaigns,
     updateCampaign,
+    hydrated,
   } = useStore()
+
+  const { activeTab, setActiveTab } = useGeneratorDefaultTab(
+    emailCampaignRecords.length,
+    hydrated,
+  )
 
   const [form, setForm] = React.useState<EmailCampaignFormValues>(
     emptyEmailCampaignForm(),
@@ -505,7 +512,11 @@ export function EmailCampaignGenerator() {
         campaignName={campaignPrefill.campaignName}
       />
 
-      <ModuleWorkflowTabs defaultTab="details" tabs={GENERATOR_WORKFLOW_TABS}>
+      <ModuleWorkflowTabs
+        tabs={GENERATOR_WORKFLOW_TABS}
+        value={activeTab}
+        onValueChange={setActiveTab}
+      >
         <ModuleTabPanel value="details">
           <Card>
             <CardContent className="pt-6">
