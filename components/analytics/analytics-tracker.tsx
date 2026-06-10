@@ -47,6 +47,7 @@ import {
 
 import { ModulePageHeader } from "@/components/app-shell"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
+import { CampaignPromptOutputSection } from "@/components/campaigns/campaign-context-prompt-controls"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
 import { RelationshipPanel } from "@/components/relationships/relationship-panel"
 import {
@@ -746,35 +747,27 @@ export function AnalyticsTracker() {
         </ModuleTabPanel>
 
         <ModuleTabPanel value="insights">
-          <Card>
-            <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
-              <div>
-                <CardTitle className="text-base">Generate Insights Prompt</CardTitle>
-                <CardDescription>
-                  {selectedRecords.length
-                    ? `${selectedRecords.length} record(s) selected for analysis`
-                    : "Select records in the Saved Records tab to build an insights prompt"}
-                </CardDescription>
-              </div>
-              <BarChart3 className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <PromptPreviewBlock
-                value={insightsPrompt}
-                emptyMessage="Select one or more analytics records in Saved Records, then copy the generated insights prompt."
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={!insightsPrompt.trim()}
-                onClick={() => handleCopy(insightsPrompt, "insights prompt")}
-              >
-                <Copy className="size-4" />
-                Copy insights prompt
-              </Button>
-            </CardContent>
-          </Card>
+          <CampaignPromptOutputSection
+            title="Generate Insights Prompt"
+            description={
+              selectedRecords.length
+                ? `${selectedRecords.length} record(s) selected for analysis`
+                : "Select records in the Saved Records tab to build an insights prompt"
+            }
+            basePrompt={insightsPrompt}
+            onCopy={handleCopy}
+            emptyMessage="Select one or more analytics records in Saved Records, then copy the generated insights prompt."
+            contextInput={{
+              moduleType: "analytics",
+              campaigns,
+              urlCampaignId: campaignPrefill.campaignId,
+              urlCampaignName: campaignPrefill.campaignName,
+              relatedCampaignName: form.relatedCampaign,
+              artistName: form.relatedArtist,
+              songTitle: form.relatedSong,
+              niche: form.niche,
+            }}
+          />
         </ModuleTabPanel>
 
         <ModuleTabPanel value="related">

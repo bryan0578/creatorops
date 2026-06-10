@@ -48,6 +48,7 @@ import {
 
 import { ModulePageHeader } from "@/components/app-shell"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
+import { CampaignPromptOutputSection } from "@/components/campaigns/campaign-context-prompt-controls"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
 import { RelationshipPanel } from "@/components/relationships/relationship-panel"
 import { ApplyWorkspaceDefaultsButton } from "@/components/settings/apply-workspace-defaults-button"
@@ -575,27 +576,22 @@ export function EmailCampaignGenerator() {
         </ModuleTabPanel>
 
         <ModuleTabPanel value="prompt">
-          <OutputSection
-            title="Completed prompt"
+          <CampaignPromptOutputSection
             description={
               usingSavedTemplate
                 ? "Using Email Campaign Generator from library"
                 : "Using built-in fallback template"
             }
-            action={
-              <Button
-                type="button"
-                size="sm"
-                disabled={!completedPrompt.trim()}
-                onClick={() => handleCopy(completedPrompt, "prompt")}
-              >
-                <Copy className="size-4" />
-                Copy prompt
-              </Button>
-            }
-          >
-            <PromptPreviewBlock value={completedPrompt} />
-          </OutputSection>
+            basePrompt={completedPrompt}
+            onCopy={handleCopy}
+            contextInput={{
+              moduleType: "email-campaigns",
+              campaigns,
+              urlCampaignId: campaignPrefill.campaignId,
+              urlCampaignName: campaignPrefill.campaignName,
+              formCampaignName: form.campaignName,
+            }}
+          />
         </ModuleTabPanel>
 
         <ModuleTabPanel value="ai-response">
