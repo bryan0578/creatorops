@@ -60,6 +60,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { CampaignBundlesSection } from "@/components/backups/campaign-bundles-section"
 import { DemoTestingSection } from "@/components/backups/demo-testing-section"
 import { EmptyState } from "@/components/empty-state"
 
@@ -147,6 +148,7 @@ export function BackupCenter() {
       store.reloadMockupPromptRecords(),
       store.reloadEmailCampaignRecords(),
       store.reloadCampaigns(),
+      store.reloadExperiments(),
       store.reloadPresets(),
       store.reloadWorkspaceSettings(),
     ])
@@ -316,6 +318,8 @@ export function BackupCenter() {
       </Card>
 
       <DemoTestingSection onDataChanged={reloadAllStoreData} />
+
+      <CampaignBundlesSection onDataChanged={reloadAllStoreData} />
 
       <Card className="border-border/80">
         <CardHeader>

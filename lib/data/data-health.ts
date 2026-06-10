@@ -1062,6 +1062,35 @@ function scanExperimentAnalyticsWarnings(
   }
 }
 
+function scanCampaignBundleExportWarnings(
+  input: DataHealthScanInput,
+  sets: RecordIdSets,
+  issues: DataHealthIssue[],
+): void {
+  for (const campaign of input.campaigns) {
+    const title = campaign.campaignName || "Untitled campaign"
+    const href = campaignHref(campaign.id)
+
+    for (const linked of campaign.linkedRecords) {
+      if (!recordExists(sets, linked.type, linked.id)) {
+        pushIssue(issues, {
+          id: issueId(["bundle-export-missing", campaign.id, linked.type, linked.id]),
+          severity: "warning",
+          category: "missing-assets",
+          title: "Campaign bundle export will omit linked record",
+          description: `Campaign "${title}" links to missing ${LINK_TYPE_LABELS[linked.type] ?? linked.type}: ${linked.title || linked.id}. Bundle export will flag this as missing.`,
+          sourceType: "campaign",
+          sourceId: campaign.id,
+          sourceTitle: title,
+          href,
+          suggestedAction:
+            "Restore the linked record or remove the broken link before exporting a campaign bundle.",
+        })
+      }
+    }
+  }
+}
+
 function scanPromptRunLinkWarnings(
   input: DataHealthScanInput,
   sets: RecordIdSets,
@@ -1263,6 +1292,9 @@ export function buildDataHealthReport(
   )
   safeScan("Experiment analytics", issues, () =>
     scanExperimentAnalyticsWarnings(input, sets, issues),
+  )
+  safeScan("Campaign bundle export", issues, () =>
+    scanCampaignBundleExportWarnings(input, sets, issues),
   )
   safeScan("Prompt run links", issues, () =>
     scanPromptRunLinkWarnings(input, sets, issues),

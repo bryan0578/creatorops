@@ -31,6 +31,7 @@ import {
 import { RECENT_RECORDS_CARD_CLASS } from "@/components/module/form-layout"
 import { cn } from "@/lib/utils"
 import { CampaignExperimentsSection } from "@/components/campaigns/launch-dashboard/campaign-experiments-section"
+import { CampaignBundleSection } from "@/components/campaigns/launch-dashboard/campaign-bundle-section"
 import { CampaignExportPackSection } from "@/components/campaigns/launch-dashboard/campaign-export-pack-section"
 import { CampaignPublishingChecklistCard } from "@/components/campaigns/launch-dashboard/campaign-publishing-checklist-card"
 import { CampaignPromptHistoryCard } from "@/components/campaigns/launch-dashboard/campaign-prompt-history-card"
@@ -430,6 +431,10 @@ export function CampaignLaunchDashboard({
 
       <div className="grid gap-4 xl:grid-cols-2">
         <CampaignExportPackSection
+          campaignId={campaign.id}
+          campaignName={campaign.campaignName}
+        />
+        <CampaignBundleSection
           campaignId={campaign.id}
           campaignName={campaign.campaignName}
         />

@@ -187,6 +187,14 @@ export const COMMAND_PALETTE_QUICK_ACTIONS: CommandPaletteStaticItem[] = [
     keywords: "backup export import demo",
   },
   {
+    id: "qa-campaign-bundles",
+    group: "quick-actions",
+    title: "Campaign Bundles",
+    subtitle: "Backup Center — export or import one campaign",
+    href: "/backups#campaign-bundles",
+    keywords: "campaign bundle export import portable json",
+  },
+  {
     id: "qa-data-health",
     group: "quick-actions",
     title: "Run Data Health Scan",

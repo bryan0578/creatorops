@@ -44,6 +44,7 @@ import {
   tryConsumePresetPrefill,
 } from "@/lib/preset-prefill"
 
+import { ModulePageHeader } from "@/components/app-shell"
 import { SaveLinkedPromptRunButton } from "@/components/module/save-linked-prompt-run-button"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { CampaignPromptOutputSection } from "@/components/campaigns/campaign-context-prompt-controls"

@@ -16,6 +16,10 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
+import {
+  campaignBundleFilename,
+  exportCampaignBundle,
+} from "@/lib/actions/campaign-bundle"
 import { useStore, createId } from "@/lib/store"
 import type {
   CampaignFormValues,
@@ -323,6 +327,22 @@ export function CampaignBuilder() {
       toast.success("Campaign duplicated")
     } catch {
       toast.error("Could not duplicate campaign")
+    }
+  }
+
+  async function handleExportBundle(record: CampaignRecord) {
+    try {
+      const bundle = await exportCampaignBundle(record.id)
+      const filename = campaignBundleFilename(
+        record.campaignName || bundle.campaign.campaignName,
+        new Date(bundle.exportedAt),
+      )
+      downloadJson(filename, bundle)
+      toast.success("Campaign bundle exported.")
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Could not export campaign bundle."
+      toast.error(message)
     }
   }
 
@@ -1131,6 +1151,15 @@ export function CampaignBuilder() {
                           onClick={() => loadRecord(campaign)}
                         >
                           Open
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleExportBundle(campaign)}
+                        >
+                          <Download className="size-4" />
+                          Export Bundle
                         </Button>
                         <Button
                           type="button"
