@@ -35,6 +35,7 @@ import { CampaignBundleSection } from "@/components/campaigns/launch-dashboard/c
 import { CampaignExportPackSection } from "@/components/campaigns/launch-dashboard/campaign-export-pack-section"
 import { CampaignPublishingChecklistCard } from "@/components/campaigns/launch-dashboard/campaign-publishing-checklist-card"
 import { CampaignPromptHistoryCard } from "@/components/campaigns/launch-dashboard/campaign-prompt-history-card"
+import { CampaignAutomationSuggestionsCard } from "@/components/automation/automation-suggestions-card"
 
 function formatLaunchDate(value: string) {
   if (!value.trim()) return "—"
@@ -428,6 +429,8 @@ export function CampaignLaunchDashboard({
       </div>
 
       <CampaignNextActions actions={data.nextActions} onGoToTasks={onGoToTasks} />
+
+      <CampaignAutomationSuggestionsCard campaignId={campaign.id} />
 
       <div className="grid gap-4 xl:grid-cols-2">
         <CampaignExportPackSection

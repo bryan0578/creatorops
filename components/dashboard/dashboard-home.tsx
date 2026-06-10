@@ -59,6 +59,7 @@ import { RatingStars } from "@/components/rating-stars"
 import { StatusBadge } from "@/components/workflows/status-badge"
 import { PromptFormDialog } from "@/components/prompts/prompt-form-dialog"
 import { RecentActivityTimeline } from "@/components/activity/recent-activity-timeline"
+import { AutomationDashboardCard } from "@/components/automation/automation-suggestions-card"
 
 function CompactStatCard({
   label,
@@ -480,6 +481,8 @@ export function DashboardHome() {
       </div>
 
       <RecentActivityTimeline limit={6} compact />
+
+      <AutomationDashboardCard />
 
       <Card className="border-border/80">
         <CardHeader className="pb-3">
