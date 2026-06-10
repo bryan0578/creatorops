@@ -46,6 +46,7 @@ export const CAMPAIGN_BUILDER_TABS = [
   { value: "overview", label: "Overview" },
   { value: "linked", label: "Linked Records" },
   { value: "tasks", label: "Tasks" },
+  { value: "publishing-checklist", label: "Publishing Checklist" },
   { value: "timeline", label: "Timeline" },
   { value: "notes", label: "Notes" },
   { value: "saved", label: "Saved Campaigns" },

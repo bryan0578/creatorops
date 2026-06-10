@@ -8,6 +8,7 @@ import {
   DEMO_SONG_TITLE,
   demoDates,
 } from "@/lib/demo-data/constants"
+import { buildDemoPublishingChecklist } from "@/lib/data/publishing-checklist"
 import type {
   AnalyticsRecord,
   ExperimentRecord,
@@ -573,6 +574,7 @@ export function buildPrettyWiseDemoRecords(now = new Date()) {
     whatToImprove: "",
     linkedRecords,
     tasks,
+    publishingChecklist: buildDemoPublishingChecklist("Music Release"),
     createdAt: ts,
     updatedAt: ts,
   }

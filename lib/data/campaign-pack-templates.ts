@@ -62,6 +62,7 @@ export type CampaignPackSectionKey =
   | "artist-related-youtube"
   | "artist-related-merch"
   | "launch-tasks"
+  | "publishing-checklist"
   | "missing-assets"
   | "missing-youtube-assets"
   | "missing-social-assets"
@@ -100,6 +101,7 @@ export const CAMPAIGN_PACK_TEMPLATES: CampaignPackTemplate[] = [
       "mockup-prompt",
       "analytics-checklist",
       "launch-tasks",
+      "publishing-checklist",
       "missing-assets",
       "linked-records",
     ],
@@ -120,6 +122,7 @@ export const CAMPAIGN_PACK_TEMPLATES: CampaignPackTemplate[] = [
       "youtube-pinned-comment",
       "youtube-tags-hashtags",
       "launch-tasks",
+      "publishing-checklist",
       "missing-youtube-assets",
     ],
   },
@@ -159,6 +162,7 @@ export const CAMPAIGN_PACK_TEMPLATES: CampaignPackTemplate[] = [
       "merch-social-caption",
       "merch-email-subject",
       "commerce-store-details",
+      "publishing-checklist",
       "missing-commerce-assets",
     ],
   },

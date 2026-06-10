@@ -90,6 +90,15 @@ export const COMMAND_PALETTE_QUICK_ACTIONS: CommandPaletteStaticItem[] = [
     keywords: "kanban board pipeline stages",
   },
   {
+    id: "qa-publishing-checklist",
+    group: "quick-actions",
+    title: "Open Publishing Checklist",
+    subtitle: "Campaign release execution workflow",
+    href: "/campaigns?tab=publishing-checklist",
+    icon: ListChecks,
+    keywords: "publishing checklist release launch pre-publish",
+  },
+  {
     id: "qa-new-campaign",
     group: "quick-actions",
     title: "New Campaign",

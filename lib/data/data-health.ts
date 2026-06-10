@@ -5,6 +5,11 @@
 import { buildRecordHref } from "@/lib/data/related-records"
 import { isValidJsonString } from "@/lib/safe-json"
 import {
+  hasIncompletePhaseItems,
+  isPublishedCampaignStatus,
+  isReadyToPublishCampaignStatus,
+} from "@/lib/data/publishing-checklist"
+import {
   buildMissingAssetRepair,
   buildRemoveBrokenLinkRepair,
 } from "@/lib/data/data-health-repairs"
@@ -847,6 +852,73 @@ function scanIncompleteRecords(
   }
 }
 
+function scanPublishingChecklistWarnings(
+  input: DataHealthScanInput,
+  issues: DataHealthIssue[],
+): void {
+  for (const campaign of input.campaigns) {
+    const title = campaign.campaignName || "Untitled campaign"
+    const checklist = campaign.publishingChecklist
+    const href = `${campaignHref(campaign.id)}&tab=publishing-checklist`
+
+    if (
+      isPublishedCampaignStatus(campaign.status) &&
+      checklist.items.length === 0
+    ) {
+      pushIssue(issues, {
+        id: issueId(["pub-checklist-missing", campaign.id]),
+        severity: "warning",
+        category: "missing-assets",
+        title: "Published campaign missing publishing checklist",
+        description: `Campaign "${title}" is published but has no publishing checklist.`,
+        sourceType: "campaign",
+        sourceId: campaign.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Generate a publishing checklist in Campaign Builder.",
+      })
+    }
+
+    if (
+      isPublishedCampaignStatus(campaign.status) &&
+      checklist.items.length > 0 &&
+      hasIncompletePhaseItems(checklist, "Publishing")
+    ) {
+      pushIssue(issues, {
+        id: issueId(["pub-checklist-publishing", campaign.id]),
+        severity: "warning",
+        category: "incomplete-records",
+        title: "Incomplete Publishing phase checklist",
+        description: `Campaign "${title}" is published but Publishing phase items remain incomplete.`,
+        sourceType: "campaign",
+        sourceId: campaign.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Complete Publishing phase items in the publishing checklist.",
+      })
+    }
+
+    if (
+      isReadyToPublishCampaignStatus(campaign.status) &&
+      checklist.items.length > 0 &&
+      hasIncompletePhaseItems(checklist, "Pre-Publish")
+    ) {
+      pushIssue(issues, {
+        id: issueId(["pub-checklist-prepublish", campaign.id]),
+        severity: "warning",
+        category: "incomplete-records",
+        title: "Pre-Publish checklist incomplete",
+        description: `Campaign "${title}" is ready to publish but Pre-Publish checklist items remain incomplete.`,
+        sourceType: "campaign",
+        sourceId: campaign.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Complete Pre-Publish checklist items before launch.",
+      })
+    }
+  }
+}
+
 function isValidJson(raw: string, expected: "array" | "object"): boolean {
   return isValidJsonString(raw, expected)
 }
@@ -991,6 +1063,9 @@ export function buildDataHealthReport(
   safeScan("Duplicates", issues, () => scanDuplicates(input, issues))
   safeScan("Incomplete records", issues, () =>
     scanIncompleteRecords(input, issues),
+  )
+  safeScan("Publishing checklist", issues, () =>
+    scanPublishingChecklistWarnings(input, issues),
   )
   safeScan("JSON / data issues", issues, () => scanJsonIssues(input, issues))
 

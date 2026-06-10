@@ -68,7 +68,13 @@ async function loadJsonFields(): Promise<DataHealthJsonField[]> {
 
   const [campaignRows, presetRows, promptRows, promptRunRows] = await Promise.all([
     prisma.campaign.findMany({
-      select: { id: true, campaignName: true, linkedRecords: true, tasks: true },
+      select: {
+        id: true,
+        campaignName: true,
+        linkedRecords: true,
+        tasks: true,
+        publishingChecklist: true,
+      },
     }),
     prisma.preset.findMany({
       select: { id: true, name: true, tags: true, values: true },
@@ -98,6 +104,14 @@ async function loadJsonFields(): Promise<DataHealthJsonField[]> {
         fieldName: "tasks",
         raw: row.tasks,
         expected: "array",
+      },
+      {
+        sourceType: "campaign",
+        sourceId: row.id,
+        sourceTitle: row.campaignName || "Untitled campaign",
+        fieldName: "publishingChecklist",
+        raw: row.publishingChecklist ?? "{}",
+        expected: "object",
       },
     )
   }

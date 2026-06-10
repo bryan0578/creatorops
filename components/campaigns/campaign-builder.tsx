@@ -23,6 +23,7 @@ import type {
   CampaignLinkedRecordType,
   CampaignRecord,
   CampaignTask,
+  PublishingChecklist,
 } from "@/lib/types"
 import {
   CAMPAIGN_BUILDER_STATUSES,
@@ -49,6 +50,7 @@ import {
   duplicateCampaignRecord,
   emptyCampaignForm,
   emptyCampaignTask,
+  emptyPublishingChecklist,
   getLinkableRecordOptions,
 } from "@/lib/campaigns"
 import { downloadJson, loadCampaigns } from "@/lib/storage"
@@ -58,6 +60,7 @@ import {
   CampaignLaunchDashboard,
   CampaignLaunchDashboardEmpty,
 } from "@/components/campaigns/launch-dashboard/campaign-launch-dashboard"
+import { PublishingChecklistTab } from "@/components/campaigns/publishing-checklist-tab"
 import { EmptyState } from "@/components/empty-state"
 import {
   CAMPAIGN_BUILDER_TABS,
@@ -120,6 +123,8 @@ export function CampaignBuilder() {
     [],
   )
   const [tasks, setTasks] = React.useState<CampaignTask[]>([])
+  const [publishingChecklist, setPublishingChecklist] =
+    React.useState<PublishingChecklist>(emptyPublishingChecklist)
   const [saving, setSaving] = React.useState(false)
   const [savedFilter, setSavedFilter] = React.useState("")
   const [activeTab, setActiveTab] = React.useState("overview")
@@ -169,12 +174,29 @@ export function CampaignBuilder() {
   const timeline = React.useMemo(
     () =>
       buildCampaignTimeline(
-        buildCampaignRecordFromForm(recordId, form, linkedRecords, tasks, {
-          createdAt,
-          updatedAt: Date.now(),
-        }),
+        buildCampaignRecordFromForm(
+          recordId,
+          form,
+          linkedRecords,
+          tasks,
+          { createdAt, updatedAt: Date.now() },
+          publishingChecklist,
+        ),
       ),
-    [recordId, form, linkedRecords, tasks, createdAt],
+    [recordId, form, linkedRecords, tasks, createdAt, publishingChecklist],
+  )
+
+  const buildCurrentRecord = React.useCallback(
+    (updatedAt = Date.now()) =>
+      buildCampaignRecordFromForm(
+        recordId,
+        form,
+        linkedRecords,
+        tasks.map((task, index) => ({ ...task, order: index })),
+        { createdAt, updatedAt },
+        publishingChecklist,
+      ),
+    [recordId, form, linkedRecords, tasks, createdAt, publishingChecklist],
   )
 
   function loadRecord(record: CampaignRecord) {
@@ -183,6 +205,7 @@ export function CampaignBuilder() {
     setForm(campaignFormFromRecord(record))
     setLinkedRecords(record.linkedRecords)
     setTasks(record.tasks)
+    setPublishingChecklist(record.publishingChecklist)
     setActiveTab("launch")
     toast.message(`Opened ${record.campaignName || "campaign"}`)
   }
@@ -195,6 +218,7 @@ export function CampaignBuilder() {
     setForm(emptyCampaignForm())
     setLinkedRecords([])
     setTasks([])
+    setPublishingChecklist(emptyPublishingChecklist())
     setActiveTab("overview")
   }
 
@@ -213,13 +237,7 @@ export function CampaignBuilder() {
 
     setSaving(true)
     try {
-      const record = buildCampaignRecordFromForm(
-        recordId,
-        form,
-        linkedRecords,
-        tasks.map((task, index) => ({ ...task, order: index })),
-        { createdAt, updatedAt: Date.now() },
-      )
+      const record = buildCurrentRecord()
 
       const exists = store.campaigns.some((c) => c.id === recordId)
       if (exists) {
@@ -354,6 +372,17 @@ export function CampaignBuilder() {
 
   React.useEffect(() => {
     if (!store.hydrated) return
+    const tab = searchParams.get("tab")
+    if (
+      tab &&
+      CAMPAIGN_BUILDER_TABS.some((item) => item.value === tab)
+    ) {
+      setActiveTab(tab)
+    }
+  }, [searchParams, store.hydrated])
+
+  React.useEffect(() => {
+    if (!store.hydrated) return
     const paramId =
       searchParams.get("campaignId") ?? searchParams.get("recordId")
     if (!paramId) return
@@ -407,13 +436,68 @@ export function CampaignBuilder() {
     store.campaigns.some((c) => c.id === recordId) && form.campaignName.trim()
 
   const launchCampaign = React.useMemo(
-    () =>
-      buildCampaignRecordFromForm(recordId, form, linkedRecords, tasks, {
-        createdAt,
-        updatedAt: Date.now(),
-      }),
-    [recordId, form, linkedRecords, tasks, createdAt],
+    () => buildCurrentRecord(),
+    [buildCurrentRecord],
   )
+
+  async function handleSavePublishingChecklist(next: PublishingChecklist) {
+    setPublishingChecklist(next)
+  }
+
+  async function saveCurrentCampaign(checklistOverride?: PublishingChecklist) {
+    if (!form.campaignName.trim()) {
+      toast.error("Campaign name is required")
+      return
+    }
+    setSaving(true)
+    try {
+      const record = buildCampaignRecordFromForm(
+        recordId,
+        form,
+        linkedRecords,
+        tasks.map((task, index) => ({ ...task, order: index })),
+        { createdAt, updatedAt: Date.now() },
+        checklistOverride ?? publishingChecklist,
+      )
+      const exists = store.campaigns.some((c) => c.id === recordId)
+      if (exists) {
+        await store.updateCampaign(record)
+      } else {
+        await store.addCampaign(record)
+      }
+    } catch {
+      toast.error("Could not save campaign")
+      throw new Error("save failed")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleGeneratePublishingChecklist(next: PublishingChecklist) {
+    setPublishingChecklist(next)
+    setSaving(true)
+    try {
+      const record = buildCampaignRecordFromForm(
+        recordId,
+        form,
+        linkedRecords,
+        tasks.map((task, index) => ({ ...task, order: index })),
+        { createdAt, updatedAt: Date.now() },
+        next,
+      )
+      const exists = store.campaigns.some((c) => c.id === recordId)
+      if (exists) {
+        await store.updateCampaign(record)
+      } else {
+        await store.addCampaign(record)
+      }
+      toast.success("Publishing checklist generated")
+    } catch {
+      toast.error("Could not save checklist")
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const linkableStore = React.useMemo(
     () => ({
@@ -488,6 +572,8 @@ export function CampaignBuilder() {
               campaign={launchCampaign}
               store={linkableStore}
               onGoToTasks={() => setActiveTab("tasks")}
+              onGoToPublishingChecklist={() => setActiveTab("publishing-checklist")}
+              onGeneratePublishingChecklist={handleGeneratePublishingChecklist}
               onGoToOverview={() => setActiveTab("overview")}
               onGoToSaved={() => setActiveTab("saved")}
               onGoToLinked={() => setActiveTab("linked")}
@@ -864,6 +950,18 @@ export function CampaignBuilder() {
               )}
             </CardContent>
           </Card>
+        </ModuleTabPanel>
+
+        <ModuleTabPanel value="publishing-checklist">
+          <PublishingChecklistTab
+            campaignId={recordId}
+            campaignName={form.campaignName}
+            form={form}
+            checklist={publishingChecklist}
+            onChecklistChange={handleSavePublishingChecklist}
+            onSave={saveCurrentCampaign}
+            saving={saving}
+          />
         </ModuleTabPanel>
 
         <ModuleTabPanel value="timeline">

@@ -33,6 +33,8 @@ import { RECENT_RECORDS_CARD_CLASS } from "@/components/module/form-layout"
 import { cn } from "@/lib/utils"
 import { CampaignExperimentsSection } from "@/components/campaigns/launch-dashboard/campaign-experiments-section"
 import { CampaignExportPackSection } from "@/components/campaigns/launch-dashboard/campaign-export-pack-section"
+import { CampaignPublishingChecklistCard } from "@/components/campaigns/launch-dashboard/campaign-publishing-checklist-card"
+import type { PublishingChecklist } from "@/lib/types"
 
 function formatLaunchDate(value: string) {
   if (!value.trim()) return "—"
@@ -362,6 +364,8 @@ export function CampaignLaunchDashboard({
   campaign,
   store,
   onGoToTasks,
+  onGoToPublishingChecklist,
+  onGeneratePublishingChecklist,
   onGoToOverview,
   onGoToSaved,
   onGoToLinked,
@@ -369,6 +373,8 @@ export function CampaignLaunchDashboard({
   campaign: CampaignRecord
   store: CampaignLinkableStoreSlice
   onGoToTasks: () => void
+  onGoToPublishingChecklist: () => void
+  onGeneratePublishingChecklist: (checklist: PublishingChecklist) => void
   onGoToOverview: () => void
   onGoToSaved: () => void
   onGoToLinked: () => void
@@ -431,6 +437,12 @@ export function CampaignLaunchDashboard({
           campaignName={campaign.campaignName}
         />
       </div>
+
+      <CampaignPublishingChecklistCard
+        campaign={campaign}
+        onOpenChecklist={onGoToPublishingChecklist}
+        onGenerateChecklist={onGeneratePublishingChecklist}
+      />
 
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onGoToSaved}>

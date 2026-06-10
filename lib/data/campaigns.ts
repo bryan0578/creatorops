@@ -1,8 +1,10 @@
 import {
   normalizeCampaignRecord,
   parseCampaignLinkedRecords,
+  parseCampaignPublishingChecklist,
   parseCampaignTasks,
   stringifyJsonArray,
+  stringifyPublishingChecklist,
 } from "@/lib/campaigns"
 import type { CampaignRecord } from "@/lib/types"
 import type { Campaign as PrismaCampaign } from "@/lib/generated/prisma/client"
@@ -33,6 +35,7 @@ export function campaignToPrismaCreate(record: CampaignRecord) {
     whatToImprove: normalized.whatToImprove,
     linkedRecords: stringifyJsonArray(normalized.linkedRecords),
     tasks: stringifyJsonArray(normalized.tasks),
+    publishingChecklist: stringifyPublishingChecklist(normalized.publishingChecklist),
     createdAt: new Date(normalized.createdAt),
     updatedAt: new Date(normalized.updatedAt),
   }
@@ -61,6 +64,7 @@ export function campaignToPrismaUpdate(record: CampaignRecord) {
     whatToImprove: normalized.whatToImprove,
     linkedRecords: stringifyJsonArray(normalized.linkedRecords),
     tasks: stringifyJsonArray(normalized.tasks),
+    publishingChecklist: stringifyPublishingChecklist(normalized.publishingChecklist),
     updatedAt: new Date(normalized.updatedAt),
   }
 }
@@ -88,6 +92,9 @@ export function prismaCampaignToCampaignRecord(row: PrismaCampaign): CampaignRec
     whatToImprove: row.whatToImprove,
     linkedRecords: parseCampaignLinkedRecords(row.linkedRecords),
     tasks: parseCampaignTasks(row.tasks),
+    publishingChecklist: parseCampaignPublishingChecklist(
+      row.publishingChecklist ?? "{}",
+    ),
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
   })

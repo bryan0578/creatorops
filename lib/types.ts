@@ -1289,6 +1289,64 @@ export interface CampaignTask {
   order: number
 }
 
+export type PublishingChecklistItemStatus =
+  | "todo"
+  | "in-progress"
+  | "done"
+  | "skipped"
+  | "blocked"
+
+export const PUBLISHING_CHECKLIST_STATUSES: PublishingChecklistItemStatus[] = [
+  "todo",
+  "in-progress",
+  "done",
+  "skipped",
+  "blocked",
+]
+
+export type PublishingChecklistPhase =
+  | "Pre-Publish"
+  | "Publishing"
+  | "Immediately After Publish"
+  | "24-Hour Review"
+  | "7-Day Review"
+  | "30-Day Review"
+
+export const PUBLISHING_CHECKLIST_PHASES: PublishingChecklistPhase[] = [
+  "Pre-Publish",
+  "Publishing",
+  "Immediately After Publish",
+  "24-Hour Review",
+  "7-Day Review",
+  "30-Day Review",
+]
+
+export type PublishingChecklistQuickAction =
+  | "export-campaign-pack"
+  | "data-health"
+  | "analytics"
+  | "experiments"
+  | "youtube-packaging"
+  | "youtube-thumbnails"
+  | "social-repurposing"
+  | "email-campaigns"
+
+export interface PublishingChecklistItem {
+  id: string
+  phase: PublishingChecklistPhase
+  title: string
+  status: PublishingChecklistItemStatus
+  dueDate: string
+  completedAt: string
+  notes: string
+  quickAction?: PublishingChecklistQuickAction
+}
+
+export interface PublishingChecklist {
+  version: 1
+  items: PublishingChecklistItem[]
+}
+
 export interface CampaignRecord {
   id: string
   campaignName: string
@@ -1311,6 +1369,7 @@ export interface CampaignRecord {
   whatToImprove: string
   linkedRecords: CampaignLinkedRecord[]
   tasks: CampaignTask[]
+  publishingChecklist: PublishingChecklist
   createdAt: number
   updatedAt: number
 }

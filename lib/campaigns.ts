@@ -25,6 +25,13 @@ import {
   CAMPAIGN_TASK_STATUSES,
 } from "@/lib/types"
 import { parseJsonArray as parseJsonArraySafe } from "@/lib/safe-json"
+import {
+  emptyPublishingChecklist,
+  normalizePublishingChecklist,
+  parsePublishingChecklistFromUnknown,
+  stringifyPublishingChecklist,
+} from "@/lib/data/publishing-checklist"
+import type { PublishingChecklist } from "@/lib/types"
 
 export {
   CAMPAIGN_BUILDER_STATUSES,
@@ -128,6 +135,7 @@ export function emptyCampaignRecord(id: string): CampaignRecord {
     ...emptyCampaignForm(),
     linkedRecords: [],
     tasks: [],
+    publishingChecklist: emptyPublishingChecklist(),
     createdAt: now,
     updatedAt: now,
   })
@@ -160,6 +168,10 @@ export function normalizeCampaignRecord(
         .sort((a, b) => a.order - b.order)
     : []
 
+  const publishingChecklist = input.publishingChecklist
+    ? normalizePublishingChecklist(input.publishingChecklist)
+    : emptyPublishingChecklist()
+
   return {
     id: input.id,
     campaignName: String(input.campaignName ?? ""),
@@ -182,6 +194,7 @@ export function normalizeCampaignRecord(
     whatToImprove: String(input.whatToImprove ?? ""),
     linkedRecords,
     tasks,
+    publishingChecklist,
     createdAt: Number(input.createdAt ?? now),
     updatedAt: Number(input.updatedAt ?? now),
   }
@@ -261,13 +274,18 @@ export function buildCampaignRecordFromForm(
   form: CampaignFormValues,
   linkedRecords: CampaignLinkedRecord[],
   tasks: CampaignTask[],
-  timestamps?: { createdAt?: number; updatedAt?: number },
+  timestamps?: {
+    createdAt?: number
+    updatedAt?: number
+  },
+  publishingChecklist?: PublishingChecklist,
 ): CampaignRecord {
   return normalizeCampaignRecord({
     id,
     ...form,
     linkedRecords,
     tasks,
+    publishingChecklist,
     createdAt: timestamps?.createdAt,
     updatedAt: timestamps?.updatedAt ?? Date.now(),
   })
@@ -290,6 +308,15 @@ export function duplicateCampaignRecord(
       id: `${newId}-task-${index}`,
       status: "To Do" as const,
     })),
+    publishingChecklist: {
+      ...record.publishingChecklist,
+      items: record.publishingChecklist.items.map((item, index) => ({
+        ...item,
+        id: `${newId}-pc-${index}`,
+        status: "todo" as const,
+        completedAt: "",
+      })),
+    },
     createdAt: now,
     updatedAt: now,
   })
@@ -484,3 +511,15 @@ export function parseCampaignTasks(raw: string): CampaignTask[] {
     normalizeCampaignTask(item as Partial<CampaignTask>, index),
   )
 }
+
+export function parseCampaignPublishingChecklist(raw: string): PublishingChecklist {
+  return parsePublishingChecklistFromUnknown(raw || "{}")
+}
+
+export {
+  emptyPublishingChecklist,
+  normalizePublishingChecklist,
+  parsePublishingChecklistFromUnknown,
+  parsePublishingChecklistRaw,
+  stringifyPublishingChecklist,
+} from "@/lib/data/publishing-checklist"

@@ -10,6 +10,7 @@ import {
   type CampaignPackSectionKey,
   type CampaignPackTemplateId,
 } from "@/lib/data/campaign-pack-templates"
+import { formatPublishingChecklistMarkdown } from "@/lib/data/publishing-checklist"
 import type {
   AnalyticsRecord,
   ArtistRecord,
@@ -748,6 +749,14 @@ export function renderLaunchTasks(ctx: CampaignExportSectionContext): string {
   return ["## Launch Task Checklist", "", formatTasksSection(ctx.campaign.tasks)].join("\n")
 }
 
+export function renderPublishingChecklist(ctx: CampaignExportSectionContext): string {
+  return formatPublishingChecklistMarkdown({
+    campaignName: ctx.campaign.campaignName,
+    campaignType: ctx.campaign.campaignType,
+    publishingChecklist: ctx.campaign.publishingChecklist,
+  })
+}
+
 export function renderMissingAssets(ctx: CampaignExportSectionContext): string {
   return [
     "## Missing Assets / Next Actions",
@@ -1012,6 +1021,8 @@ function renderPackSection(
       ].join("\n")
     case "launch-tasks":
       return renderLaunchTasks(ctx)
+    case "publishing-checklist":
+      return renderPublishingChecklist(ctx)
     case "missing-assets":
       return renderMissingAssets(ctx)
     case "missing-youtube-assets":

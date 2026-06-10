@@ -582,6 +582,8 @@ model Campaign {
   linkedRecords  String   @default("[]")
   /// JSON CampaignTask[]
   tasks          String   @default("[]")
+  /// JSON PublishingChecklist { version, items[] }
+  publishingChecklist String @default("{}")
   createdAt      DateTime
   updatedAt      DateTime
 
