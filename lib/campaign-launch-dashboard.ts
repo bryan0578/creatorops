@@ -6,10 +6,20 @@ import { buildMissingAssetRepair } from "@/lib/data/data-health-repairs"
 import { buildRecordHref } from "@/lib/data/related-records"
 import type { CampaignLinkableStoreSlice } from "@/lib/campaigns"
 import type {
+  AnalyticsRecord,
+  ArtistRecord,
   CampaignLinkedRecord,
   CampaignLinkedRecordType,
   CampaignRecord,
   CampaignTask,
+  EmailCampaignRecord,
+  MerchIdea,
+  MockupPromptRecord,
+  ProductListing,
+  ReleasePlan,
+  SocialRepurposingRecord,
+  YouTubePackage,
+  YouTubeThumbnailRecord,
 } from "@/lib/types"
 
 export type LaunchReadinessLabel =
@@ -642,3 +652,101 @@ export function buildLaunchDashboardData(
     nextActions: buildLaunchNextActions(campaign, readiness, taskProgress),
   }
 }
+
+export interface CampaignRelatedRecordsBundle {
+  artist: ArtistRecord | null
+  releasePlan: ReleasePlan | null
+  youtubePackage: YouTubePackage | null
+  youtubeThumbnail: YouTubeThumbnailRecord | null
+  socialRepurposing: SocialRepurposingRecord | null
+  emailCampaign: EmailCampaignRecord | null
+  merchIdea: MerchIdea | null
+  productListing: ProductListing | null
+  mockupPrompt: MockupPromptRecord | null
+  analytics: AnalyticsRecord | null
+}
+
+const EXPORT_RECORD_TYPES: CampaignLinkedRecordType[] = [
+  "artist",
+  "release-plan",
+  "youtube-package",
+  "youtube-thumbnail",
+  "social-repurposing",
+  "email-campaign",
+  "merch-idea",
+  "product-listing",
+  "mockup-prompt",
+  "analytics",
+]
+
+function resolveRecordId(
+  campaign: CampaignRecord,
+  type: CampaignLinkedRecordType,
+  store: CampaignLinkableStoreSlice,
+  usedIds: Set<string>,
+): string | null {
+  const formal = findFormalLink(campaign, type)
+  if (formal?.id && recordExistsInStore(type, formal.id, store)) {
+    usedIds.add(`${type}:${formal.id}`)
+    return formal.id
+  }
+  const inferred = findInferredMatch(campaign, type, store, usedIds)
+  return inferred?.id ?? null
+}
+
+/** Resolve linked + related module records for export/readiness. */
+export function resolveCampaignRelatedRecords(
+  campaign: CampaignRecord,
+  store: CampaignLinkableStoreSlice,
+): CampaignRelatedRecordsBundle {
+  const usedIds = new Set<string>()
+  const id = (type: CampaignLinkedRecordType) =>
+    resolveRecordId(campaign, type, store, usedIds)
+
+  const artistId = id("artist")
+  const releasePlanId = id("release-plan")
+  const youtubePackageId = id("youtube-package")
+  const youtubeThumbnailId = id("youtube-thumbnail")
+  const socialId = id("social-repurposing")
+  const emailId = id("email-campaign")
+  const merchId = id("merch-idea")
+  const listingId = id("product-listing")
+  const mockupId = id("mockup-prompt")
+  const analyticsId = id("analytics")
+
+  return {
+    artist: artistId
+      ? (store.artistRecords.find((record) => record.id === artistId) ?? null)
+      : null,
+    releasePlan: releasePlanId
+      ? (store.releasePlans.find((record) => record.id === releasePlanId) ?? null)
+      : null,
+    youtubePackage: youtubePackageId
+      ? (store.youtubePackages.find((record) => record.id === youtubePackageId) ?? null)
+      : null,
+    youtubeThumbnail: youtubeThumbnailId
+      ? (store.youtubeThumbnailRecords.find((record) => record.id === youtubeThumbnailId) ??
+        null)
+      : null,
+    socialRepurposing: socialId
+      ? (store.socialRepurposingRecords.find((record) => record.id === socialId) ?? null)
+      : null,
+    emailCampaign: emailId
+      ? (store.emailCampaignRecords.find((record) => record.id === emailId) ?? null)
+      : null,
+    merchIdea: merchId
+      ? (store.merchIdeas.find((record) => record.id === merchId) ?? null)
+      : null,
+    productListing: listingId
+      ? (store.productListings.find((record) => record.id === listingId) ?? null)
+      : null,
+    mockupPrompt: mockupId
+      ? (store.mockupPromptRecords.find((record) => record.id === mockupId) ?? null)
+      : null,
+    analytics: analyticsId
+      ? (store.analyticsRecords.find((record) => record.id === analyticsId) ?? null)
+      : null,
+  }
+}
+
+export { EXPORT_RECORD_TYPES }
