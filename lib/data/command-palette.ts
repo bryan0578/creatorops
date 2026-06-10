@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Library,
   ListChecks,
+  LayoutGrid,
   Mail,
   Megaphone,
   Play,
@@ -53,6 +54,15 @@ export const COMMAND_PALETTE_GROUP_LABELS: Record<CommandPaletteGroupId, string>
 }
 
 export const COMMAND_PALETTE_QUICK_ACTIONS: CommandPaletteStaticItem[] = [
+  {
+    id: "qa-campaign-board",
+    group: "quick-actions",
+    title: "Open Campaign Board",
+    subtitle: "Visual campaign pipeline",
+    href: "/campaign-board",
+    icon: LayoutGrid,
+    keywords: "kanban board pipeline stages",
+  },
   {
     id: "qa-new-campaign",
     group: "quick-actions",
@@ -199,6 +209,13 @@ export const COMMAND_PALETTE_MODULES: CommandPaletteStaticItem[] = [
     title: "Workflow Runner",
     href: "/workflow-runner",
     icon: ListChecks,
+  },
+  {
+    id: "mod-campaign-board",
+    group: "modules",
+    title: "Campaign Board",
+    href: "/campaign-board",
+    icon: LayoutGrid,
   },
   {
     id: "mod-campaigns",

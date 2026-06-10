@@ -7,6 +7,7 @@ import {
   BarChart3,
   CalendarDays,
   ImagePlus,
+  LayoutGrid,
   Library,
   Megaphone,
   Mail,
@@ -35,6 +36,7 @@ import {
   priorityBadgeClass,
   sortActiveCampaigns,
 } from "@/lib/dashboard"
+import { normalizeStatusToStage } from "@/lib/data/campaign-board"
 
 import { PageHeader } from "@/components/app-shell"
 import {
@@ -205,6 +207,11 @@ export function DashboardHome() {
     [campaigns],
   )
 
+  const pipelineCampaignCount = React.useMemo(
+    () => campaigns.filter((c) => normalizeStatusToStage(c.status) !== "archived").length,
+    [campaigns],
+  )
+
   const upcomingLaunches = React.useMemo(
     () => getUpcomingLaunches(campaigns, releasePlans, 6),
     [campaigns, releasePlans],
@@ -307,6 +314,12 @@ export function DashboardHome() {
           href="/campaigns"
         />
         <CompactStatCard
+          label="Campaign Board"
+          value={pipelineCampaignCount}
+          icon={LayoutGrid}
+          href="/campaign-board"
+        />
+        <CompactStatCard
           label="Total prompts"
           value={prompts.length}
           icon={Library}
@@ -352,13 +365,22 @@ export function DashboardHome() {
               Planning and active launch campaigns across your workspace
             </CardDescription>
             <CardAction>
-              <Link
-                href="/campaigns"
-                className={buttonVariants({ variant: "ghost", size: "sm" })}
-              >
-                View all
-                <ArrowRight className="size-4" />
-              </Link>
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href="/campaign-board"
+                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                >
+                  <LayoutGrid className="size-4" />
+                  Campaign Board
+                </Link>
+                <Link
+                  href="/campaigns"
+                  className={buttonVariants({ variant: "ghost", size: "sm" })}
+                >
+                  View all
+                  <ArrowRight className="size-4" />
+                </Link>
+              </div>
             </CardAction>
           </CardHeader>
           <CardContent className="space-y-2 pt-0">

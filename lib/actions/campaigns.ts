@@ -12,7 +12,7 @@ import { CampaignDatabaseError } from "@/lib/errors/campaign-database-error"
 import { prisma } from "@/lib/prisma"
 import type { CampaignRecord } from "@/lib/types"
 
-const CAMPAIGN_PATHS = ["/campaigns", "/", "/search", "/backups"]
+const CAMPAIGN_PATHS = ["/campaigns", "/campaign-board", "/", "/search", "/backups"]
 
 function assertCampaignPrismaReady(): void {
   const client = prisma as typeof prisma & { campaign?: unknown }
@@ -88,6 +88,41 @@ export async function deleteCampaignById(id: string): Promise<void> {
     revalidateCampaignRoutes()
   } catch (error) {
     throw wrapCampaignDbError(error, "Could not delete campaign.")
+  }
+}
+
+/** Update only a campaign's status field. */
+export async function updateCampaignStatus(
+  campaignId: string,
+  status: string,
+): Promise<CampaignRecord> {
+  assertCampaignPrismaReady()
+  const trimmedId = campaignId.trim()
+  if (!trimmedId) {
+    throw new CampaignDatabaseError("Campaign id is required.")
+  }
+
+  try {
+    const row = await prisma.campaign.findUnique({ where: { id: trimmedId } })
+    if (!row) {
+      throw new CampaignDatabaseError("Campaign not found.")
+    }
+
+    const record = normalizeCampaignRecord({
+      ...prismaCampaignToCampaignRecord(row),
+      status: status.trim() || "Planning",
+      updatedAt: Date.now(),
+    })
+
+    const saved = await prisma.campaign.update({
+      where: { id: trimmedId },
+      data: campaignToPrismaUpdate(record),
+    })
+
+    revalidateCampaignRoutes()
+    return prismaCampaignToCampaignRecord(saved)
+  } catch (error) {
+    throw wrapCampaignDbError(error, "Could not update campaign status.")
   }
 }
 
