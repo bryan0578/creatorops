@@ -44,6 +44,7 @@ import {
 
 import { ModulePageHeader } from "@/components/app-shell"
 import { SaveLinkedPromptRunButton } from "@/components/module/save-linked-prompt-run-button"
+import { AIGenerationPanel } from "@/components/ai/ai-generation-panel"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { CampaignPromptOutputSection } from "@/components/campaigns/campaign-context-prompt-controls"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
@@ -661,9 +662,20 @@ export function ReleasePlannerTool() {
         </ModuleTabPanel>
 
         <ModuleTabPanel value="ai-response">
+          <div className="space-y-4">
+            <AIGenerationPanel
+              moduleType="Release Plan"
+              promptText={completedPrompt}
+              campaignId={campaignPrefill.campaignId}
+              campaignName={campaignPrefill.campaignName}
+              outputRecordId={editingId ?? undefined}
+              outputRecordType="release-plan"
+              onInsertResponse={setAiResponse}
+              compact
+            />
           <OutputSection
             title="AI response"
-            description="Paste the response from ChatGPT or your AI tool"
+            description="Paste the response from ChatGPT or generate with AI above"
           >
             <Textarea
               id="release-ai-response"
@@ -697,6 +709,7 @@ export function ReleasePlannerTool() {
               </div>
             ) : null}
           </OutputSection>
+          </div>
         </ModuleTabPanel>
 
         <ModuleTabPanel value="final">

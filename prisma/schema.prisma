@@ -867,6 +867,16 @@ model WorkspaceSettings {
   brandSecondaryColor   String   @default("")
   brandAccentColor      String   @default("")
   notes                 String   @default("")
+  aiGenerationEnabled   Boolean  @default(false)
+  aiDefaultProvider     String   @default("openai")
+  aiDefaultModel        String   @default("")
+  aiTemperature         Float    @default(0.7)
+  aiMaxOutputTokens     Int      @default(2048)
+  aiSystemStylePreference String @default("")
+  aiSaveGenerationsAsPromptRuns Boolean @default(true)
+  aiIncludeCampaignContextByDefault Boolean @default(true)
+  aiIncludeLearningsByDefault Boolean @default(true)
+  aiIncludeQualityNotesByDefault Boolean @default(true)
   createdAt             DateTime
   updatedAt             DateTime
 }

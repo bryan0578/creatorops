@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 
+import { resolveProviderStatus } from "@/lib/ai/ai-client"
 import { getAssets } from "@/lib/actions/assets"
 import { getLearnings } from "@/lib/actions/learnings"
 import { getQualityReviews } from "@/lib/actions/quality-reviews"
@@ -21,6 +22,7 @@ import { loadCampaignLinkableStoreSlice } from "@/lib/data/campaign-linkable-sto
 import { generateDefaultPublishingChecklist } from "@/lib/data/publishing-checklist"
 import { createId } from "@/lib/storage"
 import type { CampaignTask } from "@/lib/types"
+import { getWorkspaceSettings } from "@/lib/actions/workspace-settings"
 
 const REVALIDATE_PATHS = [
   "/",
@@ -42,8 +44,17 @@ function revalidateAutomationRoutes() {
 }
 
 async function loadAutomationContext() {
-  const [campaigns, store, experiments, runs, assets, qualityReviews, learnings, dataHealth] =
-    await Promise.all([
+  const [
+    campaigns,
+    store,
+    experiments,
+    runs,
+    assets,
+    qualityReviews,
+    learnings,
+    dataHealth,
+    workspaceSettings,
+  ] = await Promise.all([
     getCampaigns(),
     loadCampaignLinkableStoreSlice(),
     getExperiments(),
@@ -52,13 +63,22 @@ async function loadAutomationContext() {
     getQualityReviews(),
     getLearnings(),
     getDataHealthReport().catch(() => null),
+    getWorkspaceSettings(),
   ])
+
+  const aiProviderConfigured = resolveProviderStatus({
+    enabled: workspaceSettings.aiGenerationEnabled,
+    preferredProvider: workspaceSettings.aiDefaultProvider,
+    preferredModel: workspaceSettings.aiDefaultModel,
+  }).configured
 
   return {
     campaigns,
     store: { ...store, experiments, runs, assets, qualityReviews, learnings },
     dataHealth,
     dataHealthFailed: dataHealth === null,
+    workspaceSettings,
+    aiProviderConfigured,
   }
 }
 
@@ -73,6 +93,8 @@ export async function getAutomationReport(options?: {
       store: ctx.store,
       dataHealth: ctx.dataHealth,
       dataHealthFailed: ctx.dataHealthFailed,
+      workspaceSettings: ctx.workspaceSettings,
+      aiProviderConfigured: ctx.aiProviderConfigured,
     },
     options,
   )

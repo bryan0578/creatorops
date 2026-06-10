@@ -57,6 +57,7 @@ import {
 import { ModulePageHeader } from "@/components/app-shell"
 import { QualityReviewActionLink } from "@/components/quality/quality-review-action"
 import { SaveLinkedPromptRunButton } from "@/components/module/save-linked-prompt-run-button"
+import { AIGenerationPanel } from "@/components/ai/ai-generation-panel"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { CampaignPromptOutputSection } from "@/components/campaigns/campaign-context-prompt-controls"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
@@ -762,9 +763,20 @@ export function YouTubeThumbnailGenerator() {
         </ModuleTabPanel>
 
         <ModuleTabPanel value="ai-response">
+          <div className="space-y-4">
+            <AIGenerationPanel
+              moduleType="YouTube Thumbnail"
+              promptText={completedPrompt}
+              campaignId={campaignPrefill.campaignId}
+              campaignName={campaignPrefill.campaignName}
+              outputRecordId={editingId ?? undefined}
+              outputRecordType="youtube-thumbnail"
+              onInsertResponse={setAiResponse}
+              compact
+            />
           <OutputSection
             title="AI response"
-            description="Paste the response from ChatGPT or your AI tool"
+            description="Paste the response from ChatGPT or generate with AI above"
           >
             <Textarea
               id="thumbnail-ai-response"
@@ -802,6 +814,7 @@ export function YouTubeThumbnailGenerator() {
               </p>
             )}
           </OutputSection>
+          </div>
         </ModuleTabPanel>
 
         <ModuleTabPanel value="final">

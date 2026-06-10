@@ -25,6 +25,7 @@ import {
   importQualityReviews,
   updateQualityReview,
 } from "@/lib/actions/quality-reviews"
+import { getAIProviderStatus } from "@/lib/actions/ai-generation"
 import {
   campaignPrefillToastMessage,
   parseCampaignPrefillContext,
@@ -226,6 +227,7 @@ export function QualityReviewPage() {
   const [loading, setLoading] = React.useState(true)
   const [saving, setSaving] = React.useState(false)
   const [generating, setGenerating] = React.useState(false)
+  const [aiProviderConfigured, setAiProviderConfigured] = React.useState(false)
   const [recordId, setRecordId] = React.useState<string | null>(null)
   const [form, setForm] = React.useState<QualityReviewFormValues>(() => emptyQualityReviewForm())
 
@@ -238,6 +240,12 @@ export function QualityReviewPage() {
   })
   const [savedSearch, setSavedSearch] = React.useState("")
   const importRef = React.useRef<HTMLInputElement>(null)
+
+  React.useEffect(() => {
+    void getAIProviderStatus().then((status) => {
+      setAiProviderConfigured(status.configured && status.enabled)
+    })
+  }, [])
 
   const campaignPrefill = React.useMemo(
     () => parseCampaignPrefillContext(searchParams, store.campaigns),
@@ -558,6 +566,20 @@ export function QualityReviewPage() {
                 <Wand2 className="size-4" />
               )}
               Generate Review Draft
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled
+              title={
+                aiProviderConfigured
+                  ? "Coming later — AI recommendations only; deterministic scores remain the source of truth."
+                  : "Coming later after AI provider is configured for review mode."
+              }
+            >
+              <Sparkles className="size-4" />
+              AI-assisted Review
             </Button>
             <Button type="button" variant="outline" size="sm" onClick={handleExportJson}>
               <Download className="size-4" />

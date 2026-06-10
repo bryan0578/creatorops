@@ -137,6 +137,8 @@ export interface DataHealthScanInput {
   qualityReviews: QualityReviewRecord[]
   learnings: LearningRecord[]
   jsonFields: DataHealthJsonField[]
+  /** Server-resolved: preferred AI provider has API key configured. */
+  aiProviderConfigured?: boolean
 }
 
 const MUSIC_CAMPAIGN_TYPES = new Set([
@@ -1214,6 +1216,47 @@ function scanPromptRunLinkWarnings(
         })
       }
     }
+
+    const isAiRun =
+      run.runType === "ai-generation" || run.tags.some((tag) => tag === "ai-generated")
+    if (isAiRun && !hasText(run.aiResponse)) {
+      pushIssue(issues, {
+        id: issueId(["prompt-run-ai-empty", run.id]),
+        severity: "warning",
+        category: "incomplete-records",
+        title: "AI Prompt Run has empty response",
+        description: `Prompt run "${title}" was created by AI generation but has no aiResponse text.`,
+        sourceType: "prompt-run",
+        sourceId: run.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Re-run generation or paste the AI output into the run.",
+      })
+    }
+  }
+}
+
+function scanAIConfigurationWarnings(
+  input: DataHealthScanInput,
+  issues: DataHealthIssue[],
+): void {
+  const ws = input.workspaceSettings
+  if (!ws?.aiGenerationEnabled) return
+
+  if (input.aiProviderConfigured === false) {
+    pushIssue(issues, {
+      id: issueId(["ai-provider-missing"]),
+      severity: "warning",
+      category: "data-issues",
+      title: "AI generation enabled but provider not configured",
+      description:
+        "Workspace settings enable AI generation, but no provider API key was detected in the environment.",
+      sourceType: "workspace-settings",
+      sourceId: ws.id,
+      sourceTitle: ws.workspaceName || "Workspace settings",
+      href: "/settings",
+      suggestedAction: "Add OPENAI_API_KEY to .env.local and restart the dev server.",
+    })
   }
 }
 
@@ -1955,6 +1998,9 @@ export function buildDataHealthReport(
   safeScan("Calendar planning", issues, () => scanCalendarWarnings(input, issues))
   safeScan("Prompt run links", issues, () =>
     scanPromptRunLinkWarnings(input, sets, issues),
+  )
+  safeScan("AI configuration", issues, () =>
+    scanAIConfigurationWarnings(input, issues),
   )
   safeScan("Asset library", issues, () => scanAssetWarnings(input, sets, issues))
   safeScan("Playbooks", issues, () => scanPlaybookWarnings(input, sets, issues))

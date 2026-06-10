@@ -22,7 +22,7 @@ import {
   isReadyToPublishCampaignStatus,
 } from "@/lib/data/publishing-checklist"
 import { extractPlaybookIdFromNotes } from "@/lib/playbooks"
-import type { CampaignLinkedRecordType, CampaignRecord, ExperimentRecord, AssetRecord, LearningRecord, PromptRun, QualityReviewRecord } from "@/lib/types"
+import type { CampaignLinkedRecordType, CampaignRecord, ExperimentRecord, AssetRecord, LearningRecord, PromptRun, QualityReviewRecord, WorkspaceSettingsRecord } from "@/lib/types"
 
 export type AutomationPriority = "high" | "medium" | "low" | "info"
 
@@ -112,6 +112,8 @@ export interface AutomationEvaluationContext {
   }
   dataHealth: DataHealthReport | null
   dataHealthFailed: boolean
+  workspaceSettings: WorkspaceSettingsRecord | null
+  aiProviderConfigured: boolean
 }
 
 function norm(value: string | undefined | null): string {
@@ -208,6 +210,46 @@ export const BUILTIN_AUTOMATION_RULES: BuiltinAutomationRule[] = [
     description: "Surfaces broken links and data health issues.",
     category: "Data Health",
     priority: "high",
+    enabled: true,
+  },
+  {
+    id: "ai-provider-not-configured",
+    name: "AI Provider Not Configured",
+    description: "AI generation is enabled in settings but no provider API key was detected.",
+    category: "Data Health",
+    priority: "info",
+    enabled: true,
+  },
+  {
+    id: "ai-missing-youtube-package",
+    name: "Missing YouTube Package (AI)",
+    description: "Suggests opening YouTube Packaging to generate metadata with AI.",
+    category: "Missing Asset",
+    priority: "info",
+    enabled: true,
+  },
+  {
+    id: "ai-missing-youtube-thumbnail",
+    name: "Missing YouTube Thumbnail (AI)",
+    description: "Suggests opening YouTube Thumbnails to generate concepts with AI.",
+    category: "Missing Asset",
+    priority: "info",
+    enabled: true,
+  },
+  {
+    id: "ai-missing-social-content",
+    name: "Missing Social Content (AI)",
+    description: "Suggests opening Social Repurposing to generate captions with AI.",
+    category: "Missing Asset",
+    priority: "info",
+    enabled: true,
+  },
+  {
+    id: "ai-missing-email-campaign",
+    name: "Missing Email Campaign (AI)",
+    description: "Suggests opening Email Campaigns to generate copy with AI.",
+    category: "Missing Asset",
+    priority: "info",
     enabled: true,
   },
   {
@@ -1354,6 +1396,86 @@ function evaluateReviewDue(ctx: AutomationEvaluationContext, suggestions: Automa
   }
 }
 
+const AI_MISSING_ASSET_RULES: {
+  type: CampaignLinkedRecordType
+  ruleId: string
+  title: string
+}[] = [
+  {
+    type: "youtube-package",
+    ruleId: "ai-missing-youtube-package",
+    title: "Generate YouTube metadata with AI",
+  },
+  {
+    type: "youtube-thumbnail",
+    ruleId: "ai-missing-youtube-thumbnail",
+    title: "Generate thumbnail concepts with AI",
+  },
+  {
+    type: "social-repurposing",
+    ruleId: "ai-missing-social-content",
+    title: "Generate social captions with AI",
+  },
+  {
+    type: "email-campaign",
+    ruleId: "ai-missing-email-campaign",
+    title: "Generate email campaign with AI",
+  },
+]
+
+function evaluateAIGeneration(
+  ctx: AutomationEvaluationContext,
+  suggestions: AutomationSuggestion[],
+) {
+  if (ctx.workspaceSettings?.aiGenerationEnabled && !ctx.aiProviderConfigured) {
+    suggestions.push({
+      id: suggestionId(["ai-provider-not-configured"]),
+      ruleId: "ai-provider-not-configured",
+      priority: "info",
+      category: "Data Health",
+      title: "AI provider not configured",
+      description:
+        "AI generation is enabled in Workspace Settings, but no provider API key was found. Add OPENAI_API_KEY to .env.local.",
+      suggestedActionLabel: "Open AI Settings",
+      actionType: "navigate",
+      actionPayload: { href: "/settings" },
+      href: "/settings",
+      canApply: false,
+      reason: "Environment is missing a configured AI provider.",
+    })
+  }
+
+  for (const campaign of ctx.campaigns) {
+    const dashboard = buildLaunchDashboardData(campaign, ctx.store)
+    for (const rule of AI_MISSING_ASSET_RULES) {
+      const asset = dashboard.readiness.assets.find((entry) => entry.type === rule.type)
+      if (!asset || asset.completed) continue
+
+      const repair = buildMissingAssetRepair(campaign, rule.type)
+      if (!repair || repair.kind !== "create-asset") continue
+
+      suggestions.push({
+        id: suggestionId([rule.ruleId, campaign.id, rule.type]),
+        ruleId: rule.ruleId,
+        priority: "info",
+        category: "Missing Asset",
+        title: rule.title,
+        description: `${campaign.campaignName || "Campaign"} is missing ${asset.label.toLowerCase()}. Open the module to generate with AI (optional).`,
+        campaignId: campaign.id,
+        campaignName: campaign.campaignName,
+        sourceType: "campaign",
+        sourceId: campaign.id,
+        suggestedActionLabel: repair.label,
+        actionType: "navigate",
+        actionPayload: { campaignId: campaign.id, href: repair.href },
+        href: repair.href,
+        canApply: false,
+        reason: "Navigate to module — AI generation is optional and not auto-triggered.",
+      })
+    }
+  }
+}
+
 const RULE_EVALUATORS: Array<(ctx: AutomationEvaluationContext, out: AutomationSuggestion[]) => void> = [
   evaluateMissingAssets,
   evaluateMissingAssetLibrary,
@@ -1363,6 +1485,7 @@ const RULE_EVALUATORS: Array<(ctx: AutomationEvaluationContext, out: AutomationS
   evaluateReadyToPublishStatus,
   evaluatePublishedMissingAnalytics,
   evaluateDataHealth,
+  evaluateAIGeneration,
   evaluateExperiments,
   evaluatePromptHistory,
   evaluateExportBundle,

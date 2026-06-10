@@ -18,6 +18,8 @@ import {
   WORKSPACE_SETTINGS_ID,
 } from "@/lib/workspace-settings"
 import { useStore } from "@/lib/store"
+import { AI_PROVIDER_LABELS, AI_PROVIDER_IDS } from "@/lib/ai/types"
+import { getAIProviderStatus } from "@/lib/actions/ai-generation"
 import { ModulePageHeader } from "@/components/app-shell"
 import {
   FormGrid,
@@ -34,6 +36,13 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { TabRow } from "@/components/ui/tab-row"
 import { Tabs, TabsContent, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
@@ -44,6 +53,7 @@ const SETTINGS_TABS = [
   { value: "content", label: "Content Defaults" },
   { value: "commerce", label: "Commerce Defaults" },
   { value: "marketing", label: "Marketing Defaults" },
+  { value: "ai", label: "AI Providers" },
   { value: "advanced", label: "Backup/Advanced" },
 ] as const
 
@@ -90,6 +100,17 @@ export function WorkspaceSettingsPage() {
   const [loading, setLoading] = React.useState(true)
   const [saving, setSaving] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const [aiStatusMessage, setAiStatusMessage] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    void getAIProviderStatus().then((status) => {
+      if (status.configured) {
+        setAiStatusMessage(`Provider ready: ${status.provider} · ${status.model || "default model"}`)
+      } else {
+        setAiStatusMessage(status.setupMessage ?? "Provider not configured.")
+      }
+    })
+  }, [form.aiGenerationEnabled, form.aiDefaultProvider])
 
   React.useEffect(() => {
     let cancelled = false
@@ -442,6 +463,124 @@ export function WorkspaceSettingsPage() {
                   value={form.defaultHashtagSet}
                   onChange={(v) => setField("defaultHashtagSet", v)}
                 />
+              </FormGrid>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="ai" className="mt-0 space-y-4">
+          <Card className={RECENT_RECORDS_CARD_CLASS}>
+            <CardHeader>
+              <CardTitle className="text-base">AI Providers</CardTitle>
+              <CardDescription>
+                Configure AI generation preferences. API keys are read from{" "}
+                <code className="text-xs">.env.local</code> and are never stored in SQLite or
+                exposed to the browser.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <p className="text-sm text-muted-foreground">
+                Add your key to <code className="text-xs">.env.local</code>, then restart the dev
+                server. Example: <code className="text-xs">OPENAI_API_KEY=sk-…</code>
+              </p>
+              {aiStatusMessage ? (
+                <p className="text-sm text-muted-foreground">{aiStatusMessage}</p>
+              ) : null}
+              <FormGrid>
+                <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                  <input
+                    type="checkbox"
+                    className="size-4 rounded border border-input"
+                    checked={form.aiGenerationEnabled}
+                    onChange={(e) => setField("aiGenerationEnabled", e.target.checked)}
+                  />
+                  AI generation enabled
+                </label>
+                <div className="space-y-2">
+                  <Label htmlFor="aiDefaultProvider">Default provider</Label>
+                  <Select
+                    value={form.aiDefaultProvider}
+                    onValueChange={(v) => setField("aiDefaultProvider", v)}
+                  >
+                    <SelectTrigger id="aiDefaultProvider">
+                      <SelectValue placeholder="Select provider" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AI_PROVIDER_IDS.map((id) => (
+                        <SelectItem key={id} value={id}>
+                          {AI_PROVIDER_LABELS[id]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Field
+                  id="aiDefaultModel"
+                  label="Default model (optional override)"
+                  value={form.aiDefaultModel}
+                  onChange={(v) => setField("aiDefaultModel", v)}
+                />
+                <Field
+                  id="aiTemperature"
+                  label="Temperature"
+                  value={String(form.aiTemperature)}
+                  onChange={(v) => setField("aiTemperature", Number(v) || 0.7)}
+                />
+                <Field
+                  id="aiMaxOutputTokens"
+                  label="Max output tokens"
+                  value={String(form.aiMaxOutputTokens)}
+                  onChange={(v) => setField("aiMaxOutputTokens", Number(v) || 2048)}
+                />
+                <div className="space-y-2 sm:col-span-2">
+                  <Field
+                    id="aiSystemStylePreference"
+                    label="System style preference"
+                    value={form.aiSystemStylePreference}
+                    onChange={(v) => setField("aiSystemStylePreference", v)}
+                    multiline
+                  />
+                </div>
+                <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                  <input
+                    type="checkbox"
+                    className="size-4 rounded border border-input"
+                    checked={form.aiSaveGenerationsAsPromptRuns}
+                    onChange={(e) => setField("aiSaveGenerationsAsPromptRuns", e.target.checked)}
+                  />
+                  Save generations as Prompt Runs
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="size-4 rounded border border-input"
+                    checked={form.aiIncludeCampaignContextByDefault}
+                    onChange={(e) =>
+                      setField("aiIncludeCampaignContextByDefault", e.target.checked)
+                    }
+                  />
+                  Include campaign context by default
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="size-4 rounded border border-input"
+                    checked={form.aiIncludeLearningsByDefault}
+                    onChange={(e) => setField("aiIncludeLearningsByDefault", e.target.checked)}
+                  />
+                  Include learnings by default
+                </label>
+                <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                  <input
+                    type="checkbox"
+                    className="size-4 rounded border border-input"
+                    checked={form.aiIncludeQualityNotesByDefault}
+                    onChange={(e) =>
+                      setField("aiIncludeQualityNotesByDefault", e.target.checked)
+                    }
+                  />
+                  Include quality review notes by default
+                </label>
               </FormGrid>
             </CardContent>
           </Card>

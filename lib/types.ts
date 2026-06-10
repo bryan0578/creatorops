@@ -1518,6 +1518,16 @@ export interface WorkspaceSettingsRecord {
   brandSecondaryColor: string
   brandAccentColor: string
   notes: string
+  aiGenerationEnabled: boolean
+  aiDefaultProvider: string
+  aiDefaultModel: string
+  aiTemperature: number
+  aiMaxOutputTokens: number
+  aiSystemStylePreference: string
+  aiSaveGenerationsAsPromptRuns: boolean
+  aiIncludeCampaignContextByDefault: boolean
+  aiIncludeLearningsByDefault: boolean
+  aiIncludeQualityNotesByDefault: boolean
   createdAt: number
   updatedAt: number
 }

@@ -30,6 +30,16 @@ export function defaultWorkspaceSettingsRecord(
     brandSecondaryColor: "#06B6D4",
     brandAccentColor: "#EF4444",
     notes: "",
+    aiGenerationEnabled: false,
+    aiDefaultProvider: "openai",
+    aiDefaultModel: "",
+    aiTemperature: 0.7,
+    aiMaxOutputTokens: 2048,
+    aiSystemStylePreference: "",
+    aiSaveGenerationsAsPromptRuns: true,
+    aiIncludeCampaignContextByDefault: true,
+    aiIncludeLearningsByDefault: true,
+    aiIncludeQualityNotesByDefault: true,
     createdAt: now,
     updatedAt: now,
   }
@@ -67,6 +77,22 @@ export function normalizeWorkspaceSettingsRecord(
       record.brandSecondaryColor ?? defaults.brandSecondaryColor,
     brandAccentColor: record.brandAccentColor ?? defaults.brandAccentColor,
     notes: record.notes ?? defaults.notes,
+    aiGenerationEnabled: record.aiGenerationEnabled ?? defaults.aiGenerationEnabled,
+    aiDefaultProvider: record.aiDefaultProvider ?? defaults.aiDefaultProvider,
+    aiDefaultModel: record.aiDefaultModel ?? defaults.aiDefaultModel,
+    aiTemperature: record.aiTemperature ?? defaults.aiTemperature,
+    aiMaxOutputTokens: record.aiMaxOutputTokens ?? defaults.aiMaxOutputTokens,
+    aiSystemStylePreference:
+      record.aiSystemStylePreference ?? defaults.aiSystemStylePreference,
+    aiSaveGenerationsAsPromptRuns:
+      record.aiSaveGenerationsAsPromptRuns ?? defaults.aiSaveGenerationsAsPromptRuns,
+    aiIncludeCampaignContextByDefault:
+      record.aiIncludeCampaignContextByDefault ??
+      defaults.aiIncludeCampaignContextByDefault,
+    aiIncludeLearningsByDefault:
+      record.aiIncludeLearningsByDefault ?? defaults.aiIncludeLearningsByDefault,
+    aiIncludeQualityNotesByDefault:
+      record.aiIncludeQualityNotesByDefault ?? defaults.aiIncludeQualityNotesByDefault,
     createdAt: record.createdAt ?? defaults.createdAt,
     updatedAt: record.updatedAt ?? defaults.updatedAt,
   }

@@ -31,6 +31,16 @@ export function workspaceSettingsToPrismaCreate(record: WorkspaceSettingsRecord)
     brandSecondaryColor: normalized.brandSecondaryColor,
     brandAccentColor: normalized.brandAccentColor,
     notes: normalized.notes,
+    aiGenerationEnabled: normalized.aiGenerationEnabled,
+    aiDefaultProvider: normalized.aiDefaultProvider,
+    aiDefaultModel: normalized.aiDefaultModel,
+    aiTemperature: normalized.aiTemperature,
+    aiMaxOutputTokens: normalized.aiMaxOutputTokens,
+    aiSystemStylePreference: normalized.aiSystemStylePreference,
+    aiSaveGenerationsAsPromptRuns: normalized.aiSaveGenerationsAsPromptRuns,
+    aiIncludeCampaignContextByDefault: normalized.aiIncludeCampaignContextByDefault,
+    aiIncludeLearningsByDefault: normalized.aiIncludeLearningsByDefault,
+    aiIncludeQualityNotesByDefault: normalized.aiIncludeQualityNotesByDefault,
     createdAt: new Date(normalized.createdAt),
     updatedAt: new Date(normalized.updatedAt),
   }
@@ -64,6 +74,16 @@ export function prismaWorkspaceSettingsToRecord(row: {
   brandSecondaryColor: string
   brandAccentColor: string
   notes: string
+  aiGenerationEnabled?: boolean
+  aiDefaultProvider?: string
+  aiDefaultModel?: string
+  aiTemperature?: number
+  aiMaxOutputTokens?: number
+  aiSystemStylePreference?: string
+  aiSaveGenerationsAsPromptRuns?: boolean
+  aiIncludeCampaignContextByDefault?: boolean
+  aiIncludeLearningsByDefault?: boolean
+  aiIncludeQualityNotesByDefault?: boolean
   createdAt: Date
   updatedAt: Date
 }): WorkspaceSettingsRecord {
@@ -90,6 +110,16 @@ export function prismaWorkspaceSettingsToRecord(row: {
     brandSecondaryColor: row.brandSecondaryColor,
     brandAccentColor: row.brandAccentColor,
     notes: row.notes,
+    aiGenerationEnabled: row.aiGenerationEnabled,
+    aiDefaultProvider: row.aiDefaultProvider,
+    aiDefaultModel: row.aiDefaultModel,
+    aiTemperature: row.aiTemperature,
+    aiMaxOutputTokens: row.aiMaxOutputTokens,
+    aiSystemStylePreference: row.aiSystemStylePreference,
+    aiSaveGenerationsAsPromptRuns: row.aiSaveGenerationsAsPromptRuns,
+    aiIncludeCampaignContextByDefault: row.aiIncludeCampaignContextByDefault,
+    aiIncludeLearningsByDefault: row.aiIncludeLearningsByDefault,
+    aiIncludeQualityNotesByDefault: row.aiIncludeQualityNotesByDefault,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
   })

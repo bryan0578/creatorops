@@ -35,6 +35,7 @@ import {
 } from "@/lib/prompt-variables"
 
 import { ModulePageHeader } from "@/components/app-shell"
+import { AIGenerationPanel } from "@/components/ai/ai-generation-panel"
 import { QualityReviewActionLink } from "@/components/quality/quality-review-action"
 import {
   FormSection,
@@ -613,9 +614,21 @@ export function PromptRunner() {
               />
           </OutputSection>
 
+          <AIGenerationPanel
+            moduleType="Other"
+            promptText={displayCompletedPrompt}
+            promptId={selectedPrompt?.id ?? editingRun?.promptId ?? undefined}
+            promptName={selectedPrompt?.name ?? editingRun?.promptName}
+            campaignId={campaignIdParam ?? editingRun?.campaignId ?? undefined}
+            campaignName={editingRun?.campaignName}
+            inputValues={inputValues}
+            onInsertResponse={setAiResponse}
+            compact
+          />
+
           <OutputSection
             title="AI response & notes"
-            description="Paste the response from ChatGPT or your AI tool, then save the run"
+            description="Paste the response from ChatGPT or generate with AI above, then save the run"
           >
               <div className="space-y-2">
                 <Label htmlFor="ai-response" className="text-sm font-medium">

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 
+import { resolveProviderStatus } from "@/lib/ai/ai-client"
 import { getCampaigns, upsertCampaign } from "@/lib/actions/campaigns"
 import { normalizeCampaignRecord } from "@/lib/campaigns"
 import { prismaAnalyticsRecordToAnalyticsRecord } from "@/lib/data/analytics-records"
@@ -513,6 +514,13 @@ async function loadScanInput(): Promise<{
       qualityReviews,
       learnings,
       jsonFields,
+      aiProviderConfigured: workspaceSettings
+        ? resolveProviderStatus({
+            enabled: workspaceSettings.aiGenerationEnabled,
+            preferredProvider: workspaceSettings.aiDefaultProvider,
+            preferredModel: workspaceSettings.aiDefaultModel,
+          }).configured
+        : false,
     },
     loadIssues,
   }
