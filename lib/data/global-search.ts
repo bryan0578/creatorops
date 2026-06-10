@@ -33,7 +33,9 @@ export type GlobalSearchResultType =
   | "experiment"
   | "campaign"
   | "preset"
+  | "playbook"
   | "asset"
+  | "quality-review"
 
 export interface GlobalSearchResult {
   id: string
@@ -144,10 +146,20 @@ export const GLOBAL_SEARCH_TYPE_META: Record<
     category: "core",
     href: "/presets",
   },
+  playbook: {
+    typeLabel: "Playbook",
+    category: "core",
+    href: "/playbooks",
+  },
   asset: {
     typeLabel: "Asset",
     category: "operations",
     href: "/assets",
+  },
+  "quality-review": {
+    typeLabel: "Quality Review",
+    category: "operations",
+    href: "/quality",
   },
 }
 
@@ -202,6 +214,8 @@ const GLOBAL_SEARCH_RECORD_ID_TYPES = new Set<GlobalSearchResultType>([
   "prompt-run",
   "workflow-run",
   "asset",
+  "playbook",
+  "quality-review",
 ])
 
 export function buildResultHref(
@@ -236,6 +250,13 @@ export function buildResultHref(
   if (type === "preset") {
     return {
       href: `${base}?presetId=${encodeURIComponent(id)}`,
+      directOpen: true,
+    }
+  }
+
+  if (type === "playbook") {
+    return {
+      href: `${base}?recordId=${encodeURIComponent(id)}`,
       directOpen: true,
     }
   }

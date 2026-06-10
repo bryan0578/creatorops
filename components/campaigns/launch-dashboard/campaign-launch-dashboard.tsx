@@ -36,6 +36,8 @@ import { CampaignExportPackSection } from "@/components/campaigns/launch-dashboa
 import { CampaignPublishingChecklistCard } from "@/components/campaigns/launch-dashboard/campaign-publishing-checklist-card"
 import { CampaignPromptHistoryCard } from "@/components/campaigns/launch-dashboard/campaign-prompt-history-card"
 import { CampaignAssetLibraryCard } from "@/components/assets/asset-widgets"
+import { CampaignPlaybookCard } from "@/components/playbooks/playbook-widgets"
+import { CampaignQualityReviewCard } from "@/components/quality/quality-widgets"
 import { CampaignAutomationSuggestionsCard } from "@/components/automation/automation-suggestions-card"
 import { CampaignCalendarTimelineCard } from "@/components/calendar/calendar-widgets"
 
@@ -392,6 +394,8 @@ export function CampaignLaunchDashboard({
     <div className="space-y-6">
       <CampaignSummaryCard campaign={campaign} />
 
+      <CampaignPlaybookCard campaign={campaign} />
+
       <div className="grid gap-4 xl:grid-cols-2">
         <CampaignReadinessScore readiness={data.readiness} />
         <CampaignTaskProgress taskProgress={data.taskProgress} onGoToTasks={onGoToTasks} />
@@ -436,6 +440,10 @@ export function CampaignLaunchDashboard({
         <CampaignAutomationSuggestionsCard campaignId={campaign.id} />
         <CampaignCalendarTimelineCard campaignId={campaign.id} />
         <CampaignAssetLibraryCard campaignId={campaign.id} />
+        <CampaignQualityReviewCard
+          campaignId={campaign.id}
+          campaignName={campaign.campaignName}
+        />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">

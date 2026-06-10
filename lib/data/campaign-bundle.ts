@@ -4,6 +4,7 @@
 
 import { normalizeCampaignRecord } from "@/lib/campaigns"
 import { filterAssetsForCampaign, normalizeAssetRecord } from "@/lib/assets"
+import { filterQualityReviewsForCampaign, normalizeQualityReviewRecord } from "@/lib/quality-reviews"
 import { normalizeAnalyticsRecord } from "@/lib/analytics-tracker"
 import { normalizeArtistRecord } from "@/lib/artist-crm"
 import { normalizeEmailCampaignRecord } from "@/lib/email-campaigns"
@@ -25,6 +26,7 @@ import { normalizeSocialRepurposingRecord } from "@/lib/social-repurposing"
 import { normalizeWorkflowRun } from "@/lib/data/workflow-runs"
 import { normalizeYouTubePackage } from "@/lib/youtube-packaging"
 import { normalizeYouTubeThumbnailRecord } from "@/lib/youtube-thumbnails"
+import { extractPlaybookIdFromNotes } from "@/lib/playbooks"
 import { parseImportJsonText } from "@/lib/safe-json"
 import { createId } from "@/lib/storage"
 import type {
@@ -41,6 +43,7 @@ import type {
   PresetRecord,
   ProductListing,
   PromptRun,
+  QualityReviewRecord,
   ReleasePlan,
   SocialRepurposingRecord,
   WorkflowRun,
@@ -78,6 +81,7 @@ export interface CampaignBundleLinkedRecords {
   workflowRuns: WorkflowRun[]
   presets: PresetRecord[]
   assets: AssetRecord[]
+  qualityReviews: QualityReviewRecord[]
 }
 
 export interface CampaignBundleRelationship {
@@ -130,6 +134,7 @@ export interface CampaignBundleSummaryCounts {
   workflowRuns: number
   presets: number
   assets: number
+  qualityReviews: number
 }
 
 export interface CampaignBundleConflict {
@@ -173,6 +178,7 @@ export interface CampaignBundleStore extends CampaignLinkableStoreSlice {
   experiments: ExperimentRecord[]
   presets: PresetRecord[]
   assets: AssetRecord[]
+  qualityReviews: QualityReviewRecord[]
 }
 
 function norm(value: string | undefined | null): string {
@@ -202,6 +208,7 @@ export function emptyCampaignBundleLinkedRecords(): CampaignBundleLinkedRecords 
     workflowRuns: [],
     presets: [],
     assets: [],
+    qualityReviews: [],
   }
 }
 
@@ -225,6 +232,7 @@ export function countCampaignBundleLinkedRecords(
     workflowRuns: linked.workflowRuns.length,
     presets: linked.presets.length,
     assets: linked.assets.length,
+    qualityReviews: linked.qualityReviews.length,
   }
 }
 
@@ -245,7 +253,8 @@ export function totalLinkedBundleRecords(linked: CampaignBundleLinkedRecords): n
     counts.promptRuns +
     counts.workflowRuns +
     counts.presets +
-    counts.assets
+    counts.assets +
+    counts.qualityReviews
   )
 }
 
@@ -644,6 +653,18 @@ function collectCampaignScopedRecords(
       })
     }
   }
+
+  const campaignReviews = filterQualityReviewsForCampaign(
+    store.qualityReviews ?? [],
+    campaign.id,
+    campaign.campaignName,
+  )
+  for (const review of campaignReviews) {
+    collector.track("qualityReviews", review, {
+      source: "campaign-field",
+      recordTitle: review.reviewName,
+    })
+  }
 }
 
 /** Build a portable campaign bundle without mutating source records. */
@@ -670,6 +691,13 @@ export function buildCampaignBundle(
   }
 
   collectCampaignScopedRecords(normalizedCampaign, store, collector)
+
+  const playbookId = extractPlaybookIdFromNotes(normalizedCampaign.notes)
+  if (playbookId) {
+    collector.addWarning(
+      `Campaign notes reference playbook ${playbookId}. Playbooks are stored separately and are not included in campaign bundles.`,
+    )
+  }
 
   if (collector.missingRecords.length > 0) {
     collector.addWarning(
@@ -1142,6 +1170,11 @@ function buildImportPlan(
   addItems("workflow-run", bundle.linkedRecords.workflowRuns, (r) => (r as WorkflowRun).workflowName)
   addItems("preset", bundle.linkedRecords.presets, (r) => (r as PresetRecord).name)
   addItems("asset", bundle.linkedRecords.assets, (r) => (r as AssetRecord).assetName)
+  addItems(
+    "quality-review",
+    bundle.linkedRecords.qualityReviews,
+    (r) => (r as QualityReviewRecord).reviewName,
+  )
 
   return plan
 }
@@ -1380,6 +1413,23 @@ export function remapCampaignBundleForImport(
         analyticsRecordId: r.analyticsRecordId
           ? remapId(idMap, r.analyticsRecordId)
           : r.analyticsRecordId,
+      }),
+    ),
+    qualityReviews: bundle.linkedRecords.qualityReviews.map((r) =>
+      normalizeQualityReviewRecord({
+        ...r,
+        id: remapId(idMap, r.id),
+        campaignId: newCampaignId,
+        campaignName,
+        sourceRecordId: r.sourceRecordId
+          ? remapId(idMap, r.sourceRecordId)
+          : r.sourceRecordId,
+        sourcePromptRunId: r.sourcePromptRunId
+          ? remapId(idMap, r.sourcePromptRunId)
+          : r.sourcePromptRunId,
+        sourceExperimentId: r.sourceExperimentId
+          ? remapId(idMap, r.sourceExperimentId)
+          : r.sourceExperimentId,
       }),
     ),
   }

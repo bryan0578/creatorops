@@ -4,6 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
+  BookOpen,
   BarChart3,
   CalendarDays,
   Calendar,
@@ -31,6 +32,7 @@ import {
   Zap,
   Megaphone,
   Sparkles,
+  ClipboardCheck,
   type LucideIcon,
   LayoutGrid,
 } from "lucide-react"
@@ -78,6 +80,7 @@ const NAV_GROUPS: NavGroup[] = [
       { title: "Prompt Runner", href: "/runner", icon: Play },
       { title: "Workflow Runner", href: "/workflow-runner", icon: ListChecks },
       { title: "Presets", href: "/presets", icon: Sparkles },
+      { title: "Playbooks", href: "/playbooks", icon: BookOpen },
     ],
   },
   {
@@ -120,6 +123,7 @@ const NAV_GROUPS: NavGroup[] = [
       { title: "Tasks", href: "/tasks", icon: ListChecks },
       { title: "Calendar", href: "/calendar", icon: CalendarDays },
       { title: "Asset Library", href: "/assets", icon: FolderOpen },
+      { title: "Quality Review", href: "/quality", icon: ClipboardCheck },
       { title: "Analytics Tracker", href: "/analytics", icon: BarChart3 },
       { title: "Artist CRM", href: "/artist-crm", icon: Users },
       { title: "Backup Center", href: "/backups", icon: HardDrive },

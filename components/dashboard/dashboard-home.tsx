@@ -60,8 +60,10 @@ import { StatusBadge } from "@/components/workflows/status-badge"
 import { PromptFormDialog } from "@/components/prompts/prompt-form-dialog"
 import { RecentActivityTimeline } from "@/components/activity/recent-activity-timeline"
 import { AssetDashboardCard } from "@/components/assets/asset-widgets"
+import { PlaybookDashboardCard } from "@/components/playbooks/playbook-widgets"
 import { AutomationDashboardCard } from "@/components/automation/automation-suggestions-card"
 import { CalendarDashboardCard } from "@/components/calendar/calendar-widgets"
+import { QualityDashboardCard } from "@/components/quality/quality-widgets"
 
 function CompactStatCard({
   label,
@@ -488,6 +490,8 @@ export function DashboardHome() {
         <AutomationDashboardCard />
         <CalendarDashboardCard />
         <AssetDashboardCard />
+        <PlaybookDashboardCard />
+        <QualityDashboardCard />
       </div>
 
       <Card className="border-border/80">

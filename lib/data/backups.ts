@@ -23,7 +23,9 @@ export type BackupDataKey =
   | "experiments"
   | "campaigns"
   | "presets"
+  | "playbooks"
   | "assets"
+  | "qualityReviews"
   | "workspaceSettings"
 
 export type BackupImportMode = "merge" | "replace"
@@ -46,7 +48,9 @@ export interface BackupRecordCounts {
   experiments: number
   campaigns: number
   presets: number
+  playbooks: number
   assets: number
+  qualityReviews: number
   workspaceSettings: number
 }
 
@@ -68,7 +72,9 @@ export interface CreatorOpsBackupData {
   experiments: unknown[]
   campaigns: unknown[]
   presets: unknown[]
+  playbooks: unknown[]
   assets: unknown[]
+  qualityReviews: unknown[]
   workspaceSettings: unknown[]
 }
 
@@ -105,7 +111,14 @@ export const BACKUP_MODULE_META: BackupModuleMeta[] = [
   { key: "experiments", label: "Experiments", exportFilename: "creatorops-experiments.json", category: "marketing" },
   { key: "campaigns", label: "Campaigns", exportFilename: "creatorops-campaigns.json", category: "operations" },
   { key: "presets", label: "Presets", exportFilename: "creatorops-presets.json", category: "core" },
+  { key: "playbooks", label: "Playbooks", exportFilename: "creatorops-playbooks.json", category: "core" },
   { key: "assets", label: "Assets", exportFilename: "creatorops-assets.json", category: "operations" },
+  {
+    key: "qualityReviews",
+    label: "Quality Reviews",
+    exportFilename: "creatorops-quality-reviews.json",
+    category: "operations",
+  },
   {
     key: "workspaceSettings",
     label: "Workspace Settings",
@@ -135,7 +148,9 @@ export function emptyBackupData(): CreatorOpsBackupData {
     experiments: [],
     campaigns: [],
     presets: [],
+    playbooks: [],
     assets: [],
+    qualityReviews: [],
     workspaceSettings: [],
   }
 }
@@ -159,7 +174,9 @@ export function countBackupData(data: CreatorOpsBackupData): BackupRecordCounts 
     experiments: data.experiments.length,
     campaigns: data.campaigns.length,
     presets: data.presets.length,
+    playbooks: data.playbooks.length,
     assets: data.assets.length,
+    qualityReviews: data.qualityReviews.length,
     workspaceSettings: data.workspaceSettings.length,
   }
 }

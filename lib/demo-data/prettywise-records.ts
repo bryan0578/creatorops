@@ -26,6 +26,7 @@ import type {
   SocialRepurposingRecord,
   YouTubePackage,
   YouTubeThumbnailRecord,
+  QualityReviewRecord,
 } from "@/lib/types"
 
 export function buildPrettyWiseDemoRecords(now = new Date()) {
@@ -742,6 +743,74 @@ export function buildPrettyWiseDemoRecords(now = new Date()) {
     },
   ]
 
+  const qualityReviews: QualityReviewRecord[] = [
+    {
+      id: DEMO_IDS.qualityReviewYoutube,
+      reviewName: "Cotton Candy Skies YouTube Package Review",
+      reviewType: "YouTube Package",
+      status: "Reviewed",
+      campaignId: DEMO_IDS.campaign,
+      campaignName: DEMO_CAMPAIGN_NAME,
+      artistName: DEMO_ARTIST_NAME,
+      songTitle: DEMO_SONG_TITLE,
+      productName: "",
+      sourceRecordType: "youtube-package",
+      sourceRecordId: DEMO_IDS.youtubePackage,
+      sourcePromptRunId: DEMO_IDS.promptRunYoutube,
+      sourceExperimentId: "",
+      platform: "YouTube",
+      rubricVersion: "1",
+      overallScore: 84,
+      scoreBreakdown: {
+        rubricVersion: "1",
+        criteria: [],
+      },
+      strengths:
+        "Strong dark K-pop positioning, clear title, good CTA, strong hashtags.",
+      weaknesses: "Description could include more story context.",
+      improvementIdeas: "Add one sentence about the creepy-cute story world.",
+      recommendedActions:
+        "Test thumbnail text and monitor CTR after 24 hours.",
+      readinessLabel: "Ready to publish",
+      reviewerNotes: DEMO_DATA_MARKER,
+      tags: ["demo", "prettywise", "youtube"],
+      createdAt: ts,
+      updatedAt: ts,
+    },
+    {
+      id: DEMO_IDS.qualityReviewThumbnail,
+      reviewName: "Cotton Candy Skies Thumbnail Review",
+      reviewType: "Thumbnail",
+      status: "Reviewed",
+      campaignId: DEMO_IDS.campaign,
+      campaignName: DEMO_CAMPAIGN_NAME,
+      artistName: DEMO_ARTIST_NAME,
+      songTitle: DEMO_SONG_TITLE,
+      productName: "",
+      sourceRecordType: "youtube-thumbnail",
+      sourceRecordId: DEMO_IDS.youtubeThumbnail,
+      sourcePromptRunId: DEMO_IDS.promptRunThumbnail,
+      sourceExperimentId: DEMO_IDS.experiment,
+      platform: "YouTube",
+      rubricVersion: "1",
+      overallScore: 88,
+      scoreBreakdown: {
+        rubricVersion: "1",
+        criteria: [],
+      },
+      strengths:
+        "Strong visual contrast, clear text overlay, high curiosity.",
+      weaknesses: "Could test a shorter alternate text overlay.",
+      improvementIdeas: 'Create Variant B with "Sweet Skies. Dark Secrets."',
+      recommendedActions: "Connect to thumbnail text experiment.",
+      readinessLabel: "Test-worthy",
+      reviewerNotes: DEMO_DATA_MARKER,
+      tags: ["demo", "prettywise", "thumbnail"],
+      createdAt: ts,
+      updatedAt: ts,
+    },
+  ]
+
   return {
     artist,
     campaign,
@@ -757,5 +826,6 @@ export function buildPrettyWiseDemoRecords(now = new Date()) {
     experiment,
     promptRuns,
     assets: [assetThumbnail, assetMockup],
+    qualityReviews,
   }
 }

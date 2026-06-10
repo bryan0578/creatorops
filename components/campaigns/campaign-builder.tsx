@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { parseImportJsonText } from "@/lib/safe-json"
 import {
+  BookOpen,
   Copy,
   Download,
   Loader2,
@@ -554,6 +555,10 @@ export function CampaignBuilder() {
               <Plus className="size-4" />
               New campaign
             </Button>
+            <Link href="/playbooks" className={buttonVariants({ variant: "outline" })}>
+              <BookOpen className="size-4" />
+              Create from Playbook
+            </Link>
             <Button type="button" onClick={handleSave} disabled={saving}>
               {saving ? (
                 <Loader2 className="size-4 animate-spin" />

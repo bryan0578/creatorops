@@ -201,7 +201,7 @@ export function normalizeCampaignRecord(
   }
 }
 
-function normalizeLinkedRecord(
+export function normalizeLinkedRecord(
   input: Partial<CampaignLinkedRecord>,
 ): CampaignLinkedRecord | null {
   if (!input.id || !input.type) return null

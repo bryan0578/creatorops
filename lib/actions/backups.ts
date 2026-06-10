@@ -6,7 +6,8 @@ import { importAnalyticsRecords } from "@/lib/actions/analytics-records"
 import { getAssets, importAssets } from "@/lib/actions/assets"
 import { importArtists } from "@/lib/actions/artists"
 import { importCampaigns } from "@/lib/actions/campaigns"
-import { importPresets } from "@/lib/actions/presets"
+import { importPlaybooks } from "@/lib/actions/playbooks"
+import { getQualityReviews, importQualityReviews } from "@/lib/actions/quality-reviews"
 import { importWorkspaceSettings } from "@/lib/actions/workspace-settings"
 import { importEmailCampaignRecords } from "@/lib/actions/email-campaigns"
 import { getExperiments, importExperiments } from "@/lib/actions/experiments"
@@ -41,6 +42,7 @@ import {
 import { getAnalyticsRecords } from "@/lib/actions/analytics-records"
 import { getArtists } from "@/lib/actions/artists"
 import { getCampaigns } from "@/lib/actions/campaigns"
+import { getPlaybooks } from "@/lib/actions/playbooks"
 import { getPresets } from "@/lib/actions/presets"
 import { getWorkspaceSettings } from "@/lib/actions/workspace-settings"
 import { getEmailCampaignRecords } from "@/lib/actions/email-campaigns"
@@ -63,6 +65,8 @@ import type {
   ArtistRecord,
   CampaignRecord,
   PresetRecord,
+  PlaybookRecord,
+  QualityReviewRecord,
   WorkspaceSettingsRecord,
   EmailCampaignRecord,
   MerchIdea,
@@ -98,7 +102,9 @@ const REVALIDATE_PATHS = [
   "/experiments",
   "/campaigns",
   "/presets",
+  "/playbooks",
   "/assets",
+  "/quality",
   "/search",
   "/settings",
 ]
@@ -144,7 +150,9 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     experiments,
     campaigns,
     presets,
+    playbooks,
     assets,
+    qualityReviews,
     workspaceSettingsRow,
   ] = await Promise.all([
     getPrompts(),
@@ -164,7 +172,9 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     getExperiments(),
     getCampaigns(),
     getPresets(),
+    getPlaybooks(),
     getAssets(),
+    getQualityReviews(),
     getWorkspaceSettings(),
   ])
 
@@ -188,7 +198,9 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     experiments,
     campaigns,
     presets,
+    playbooks,
     assets,
+    qualityReviews,
     workspaceSettings,
   }
 }
@@ -251,7 +263,9 @@ async function clearAllBackupTables(): Promise<void> {
   await prisma.experiment.deleteMany()
   await prisma.campaign.deleteMany()
   await prisma.preset.deleteMany()
+  await prisma.playbook.deleteMany()
   await prisma.asset.deleteMany()
+  await prisma.qualityReview.deleteMany()
   await prisma.workspaceSettings.deleteMany()
 }
 
@@ -316,8 +330,14 @@ async function importBackupData(
   if (data.presets.length > 0) {
     await importPresets(data.presets as PresetRecord[])
   }
+  if (data.playbooks.length > 0) {
+    await importPlaybooks(data.playbooks as PlaybookRecord[])
+  }
   if (data.assets.length > 0) {
     await importAssets(data.assets as AssetRecord[])
+  }
+  if (data.qualityReviews.length > 0) {
+    await importQualityReviews(data.qualityReviews as QualityReviewRecord[])
   }
   if (data.workspaceSettings.length > 0) {
     await importWorkspaceSettings(data.workspaceSettings as WorkspaceSettingsRecord[])

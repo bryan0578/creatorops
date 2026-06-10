@@ -696,6 +696,55 @@ async function searchPresets(query: string): Promise<GlobalSearchResult[]> {
   )
 }
 
+async function searchPlaybooks(query: string): Promise<GlobalSearchResult[]> {
+  const rows = await prisma.playbook.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: GLOBAL_SEARCH_FETCH_BATCH,
+  })
+
+  return pushMatches(
+    rows.map((row) => ({
+      ...row,
+      tagsText: parseTagsArray(row.tags).join(" "),
+    })),
+    query,
+    [
+      "name",
+      "description",
+      "playbookType",
+      "category",
+      "status",
+      "targetCampaignType",
+      "tagsText",
+      "notes",
+      "automationNotes",
+    ],
+    {
+      name: "Name",
+      description: "Description",
+      playbookType: "Playbook type",
+      category: "Category",
+      status: "Status",
+      targetCampaignType: "Target campaign type",
+      tagsText: "Tags",
+      notes: "Notes",
+      automationNotes: "Automation notes",
+    },
+    (row, matchedFields) =>
+      makeResult(
+        "playbook",
+        row.id as string,
+        row.name as string,
+        [row.playbookType, row.category, row.status].filter(Boolean).join(" · "),
+        previewText(row.description) || previewText(row.notes),
+        row.createdAt as Date,
+        row.updatedAt as Date,
+        matchedFields,
+      ),
+    GLOBAL_SEARCH_LIMIT_PER_TYPE,
+  )
+}
+
 async function searchCampaigns(query: string): Promise<GlobalSearchResult[]> {
   const rows = await prisma.campaign.findMany({
     orderBy: { updatedAt: "desc" },
@@ -903,6 +952,59 @@ async function searchAssets(query: string): Promise<GlobalSearchResult[]> {
   )
 }
 
+async function searchQualityReviews(query: string): Promise<GlobalSearchResult[]> {
+  const rows = await prisma.qualityReview.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: GLOBAL_SEARCH_FETCH_BATCH,
+  })
+
+  return pushMatches(
+    rows.map((row) => ({
+      ...row,
+      tagsText: parseTagsJson(row.tags),
+    })),
+    query,
+    [
+      "reviewName",
+      "reviewType",
+      "campaignName",
+      "sourceRecordType",
+      "strengths",
+      "weaknesses",
+      "improvementIdeas",
+      "recommendedActions",
+      "tagsText",
+      "reviewerNotes",
+    ],
+    {
+      reviewName: "Review name",
+      reviewType: "Review type",
+      campaignName: "Campaign",
+      sourceRecordType: "Source type",
+      strengths: "Strengths",
+      weaknesses: "Weaknesses",
+      improvementIdeas: "Improvement ideas",
+      recommendedActions: "Recommended actions",
+      tagsText: "Tags",
+      reviewerNotes: "Notes",
+    },
+    (row, matchedFields) =>
+      makeResult(
+        "quality-review",
+        row.id as string,
+        row.reviewName as string,
+        [row.reviewType, row.campaignName, row.readinessLabel]
+          .filter(Boolean)
+          .join(" · "),
+        previewText(row.strengths) || previewText(row.weaknesses),
+        row.createdAt as Date,
+        row.updatedAt as Date,
+        matchedFields,
+      ),
+    GLOBAL_SEARCH_LIMIT_PER_TYPE,
+  )
+}
+
 const SEARCHERS: {
   type: GlobalSearchResultType
   search: (query: string) => Promise<GlobalSearchResult[]>
@@ -924,7 +1026,9 @@ const SEARCHERS: {
   { type: "experiment", search: searchExperiments },
   { type: "campaign", search: searchCampaigns },
   { type: "preset", search: searchPresets },
+  { type: "playbook", search: searchPlaybooks },
   { type: "asset", search: searchAssets },
+  { type: "quality-review", search: searchQualityReviews },
 ]
 
 /**

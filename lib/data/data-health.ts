@@ -3,6 +3,7 @@
  */
 
 import { buildRecordHref } from "@/lib/data/related-records"
+import { extractPlaybookIdFromNotes } from "@/lib/playbooks"
 import { isValidJsonString } from "@/lib/safe-json"
 import {
   experimentHasInvalidDateRange,
@@ -29,9 +30,11 @@ import type {
   MerchIdea,
   MockupPromptRecord,
   PresetRecord,
+  PlaybookRecord,
   ProductListing,
   Prompt,
   PromptRun,
+  QualityReviewRecord,
   ReleasePlan,
   SocialRepurposingRecord,
   Workflow,
@@ -122,12 +125,14 @@ export interface DataHealthScanInput {
   analyticsRecords: AnalyticsRecord[]
   experiments: ExperimentRecord[]
   presets: PresetRecord[]
+  playbooks: PlaybookRecord[]
   prompts: Prompt[]
   promptRuns: PromptRun[]
   workflows: Workflow[]
   workflowRuns: WorkflowRun[]
   workspaceSettings: WorkspaceSettingsRecord | null
   assets: AssetRecord[]
+  qualityReviews: QualityReviewRecord[]
   jsonFields: DataHealthJsonField[]
 }
 
@@ -1283,11 +1288,13 @@ export function countScannableRecords(input: DataHealthScanInput): number {
     input.analyticsRecords.length +
     input.experiments.length +
     input.presets.length +
+    input.playbooks.length +
     input.prompts.length +
     input.promptRuns.length +
     input.workflows.length +
     input.workflowRuns.length +
     input.assets.length +
+    input.qualityReviews.length +
     (input.workspaceSettings ? 1 : 0)
   )
 }
@@ -1327,6 +1334,89 @@ export function createDataLoadFailureIssue(
     sourceTitle: "Data Health Scanner",
     href: "/data-health",
     suggestedAction: "Check that the module table exists and retry the scan.",
+  }
+}
+
+export function scanPlaybookWarnings(
+  input: DataHealthScanInput,
+  sets: RecordIdSets,
+  issues: DataHealthIssue[],
+): void {
+  const playbookIds = new Set(input.playbooks.map((playbook) => playbook.id))
+  const presetIds = new Set(input.presets.map((preset) => preset.id))
+  const workflowIds = sets.workflow
+
+  for (const playbook of input.playbooks) {
+    const title = playbook.name || "Untitled playbook"
+    const href = `/playbooks?recordId=${encodeURIComponent(playbook.id)}`
+
+    if (!hasText(playbook.name)) {
+      pushIssue(issues, {
+        id: issueId(["playbook-missing-name", playbook.id]),
+        severity: "warning",
+        category: "incomplete-records",
+        title: "Playbook missing name",
+        description: `Playbook ${playbook.id} has no name.`,
+        sourceType: "playbook",
+        sourceId: playbook.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Add a playbook name in Playbook Builder.",
+      })
+    }
+
+    if (playbook.recommendedPresetId && !presetIds.has(playbook.recommendedPresetId)) {
+      pushIssue(issues, {
+        id: issueId(["playbook-missing-preset", playbook.id, playbook.recommendedPresetId]),
+        severity: "warning",
+        category: "broken-links",
+        title: "Playbook references missing preset",
+        description: `Playbook "${title}" references preset ${playbook.recommendedPresetId} which was not found.`,
+        sourceType: "playbook",
+        sourceId: playbook.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Update the recommended preset or clear the preset reference.",
+      })
+    }
+
+    if (
+      playbook.recommendedWorkflowId &&
+      !workflowIds.has(playbook.recommendedWorkflowId)
+    ) {
+      pushIssue(issues, {
+        id: issueId(["playbook-missing-workflow", playbook.id, playbook.recommendedWorkflowId]),
+        severity: "warning",
+        category: "broken-links",
+        title: "Playbook references missing workflow",
+        description: `Playbook "${title}" references workflow ${playbook.recommendedWorkflowId} which was not found.`,
+        sourceType: "playbook",
+        sourceId: playbook.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Update the recommended workflow or clear the workflow reference.",
+      })
+    }
+  }
+
+  for (const campaign of input.campaigns) {
+    const playbookId = extractPlaybookIdFromNotes(campaign.notes)
+    if (!playbookId || playbookIds.has(playbookId)) continue
+
+    const campaignTitle = campaign.campaignName || "Untitled campaign"
+    pushIssue(issues, {
+      id: issueId(["campaign-missing-playbook", campaign.id, playbookId]),
+      severity: "warning",
+      category: "broken-links",
+      title: "Campaign references missing playbook",
+      description: `Campaign "${campaignTitle}" notes reference playbook ${playbookId} which was not found.`,
+      sourceType: "campaign",
+      sourceId: campaign.id,
+      sourceTitle: campaignTitle,
+      href: campaignHref(campaign.id),
+      suggestedAction: "Restore the playbook or remove the playbook reference from campaign notes.",
+      relatedHref: `/playbooks?recordId=${encodeURIComponent(playbookId)}`,
+    })
   }
 }
 
@@ -1485,6 +1575,103 @@ function safeScan(
   }
 }
 
+export function scanQualityReviewWarnings(
+  input: DataHealthScanInput,
+  sets: RecordIdSets,
+  issues: DataHealthIssue[],
+): DataHealthIssue[] {
+  const campaignIds = sets.campaign
+
+  for (const review of input.qualityReviews) {
+    const title = review.reviewName || "Untitled review"
+    const href = `/quality?recordId=${encodeURIComponent(review.id)}`
+
+    if (!hasText(review.reviewName)) {
+      issues.push({
+        id: issueId(["quality-review-missing-name", review.id]),
+        severity: "warning",
+        category: "incomplete-records",
+        title: "Quality review missing name",
+        description: `Quality review ${review.id} has no review name.`,
+        sourceType: "quality-review",
+        sourceId: review.id,
+        suggestedAction: "Add a review name in Quality Review.",
+        relatedHref: href,
+      })
+    }
+
+    if (!hasText(review.reviewType)) {
+      issues.push({
+        id: issueId(["quality-review-missing-type", review.id]),
+        severity: "warning",
+        category: "incomplete-records",
+        title: "Quality review missing type",
+        description: `"${title}" has no review type.`,
+        sourceType: "quality-review",
+        sourceId: review.id,
+        suggestedAction: "Select a review type.",
+        relatedHref: href,
+      })
+    }
+
+    if (review.campaignId && !campaignIds.has(review.campaignId)) {
+      issues.push({
+        id: issueId(["quality-review-missing-campaign", review.id, review.campaignId]),
+        severity: "warning",
+        category: "broken-links",
+        title: "Quality review linked to missing campaign",
+        description: `"${title}" references campaign ${review.campaignId} which was not found.`,
+        sourceType: "quality-review",
+        sourceId: review.id,
+        suggestedAction: "Link to an existing campaign or clear campaignId.",
+        relatedHref: href,
+      })
+    }
+
+    if (
+      review.overallScore === 0 &&
+      (review.status === "Reviewed" || review.status === "Ready")
+    ) {
+      issues.push({
+        id: issueId(["quality-review-zero-reviewed", review.id]),
+        severity: "warning",
+        category: "incomplete-records",
+        title: "Reviewed quality record has zero score",
+        description: `"${title}" is marked ${review.status} but overall score is 0.`,
+        sourceType: "quality-review",
+        sourceId: review.id,
+        suggestedAction: "Enter criterion scores or regenerate draft.",
+        relatedHref: href,
+      })
+    }
+  }
+
+  for (const campaign of input.campaigns) {
+    if (campaign.status !== "Ready to Publish") continue
+    const hasReadiness = input.qualityReviews.some(
+      (review) =>
+        review.reviewType === "Campaign Readiness" &&
+        (review.campaignId === campaign.id ||
+          norm(review.campaignName) === norm(campaign.campaignName)),
+    )
+    if (!hasReadiness) {
+      issues.push({
+        id: issueId(["campaign-ready-no-readiness-review", campaign.id]),
+        severity: "warning",
+        category: "missing-assets",
+        title: "Ready campaign without readiness review",
+        description: `"${campaign.campaignName || "Campaign"}" is Ready to Publish but has no Campaign Readiness review.`,
+        sourceType: "campaign",
+        sourceId: campaign.id,
+        suggestedAction: "Create a Campaign Readiness quality review.",
+        relatedHref: `/quality?campaignId=${encodeURIComponent(campaign.id)}&reviewType=${encodeURIComponent("Campaign Readiness")}`,
+      })
+    }
+  }
+
+  return issues
+}
+
 export function buildDataHealthReport(
   input: DataHealthScanInput,
   preflightIssues: DataHealthIssue[] = [],
@@ -1512,6 +1699,8 @@ export function buildDataHealthReport(
     scanPromptRunLinkWarnings(input, sets, issues),
   )
   safeScan("Asset library", issues, () => scanAssetWarnings(input, sets, issues))
+  safeScan("Playbooks", issues, () => scanPlaybookWarnings(input, sets, issues))
+  safeScan("Quality reviews", issues, () => scanQualityReviewWarnings(input, sets, issues))
   safeScan("JSON / data issues", issues, () => scanJsonIssues(input, issues))
 
   return {

@@ -30,6 +30,7 @@ import {
 } from "@/lib/types"
 
 import { ModulePageHeader } from "@/components/app-shell"
+import { QualityReviewActionLink } from "@/components/quality/quality-review-action"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { ExperimentAnalyticsLinkSection } from "@/components/experiments/experiment-analytics-link-section"
 import { RelatedPromptRunsPanel } from "@/components/experiments/related-prompt-runs-panel"
@@ -560,6 +561,15 @@ export function ExperimentTracker() {
                   <Button type="button" variant="outline" onClick={resetForm}>
                     New Experiment
                   </Button>
+                ) : null}
+                {editingId ? (
+                  <QualityReviewActionLink
+                    recordId={editingId}
+                    campaignId={form.campaignId}
+                    sourceExperimentId={editingId}
+                    reviewType="Experiment Variant"
+                    label="Review Experiment Variant"
+                  />
                 ) : null}
               </div>
             </CardContent>

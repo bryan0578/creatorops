@@ -723,6 +723,79 @@ model Asset {
   @@index([updatedAt])
 }
 
+/// Reusable SOP / launch playbooks for campaign systems.
+model Playbook {
+  id                          String   @id
+  name                        String   @default("")
+  description                 String   @default("")
+  playbookType                String   @default("Other")
+  category                    String   @default("")
+  status                      String   @default("Active")
+  targetCampaignType          String   @default("")
+  recommendedPresetId         String   @default("")
+  recommendedPresetName       String   @default("")
+  recommendedWorkflowId       String   @default("")
+  recommendedWorkflowName       String   @default("")
+  defaultCampaignFields       String   @default("{}")
+  taskTemplate                String   @default("[]")
+  publishingChecklistTemplate String   @default("{}")
+  assetChecklist              String   @default("[]")
+  promptChecklist             String   @default("[]")
+  experimentTemplate          String   @default("[]")
+  automationNotes             String   @default("")
+  exportPackTemplate          String   @default("")
+  tags                        String   @default("[]")
+  notes                       String   @default("")
+  createdAt                   DateTime
+  updatedAt                   DateTime
+
+  @@index([name])
+  @@index([playbookType])
+  @@index([category])
+  @@index([status])
+  @@index([updatedAt])
+}
+
+/// Quality review / scorecard for creative outputs and campaign readiness.
+model QualityReview {
+  id                  String   @id
+  reviewName          String   @default("")
+  reviewType          String   @default("Other")
+  status              String   @default("Draft")
+  campaignId          String   @default("")
+  campaignName        String   @default("")
+  artistName          String   @default("")
+  songTitle           String   @default("")
+  productName         String   @default("")
+  sourceRecordType    String   @default("")
+  sourceRecordId      String   @default("")
+  sourcePromptRunId   String   @default("")
+  sourceExperimentId  String   @default("")
+  platform            String   @default("")
+  rubricVersion       String   @default("1")
+  overallScore        Int      @default(0)
+  scoreBreakdown      String   @default("{}")
+  strengths           String   @default("")
+  weaknesses          String   @default("")
+  improvementIdeas    String   @default("")
+  recommendedActions  String   @default("")
+  readinessLabel      String   @default("")
+  reviewerNotes       String   @default("")
+  tags                String   @default("[]")
+  createdAt           DateTime
+  updatedAt           DateTime
+
+  @@index([reviewName])
+  @@index([reviewType])
+  @@index([status])
+  @@index([campaignId])
+  @@index([campaignName])
+  @@index([sourceRecordType])
+  @@index([sourceRecordId])
+  @@index([overallScore])
+  @@index([updatedAt])
+}
+
 /// Singleton workspace defaults for CreatorOps (single row id: creatorops-workspace-default).
 model WorkspaceSettings {
   id                    String   @id

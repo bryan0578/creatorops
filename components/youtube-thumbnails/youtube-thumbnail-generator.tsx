@@ -55,6 +55,7 @@ import {
 } from "@/lib/preset-prefill"
 
 import { ModulePageHeader } from "@/components/app-shell"
+import { QualityReviewActionLink } from "@/components/quality/quality-review-action"
 import { SaveLinkedPromptRunButton } from "@/components/module/save-linked-prompt-run-button"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { CampaignPromptOutputSection } from "@/components/campaigns/campaign-context-prompt-controls"
@@ -587,6 +588,24 @@ export function YouTubeThumbnailGenerator() {
               <Button type="button" variant="outline" onClick={resetForm}>
                 New thumbnail
               </Button>
+            ) : null}
+            {editingId ? (
+              <>
+                <QualityReviewActionLink
+                  recordId={editingId}
+                  campaignId={campaignPrefill.campaignId}
+                  sourceRecordType="youtube-thumbnail"
+                  reviewType="Thumbnail"
+                  label="Review Thumbnail"
+                />
+                <QualityReviewActionLink
+                  recordId={editingId}
+                  campaignId={campaignPrefill.campaignId}
+                  sourceRecordType="youtube-thumbnail"
+                  reviewType="Thumbnail Prompt"
+                  label="Review Thumbnail Prompt"
+                />
+              </>
             ) : null}
           </div>
         }

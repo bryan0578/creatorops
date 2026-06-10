@@ -57,6 +57,16 @@ export async function getPresets(): Promise<PresetRecord[]> {
   }
 }
 
+export async function getPresetById(id: string): Promise<PresetRecord | null> {
+  assertPresetPrismaReady()
+  try {
+    const row = await prisma.preset.findUnique({ where: { id: id.trim() } })
+    return row ? prismaPresetToPresetRecord(row) : null
+  } catch (error) {
+    throw wrapPresetDbError(error, "Failed to load preset.")
+  }
+}
+
 export async function upsertPreset(record: PresetRecord): Promise<PresetRecord> {
   assertPresetPrismaReady()
   const normalized = normalizePresetRecord(record)

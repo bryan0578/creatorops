@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 
 import { deleteAnalyticsRecordById, upsertAnalyticsRecord } from "@/lib/actions/analytics-records"
 import { createAsset, deleteAsset } from "@/lib/actions/assets"
+import { createQualityReview, deleteQualityReview } from "@/lib/actions/quality-reviews"
 import { createExperiment, deleteExperiment } from "@/lib/actions/experiments"
 import { deleteArtistById, upsertArtist } from "@/lib/actions/artists"
 import { deleteCampaignById, upsertCampaign } from "@/lib/actions/campaigns"
@@ -61,6 +62,7 @@ const REVALIDATE_PATHS = [
   "/search",
   "/backups",
   "/assets",
+  "/quality",
   "/activity",
 ]
 
@@ -82,6 +84,7 @@ export type DemoDataStatus = {
     experiment: number
     promptRun: number
     asset: number
+    qualityReview: number
   }
   lastSeededAt: number | null
 }
@@ -108,6 +111,7 @@ async function countDemoRows() {
     experiments,
     promptRuns,
     assets,
+    qualityReviews,
   ] = await Promise.all([
     prisma.artist.count({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
     prisma.campaign.count({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
@@ -123,6 +127,7 @@ async function countDemoRows() {
     prisma.experiment.count({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
     prisma.promptRun.count({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
     prisma.asset.count({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
+    prisma.qualityReview.count({ where: { reviewerNotes: { contains: DEMO_DATA_MARKER } } }),
   ])
 
   const recordCounts = {
@@ -140,6 +145,7 @@ async function countDemoRows() {
     experiment: experiments,
     promptRun: promptRuns,
     asset: assets,
+    qualityReview: qualityReviews,
   }
 
   const totalRecords = Object.values(recordCounts).reduce((sum, n) => sum + n, 0)
@@ -184,6 +190,10 @@ async function findRowNotesById(
     prisma.experiment.findUnique({ where: { id }, select: { id: true, notes: true } }),
     prisma.promptRun.findUnique({ where: { id }, select: { id: true, notes: true } }),
     prisma.asset.findUnique({ where: { id }, select: { id: true, notes: true } }),
+    prisma.qualityReview.findUnique({
+      where: { id },
+      select: { id: true, reviewerNotes: true },
+    }).then((row) => (row ? { id: row.id, notes: row.reviewerNotes } : null)),
   ]
 
   for (const query of queries) {
@@ -216,6 +226,8 @@ export async function seedDemoData(): Promise<{
       DEMO_IDS.promptRunThumbnail,
       DEMO_IDS.assetThumbnail,
       DEMO_IDS.assetMockup,
+      DEMO_IDS.qualityReviewYoutube,
+      DEMO_IDS.qualityReviewThumbnail,
     ]
 
     for (const id of demoIds) {
@@ -249,6 +261,9 @@ export async function seedDemoData(): Promise<{
     }
     for (const asset of demo.assets) {
       await createAsset(asset)
+    }
+    for (const review of demo.qualityReviews) {
+      await createQualityReview(review)
     }
 
     revalidateDemoRoutes()
@@ -308,6 +323,7 @@ export async function deleteDemoData(): Promise<{
       artists,
       promptRunRows,
       assetRows,
+      qualityReviewRows,
     ] = await Promise.all([
       prisma.releasePlan.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
       prisma.youTubePackage.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
@@ -322,8 +338,14 @@ export async function deleteDemoData(): Promise<{
       prisma.artist.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
       prisma.promptRun.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
       prisma.asset.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
+      prisma.qualityReview.findMany({
+        where: { reviewerNotes: { contains: DEMO_DATA_MARKER } },
+      }),
     ])
 
+    await deleteMarked(qualityReviewRows, async (id) => {
+      await deleteQualityReview(id)
+    })
     await deleteMarked(assetRows, async (id) => {
       await deleteAsset(id)
     })

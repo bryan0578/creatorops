@@ -6,6 +6,7 @@ import { getCampaigns, upsertCampaign } from "@/lib/actions/campaigns"
 import { normalizeCampaignRecord } from "@/lib/campaigns"
 import { prismaAnalyticsRecordToAnalyticsRecord } from "@/lib/data/analytics-records"
 import { prismaAssetToAssetRecord } from "@/lib/data/assets"
+import { prismaQualityReviewToRecord } from "@/lib/data/quality-reviews"
 import { prismaArtistToArtistRecord } from "@/lib/data/artists"
 import { prismaCampaignToCampaignRecord } from "@/lib/data/campaigns"
 import {
@@ -21,6 +22,7 @@ import { prismaEmailCampaignToEmailCampaignRecord } from "@/lib/data/email-campa
 import { prismaExperimentToExperimentRecord } from "@/lib/data/experiments"
 import { prismaMerchIdeaToMerchIdea } from "@/lib/data/merch-ideas"
 import { prismaMockupPromptToMockupPromptRecord } from "@/lib/data/mockup-prompts"
+import { prismaPlaybookToPlaybookRecord } from "@/lib/data/playbooks"
 import { prismaPresetToPresetRecord } from "@/lib/data/presets"
 import { prismaProductListingToProductListing } from "@/lib/data/product-listings"
 import { prismaPromptRunToPromptRun } from "@/lib/data/prompt-runs"
@@ -208,12 +210,14 @@ async function loadScanInput(): Promise<{
     analyticsRecords,
     experiments,
     presets,
+    playbooks,
     prompts,
     promptRuns,
     workflows,
     workflowRuns,
     workspaceSettings,
     assets,
+    qualityReviews,
     jsonFields,
   ] = await Promise.all([
     safeLoad(
@@ -343,6 +347,15 @@ async function loadScanInput(): Promise<{
       [],
     ),
     safeLoad(
+      "Playbooks",
+      async () => {
+        const rows = await prisma.playbook.findMany({ orderBy: { updatedAt: "desc" } })
+        return rows.map(prismaPlaybookToPlaybookRecord)
+      },
+      loadIssues,
+      [],
+    ),
+    safeLoad(
       "Prompts",
       async () => {
         const rows = await prisma.prompt.findMany({ orderBy: { updatedAt: "desc" } })
@@ -404,6 +417,15 @@ async function loadScanInput(): Promise<{
       loadIssues,
       [],
     ),
+    safeLoad(
+      "Quality reviews",
+      async () => {
+        const rows = await prisma.qualityReview.findMany({ orderBy: { updatedAt: "desc" } })
+        return rows.map(prismaQualityReviewToRecord)
+      },
+      loadIssues,
+      [],
+    ),
     safeLoad("JSON fields", loadJsonFields, loadIssues, []),
   ])
 
@@ -422,12 +444,14 @@ async function loadScanInput(): Promise<{
       analyticsRecords,
       experiments,
       presets,
+      playbooks,
       prompts,
       promptRuns,
       workflows,
       workflowRuns,
       workspaceSettings,
       assets,
+      qualityReviews,
       jsonFields,
     },
     loadIssues,

@@ -3,8 +3,10 @@
 import { revalidatePath } from "next/cache"
 
 import { getAssets } from "@/lib/actions/assets"
+import { getQualityReviews } from "@/lib/actions/quality-reviews"
 import { getCampaigns } from "@/lib/actions/campaigns"
 import { assetToPrismaCreate } from "@/lib/data/assets"
+import { qualityReviewToPrismaCreate } from "@/lib/data/quality-reviews"
 import {
   analyticsRecordToPrismaCreate,
 } from "@/lib/data/analytics-records"
@@ -53,7 +55,7 @@ import { youtubePackageToPrismaCreate } from "@/lib/data/youtube-packages"
 import { prismaYouTubeThumbnailToRecord } from "@/lib/data/youtube-thumbnails"
 import { youtubeThumbnailToPrismaCreate } from "@/lib/data/youtube-thumbnails"
 import { prisma } from "@/lib/prisma"
-import type { AssetRecord, CampaignRecord } from "@/lib/types"
+import type { AssetRecord, CampaignRecord, QualityReviewRecord } from "@/lib/types"
 
 const REVALIDATE_PATHS = [
   "/",
@@ -77,6 +79,7 @@ const REVALIDATE_PATHS = [
   "/workflow-runner",
   "/presets",
   "/assets",
+  "/quality",
   "/data-health",
 ]
 
@@ -89,7 +92,7 @@ function revalidateBundleRoutes() {
 async function loadCampaignBundleStore(): Promise<
   CampaignBundleStore & { campaigns: CampaignRecord[] }
 > {
-  const [linkable, experiments, promptRuns, workflowRuns, presets, assets, campaigns] =
+  const [linkable, experiments, promptRuns, workflowRuns, presets, assets, qualityReviews, campaigns] =
     await Promise.all([
       loadCampaignLinkableStoreSlice(),
       prisma.experiment.findMany({ orderBy: { updatedAt: "desc" } }),
@@ -97,6 +100,7 @@ async function loadCampaignBundleStore(): Promise<
       prisma.workflowRun.findMany({ orderBy: { updatedAt: "desc" } }),
       prisma.preset.findMany({ orderBy: { updatedAt: "desc" } }),
       getAssets(),
+      getQualityReviews(),
       getCampaigns(),
     ])
 
@@ -105,6 +109,7 @@ async function loadCampaignBundleStore(): Promise<
     experiments: experiments.map(prismaExperimentToExperimentRecord),
     presets: presets.map(prismaPresetToPresetRecord),
     assets,
+    qualityReviews,
     runs: promptRuns.map(prismaPromptRunToPromptRun),
     workflowRuns: workflowRuns.map(prismaWorkflowRunToWorkflowRun),
     campaigns,
@@ -360,6 +365,17 @@ export async function importCampaignBundle(
         "asset",
         preview,
         (record) => tx.asset.create({ data: assetToPrismaCreate(record as AssetRecord) }),
+      )
+      await createPairedRecords(
+        tx,
+        bundle.linkedRecords.qualityReviews,
+        remapped.linkedRecords.qualityReviews,
+        "quality-review",
+        preview,
+        (record) =>
+          tx.qualityReview.create({
+            data: qualityReviewToPrismaCreate(record as QualityReviewRecord),
+          }),
       )
 
       if (!skipCampaignCreate) {

@@ -11,6 +11,7 @@ import {
 import { buildMissingAssetRepair } from "@/lib/data/data-health-repairs"
 import type { DataHealthReport } from "@/lib/data/data-health"
 import { filterAssetsForCampaign } from "@/lib/assets"
+import { filterQualityReviewsForCampaign } from "@/lib/quality-reviews"
 import { normalizeStatusToStage } from "@/lib/data/campaign-board"
 import {
   generateDefaultPublishingChecklist,
@@ -19,7 +20,8 @@ import {
   isPublishedCampaignStatus,
   isReadyToPublishCampaignStatus,
 } from "@/lib/data/publishing-checklist"
-import type { CampaignLinkedRecordType, CampaignRecord, ExperimentRecord, AssetRecord, PromptRun } from "@/lib/types"
+import { extractPlaybookIdFromNotes } from "@/lib/playbooks"
+import type { CampaignLinkedRecordType, CampaignRecord, ExperimentRecord, AssetRecord, PromptRun, QualityReviewRecord } from "@/lib/types"
 
 export type AutomationPriority = "high" | "medium" | "low" | "info"
 
@@ -104,6 +106,7 @@ export interface AutomationEvaluationContext {
     experiments: ExperimentRecord[]
     runs: PromptRun[]
     assets: AssetRecord[]
+    qualityReviews: QualityReviewRecord[]
   }
   dataHealth: DataHealthReport | null
   dataHealthFailed: boolean
@@ -161,6 +164,14 @@ export const BUILTIN_AUTOMATION_RULES: BuiltinAutomationRule[] = [
     id: "missing-publishing-checklist",
     name: "Missing Publishing Checklist",
     description: "Suggests generating a default publishing checklist.",
+    category: "Publishing Checklist",
+    priority: "medium",
+    enabled: true,
+  },
+  {
+    id: "suggest-playbook",
+    name: "Suggest Playbook for Empty Campaign",
+    description: "Suggests creating from a playbook when a campaign has no tasks or checklist.",
     category: "Publishing Checklist",
     priority: "medium",
     enabled: true,
@@ -275,6 +286,38 @@ export const BUILTIN_AUTOMATION_RULES: BuiltinAutomationRule[] = [
     description: "Prompt runs for thumbnails or mockups without a linked asset record.",
     category: "Missing Asset",
     priority: "info",
+    enabled: true,
+  },
+  {
+    id: "quality-review-missing-readiness",
+    name: "Missing Campaign Readiness Review",
+    description: "Ready-to-publish campaigns without a Campaign Readiness quality review.",
+    category: "Publishing Checklist",
+    priority: "medium",
+    enabled: true,
+  },
+  {
+    id: "quality-review-missing-youtube-package",
+    name: "YouTube Package Without Quality Review",
+    description: "Campaigns with a YouTube package but no quality review for it.",
+    category: "Missing Asset",
+    priority: "info",
+    enabled: true,
+  },
+  {
+    id: "quality-review-low-score",
+    name: "Low Quality Score",
+    description: "Quality reviews below 60 suggest revision before publishing.",
+    category: "Campaign Stage",
+    priority: "medium",
+    enabled: true,
+  },
+  {
+    id: "quality-review-readiness-below-70",
+    name: "Campaign Readiness Below 70",
+    description: "Campaign readiness reviews below 70 suggest fixes before publish.",
+    category: "Publishing Checklist",
+    priority: "high",
     enabled: true,
   },
   {
@@ -480,6 +523,33 @@ function evaluateMissingAssets(
         reason: "Required launch asset is not linked or matched.",
       })
     }
+  }
+}
+
+function evaluateSuggestPlaybook(
+  ctx: AutomationEvaluationContext,
+  suggestions: AutomationSuggestion[],
+) {
+  for (const campaign of ctx.campaigns) {
+    if (extractPlaybookIdFromNotes(campaign.notes)) continue
+    if (campaign.tasks.length > 0 || campaign.publishingChecklist.items.length > 0) continue
+
+    suggestions.push({
+      id: suggestionId(["suggest-playbook", campaign.id]),
+      ruleId: "suggest-playbook",
+      priority: "medium",
+      category: "Publishing Checklist",
+      title: "Create campaign from playbook",
+      description: `${campaign.campaignName || "Campaign"} has no tasks or publishing checklist yet. Launch faster with a saved playbook.`,
+      campaignId: campaign.id,
+      campaignName: campaign.campaignName,
+      suggestedActionLabel: "Open Playbooks",
+      actionType: "navigate",
+      actionPayload: { href: "/playbooks" },
+      href: "/playbooks",
+      canApply: false,
+      reason: "Campaign has no tasks or publishing checklist and no playbook reference.",
+    })
   }
 }
 
@@ -834,6 +904,131 @@ function evaluatePrePublishChecklist(
   }
 }
 
+function campaignHasReview(
+  reviews: QualityReviewRecord[],
+  campaign: CampaignRecord,
+  reviewType?: string,
+  sourceRecordType?: string,
+  sourceRecordId?: string,
+): boolean {
+  const scoped = filterQualityReviewsForCampaign(reviews, campaign.id, campaign.campaignName)
+  return scoped.some((review) => {
+    if (reviewType && review.reviewType !== reviewType) return false
+    if (sourceRecordType && review.sourceRecordType !== sourceRecordType) return false
+    if (sourceRecordId && review.sourceRecordId !== sourceRecordId) return false
+    return true
+  })
+}
+
+function evaluateQualityReviews(
+  ctx: AutomationEvaluationContext,
+  suggestions: AutomationSuggestion[],
+) {
+  const reviews = ctx.store.qualityReviews ?? []
+
+  for (const campaign of ctx.campaigns) {
+    const campaignReviews = filterQualityReviewsForCampaign(
+      reviews,
+      campaign.id,
+      campaign.campaignName,
+    )
+
+    if (
+      campaign.status === "Ready to Publish" &&
+      !campaignHasReview(reviews, campaign, "Campaign Readiness")
+    ) {
+      suggestions.push({
+        id: suggestionId(["quality-review-missing-readiness", campaign.id]),
+        ruleId: "quality-review-missing-readiness",
+        priority: "medium",
+        category: "Publishing Checklist",
+        title: "Add campaign readiness review",
+        description: `${campaign.campaignName || "Campaign"} is Ready to Publish but has no Campaign Readiness quality review.`,
+        campaignId: campaign.id,
+        campaignName: campaign.campaignName,
+        suggestedActionLabel: "New Quality Review",
+        actionType: "navigate",
+        actionPayload: {
+          href: `/quality?campaignId=${encodeURIComponent(campaign.id)}&reviewType=${encodeURIComponent("Campaign Readiness")}`,
+        },
+        href: `/quality?campaignId=${encodeURIComponent(campaign.id)}&reviewType=${encodeURIComponent("Campaign Readiness")}`,
+        canApply: false,
+        reason: "Quality review helps validate launch readiness before publish.",
+      })
+    }
+
+    const youtubeLink = campaign.linkedRecords.find((link) => link.type === "youtube-package")
+    if (
+      youtubeLink &&
+      !campaignHasReview(reviews, campaign, "YouTube Package", "youtube-package", youtubeLink.id)
+    ) {
+      suggestions.push({
+        id: suggestionId(["quality-review-missing-youtube-package", campaign.id, youtubeLink.id]),
+        ruleId: "quality-review-missing-youtube-package",
+        priority: "info",
+        category: "Missing Asset",
+        title: "Review YouTube package",
+        description: `${campaign.campaignName || "Campaign"} has a YouTube package without a quality review.`,
+        campaignId: campaign.id,
+        campaignName: campaign.campaignName,
+        suggestedActionLabel: "Review YouTube Package",
+        actionType: "navigate",
+        actionPayload: {
+          href: `/quality?campaignId=${encodeURIComponent(campaign.id)}&sourceRecordType=youtube-package&sourceRecordId=${encodeURIComponent(youtubeLink.id)}&reviewType=${encodeURIComponent("YouTube Package")}`,
+        },
+        href: `/quality?campaignId=${encodeURIComponent(campaign.id)}&sourceRecordType=youtube-package&sourceRecordId=${encodeURIComponent(youtubeLink.id)}&reviewType=${encodeURIComponent("YouTube Package")}`,
+        canApply: false,
+        reason: "Score metadata before publishing.",
+      })
+    }
+
+    for (const review of campaignReviews) {
+      if (review.overallScore > 0 && review.overallScore < 60) {
+        suggestions.push({
+          id: suggestionId(["quality-review-low-score", review.id]),
+          ruleId: "quality-review-low-score",
+          priority: "medium",
+          category: "Campaign Stage",
+          title: "Quality score suggests revision",
+          description: `"${review.reviewName || review.reviewType}" scored ${review.overallScore}/100.`,
+          campaignId: campaign.id,
+          campaignName: campaign.campaignName,
+          suggestedActionLabel: "Open Review",
+          actionType: "navigate",
+          actionPayload: { href: `/quality?recordId=${encodeURIComponent(review.id)}` },
+          href: `/quality?recordId=${encodeURIComponent(review.id)}`,
+          canApply: false,
+          reason: "Scores below 60 usually need revision before publishing.",
+        })
+      }
+
+      if (
+        review.reviewType === "Campaign Readiness" &&
+        review.overallScore > 0 &&
+        review.overallScore < 70 &&
+        campaign.status === "Ready to Publish"
+      ) {
+        suggestions.push({
+          id: suggestionId(["quality-review-readiness-below-70", review.id]),
+          ruleId: "quality-review-readiness-below-70",
+          priority: "high",
+          category: "Publishing Checklist",
+          title: "Campaign readiness below 70",
+          description: `Readiness review scored ${review.overallScore}/100 — address gaps before publishing.`,
+          campaignId: campaign.id,
+          campaignName: campaign.campaignName,
+          suggestedActionLabel: "Fix Before Publish",
+          actionType: "navigate",
+          actionPayload: { href: `/quality?recordId=${encodeURIComponent(review.id)}` },
+          href: `/quality?recordId=${encodeURIComponent(review.id)}`,
+          canApply: false,
+          reason: "Publishing checklist recommends readiness score ≥ 70.",
+        })
+      }
+    }
+  }
+}
+
 function evaluateReviewDue(ctx: AutomationEvaluationContext, suggestions: AutomationSuggestion[]) {
   for (const campaign of ctx.campaigns) {
     if (!isPublishedCampaignStatus(campaign.status)) continue
@@ -889,6 +1084,7 @@ function evaluateReviewDue(ctx: AutomationEvaluationContext, suggestions: Automa
 const RULE_EVALUATORS: Array<(ctx: AutomationEvaluationContext, out: AutomationSuggestion[]) => void> = [
   evaluateMissingAssets,
   evaluateMissingAssetLibrary,
+  evaluateSuggestPlaybook,
   evaluateMissingPublishingChecklist,
   evaluatePublishedReviewTasks,
   evaluateReadyToPublishStatus,
@@ -897,6 +1093,7 @@ const RULE_EVALUATORS: Array<(ctx: AutomationEvaluationContext, out: AutomationS
   evaluateExperiments,
   evaluatePromptHistory,
   evaluateExportBundle,
+  evaluateQualityReviews,
   evaluateIncompleteCampaignFields,
   evaluatePrePublishChecklist,
   evaluateReviewDue,

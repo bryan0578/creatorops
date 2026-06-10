@@ -35,6 +35,7 @@ import {
 } from "@/lib/prompt-variables"
 
 import { ModulePageHeader } from "@/components/app-shell"
+import { QualityReviewActionLink } from "@/components/quality/quality-review-action"
 import {
   FormSection,
   OutputSection,
@@ -628,6 +629,15 @@ export function PromptRunner() {
             >
               {editingRunId ? "Update run" : "Save run"}
             </Button>
+            {editingRunId ? (
+              <QualityReviewActionLink
+                recordId={editingRunId}
+                campaignId={editingRun?.campaignId}
+                sourcePromptRunId={editingRunId}
+                reviewType="Prompt Quality"
+                label="Review Prompt Quality"
+              />
+            ) : null}
           </StickyActionBar>
         </div>
       </div>

@@ -245,7 +245,7 @@ export function GlobalSearchPage() {
         <EmptyState
           icon={Search}
           title="Search your CreatorOps workspace"
-          description="Search across campaigns, artists, prompts, workflows, YouTube assets, products, analytics, and presets."
+          description="Search across campaigns, artists, prompts, workflows, YouTube assets, products, analytics, presets, and playbooks."
         />
       ) : null}
 

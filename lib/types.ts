@@ -1611,6 +1611,165 @@ export interface AssetRecord {
   updatedAt: number
 }
 
+export const PLAYBOOK_TYPES = [
+  "Music Release",
+  "YouTube Release",
+  "Merch Drop",
+  "Product Launch",
+  "Digital Product",
+  "Prompt Pack",
+  "Course Launch",
+  "Content Campaign",
+  "Artist Branding",
+  "Other",
+] as const
+
+export type PlaybookType = (typeof PLAYBOOK_TYPES)[number]
+
+export const PLAYBOOK_STATUSES = ["Active", "Draft", "Archived"] as const
+
+export type PlaybookStatus = (typeof PLAYBOOK_STATUSES)[number]
+
+export interface PlaybookTaskTemplateItem {
+  title: string
+  description?: string
+  phase?: string
+  status?: string
+  priority?: string
+  dueOffset?: string
+}
+
+export interface PlaybookChecklistTemplateItem {
+  phase: PublishingChecklistPhase
+  title: string
+  status?: string
+  dueOffset?: string
+  notes?: string
+}
+
+export interface PlaybookAssetChecklistItem {
+  assetType: string
+  title: string
+  required?: boolean
+  notes?: string
+  suggestedModule?: string
+  dueOffset?: string
+}
+
+export interface PlaybookPromptChecklistItem {
+  promptName?: string
+  promptType?: string
+  moduleType: string
+  required?: boolean
+  notes?: string
+  suggestedPromptId?: string
+}
+
+export interface PlaybookExperimentTemplateItem {
+  experimentName: string
+  experimentType: string
+  hypothesis?: string
+  metricFocus?: string
+  platform?: string
+  variantA?: string
+  variantB?: string
+  variantC?: string
+  notes?: string
+}
+
+export interface PlaybookDefaultCampaignFields {
+  campaignType?: string
+  status?: string
+  priority?: string
+  niche?: string
+  primaryGoal?: string
+  targetAudience?: string
+  description?: string
+  notes?: string
+  launchTimelineNotes?: string
+}
+
+export interface PlaybookPublishingChecklistTemplate {
+  version?: 1
+  items: PlaybookChecklistTemplateItem[]
+}
+
+export interface PlaybookRecord {
+  id: string
+  name: string
+  description: string
+  playbookType: string
+  category: string
+  status: string
+  targetCampaignType: string
+  recommendedPresetId: string
+  recommendedPresetName: string
+  recommendedWorkflowId: string
+  recommendedWorkflowName: string
+  defaultCampaignFields: PlaybookDefaultCampaignFields
+  taskTemplate: PlaybookTaskTemplateItem[]
+  publishingChecklistTemplate: PlaybookPublishingChecklistTemplate
+  assetChecklist: PlaybookAssetChecklistItem[]
+  promptChecklist: PlaybookPromptChecklistItem[]
+  experimentTemplate: PlaybookExperimentTemplateItem[]
+  automationNotes: string
+  exportPackTemplate: string
+  tags: string[]
+  notes: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface PlaybookFormValues {
+  name: string
+  description: string
+  playbookType: string
+  category: string
+  status: string
+  targetCampaignType: string
+  recommendedPresetId: string
+  recommendedPresetName: string
+  recommendedWorkflowId: string
+  recommendedWorkflowName: string
+  defaultCampaignFields: PlaybookDefaultCampaignFields
+  taskTemplate: PlaybookTaskTemplateItem[]
+  publishingChecklistTemplate: PlaybookPublishingChecklistTemplate
+  assetChecklist: PlaybookAssetChecklistItem[]
+  promptChecklist: PlaybookPromptChecklistItem[]
+  experimentTemplate: PlaybookExperimentTemplateItem[]
+  automationNotes: string
+  exportPackTemplate: string
+  tags: string
+  notes: string
+}
+
+export interface CreateCampaignFromPlaybookOptions {
+  createTasks: boolean
+  createPublishingChecklist: boolean
+  createExperimentIdeas: boolean
+  createPlaceholderAssets: boolean
+  applyRecommendedPreset: boolean
+  linkRecommendedWorkflow: boolean
+}
+
+export interface CreateCampaignFromPlaybookInput {
+  playbookId: string
+  campaignName: string
+  artistName?: string
+  songTitle?: string
+  productName?: string
+  launchDate?: string
+  presetId?: string
+  options: CreateCampaignFromPlaybookOptions
+}
+
+export interface CreateCampaignFromPlaybookResult {
+  success: boolean
+  message: string
+  campaignId?: string
+  warnings?: string[]
+}
+
 export interface AssetFormValues {
   assetName: string
   assetType: string
@@ -1637,4 +1796,132 @@ export interface AssetFormValues {
   usageNotes: string
   rightsNotes: string
   notes: string
+}
+
+export const QUALITY_REVIEW_TYPES = [
+  "YouTube Title",
+  "YouTube Package",
+  "Thumbnail",
+  "Thumbnail Text",
+  "Thumbnail Prompt",
+  "Shorts Hook",
+  "Social Caption",
+  "Email Subject",
+  "Email Campaign",
+  "Merch Concept",
+  "Product Listing",
+  "Mockup Prompt",
+  "Campaign Readiness",
+  "Brand Consistency",
+  "Experiment Variant",
+  "Prompt Quality",
+  "Other",
+] as const
+
+export type QualityReviewType = (typeof QUALITY_REVIEW_TYPES)[number]
+
+export const QUALITY_REVIEW_STATUSES = [
+  "Draft",
+  "Reviewed",
+  "Needs Revision",
+  "Ready",
+  "Archived",
+] as const
+
+export type QualityReviewStatus = (typeof QUALITY_REVIEW_STATUSES)[number]
+
+export const QUALITY_READINESS_LABELS = [
+  "Needs work",
+  "Solid draft",
+  "Strong",
+  "Ready to publish",
+  "Test-worthy",
+] as const
+
+export type QualityReadinessLabel = (typeof QUALITY_READINESS_LABELS)[number]
+
+export interface QualityCriterionScore {
+  key: string
+  label: string
+  description?: string
+  score: number
+  maxScore: number
+  guidance?: string
+  notes?: string
+  whyNotes?: string
+}
+
+export interface QualityScoreBreakdown {
+  rubricVersion: string
+  criteria: QualityCriterionScore[]
+}
+
+export interface QualityReviewRecord {
+  id: string
+  reviewName: string
+  reviewType: string
+  status: string
+  campaignId: string
+  campaignName: string
+  artistName: string
+  songTitle: string
+  productName: string
+  sourceRecordType: string
+  sourceRecordId: string
+  sourcePromptRunId: string
+  sourceExperimentId: string
+  platform: string
+  rubricVersion: string
+  overallScore: number
+  scoreBreakdown: QualityScoreBreakdown
+  strengths: string
+  weaknesses: string
+  improvementIdeas: string
+  recommendedActions: string
+  readinessLabel: string
+  reviewerNotes: string
+  tags: string[]
+  createdAt: number
+  updatedAt: number
+}
+
+export interface QualityReviewFormValues {
+  reviewName: string
+  reviewType: string
+  status: string
+  campaignId: string
+  campaignName: string
+  artistName: string
+  songTitle: string
+  productName: string
+  sourceRecordType: string
+  sourceRecordId: string
+  sourcePromptRunId: string
+  sourceExperimentId: string
+  platform: string
+  rubricVersion: string
+  overallScore: number
+  scoreBreakdown: QualityScoreBreakdown
+  strengths: string
+  weaknesses: string
+  improvementIdeas: string
+  recommendedActions: string
+  readinessLabel: string
+  reviewerNotes: string
+  tags: string
+}
+
+export interface GenerateQualityReviewDraftInput {
+  reviewType: string
+  reviewName?: string
+  campaignId?: string
+  campaignName?: string
+  artistName?: string
+  songTitle?: string
+  productName?: string
+  sourceRecordType?: string
+  sourceRecordId?: string
+  sourcePromptRunId?: string
+  sourceExperimentId?: string
+  platform?: string
 }

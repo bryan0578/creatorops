@@ -32,6 +32,8 @@ export const DEMO_IDS = {
   promptRunThumbnail: `${DEMO_ID_PREFIX}prettywise-prompt-run-thumbnail`,
   assetThumbnail: `${DEMO_ID_PREFIX}prettywise-asset-thumbnail`,
   assetMockup: `${DEMO_ID_PREFIX}prettywise-asset-mockup`,
+  qualityReviewYoutube: `${DEMO_ID_PREFIX}prettywise-quality-youtube-package`,
+  qualityReviewThumbnail: `${DEMO_ID_PREFIX}prettywise-quality-thumbnail`,
 } as const
 
 export function isDemoDataNotes(notes: string | null | undefined): boolean {

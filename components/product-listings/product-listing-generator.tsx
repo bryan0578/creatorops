@@ -43,6 +43,7 @@ import {
 } from "@/lib/preset-prefill"
 
 import { ModulePageHeader } from "@/components/app-shell"
+import { QualityReviewActionLink } from "@/components/quality/quality-review-action"
 import { SaveLinkedPromptRunButton } from "@/components/module/save-linked-prompt-run-button"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { CampaignPromptOutputSection } from "@/components/campaigns/campaign-context-prompt-controls"
@@ -492,6 +493,15 @@ export function ProductListingGenerator() {
               <Button type="button" variant="outline" onClick={resetForm}>
                 New listing
               </Button>
+            ) : null}
+            {editingId ? (
+              <QualityReviewActionLink
+                recordId={editingId}
+                campaignId={campaignPrefill.campaignId}
+                sourceRecordType="product-listing"
+                reviewType="Product Listing"
+                label="Review Product Listing"
+              />
             ) : null}
           </div>
         }
