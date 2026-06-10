@@ -45,7 +45,7 @@ export function AppShell({
         <AppSidebar />
         <SidebarInset>
           <AppShellHeader breadcrumb={breadcrumb} />
-          <main className="flex-1 p-4 md:p-6">
+          <main className="flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-x-hidden p-4 md:p-6">
             <ModuleShell>{children}</ModuleShell>
           </main>
         </SidebarInset>

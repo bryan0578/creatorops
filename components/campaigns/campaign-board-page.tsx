@@ -37,7 +37,7 @@ import {
 
 import { ModulePageHeader } from "@/components/app-shell"
 import { EmptyState } from "@/components/empty-state"
-import { ModuleShell, RECENT_RECORDS_CARD_CLASS } from "@/components/module/form-layout"
+import { RECENT_RECORDS_CARD_CLASS } from "@/components/module/form-layout"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -107,11 +107,11 @@ function CampaignBoardCard({
   const primaryQuickAction = readiness.quickCreateActions[0]
 
   return (
-    <Card className="border-border/80 bg-card shadow-sm transition-colors hover:border-primary/30">
+    <Card className="min-w-0 border-border/80 bg-card shadow-sm transition-colors hover:border-primary/30">
       <CardHeader className="gap-2 space-y-0 p-3 pb-2">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 space-y-1">
-            <CardTitle className="line-clamp-2 text-sm leading-snug">
+            <CardTitle className="line-clamp-2 break-words text-sm leading-snug">
               {campaign.campaignName || "Untitled campaign"}
             </CardTitle>
             <div className="flex flex-wrap gap-1">
@@ -184,7 +184,7 @@ function CampaignBoardCard({
           <p className="truncate text-xs text-muted-foreground">{campaign.artistName}</p>
         ) : null}
         {subject ? (
-          <p className="line-clamp-2 text-xs text-foreground/90">{subject}</p>
+          <p className="line-clamp-2 break-words text-xs text-foreground/90">{subject}</p>
         ) : null}
         {campaign.launchDate.trim() ? (
           <p className="text-xs text-muted-foreground">{formatLaunchLabel(campaign.launchDate)}</p>
@@ -253,18 +253,18 @@ function BoardColumn({
   movingId: string | null
 }) {
   return (
-    <div className="flex w-72 shrink-0 flex-col gap-3">
-      <div className={cn("rounded-xl border border-border/80 bg-muted/20 p-3", RECENT_RECORDS_CARD_CLASS)}>
+    <section className="flex h-fit min-w-0 flex-col gap-3 self-start rounded-2xl border border-border/60 bg-card/50 p-3">
+      <div className="space-y-1">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">{stage.title}</h2>
           <Badge variant="secondary" className="tabular-nums">
             {campaigns.length}
           </Badge>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground text-pretty">{stage.description}</p>
+        <p className="text-xs text-muted-foreground text-pretty">{stage.description}</p>
       </div>
 
-      <div className="flex min-h-24 flex-col gap-2">
+      <div className="min-w-0 space-y-3">
         {campaigns.length ? (
           campaigns.map((campaign) => (
             <CampaignBoardCard
@@ -276,12 +276,12 @@ function BoardColumn({
             />
           ))
         ) : (
-          <div className="rounded-lg border border-dashed border-border/70 px-3 py-4 text-center text-xs text-muted-foreground">
+          <div className="rounded-xl border border-dashed border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">
             No campaigns in this stage.
           </div>
         )}
       </div>
-    </div>
+    </section>
   )
 }
 
@@ -379,20 +379,18 @@ export function CampaignBoardPage() {
 
   if (!store.hydrated) {
     return (
-      <ModuleShell>
-        <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading campaign board…
-        </div>
-      </ModuleShell>
+      <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" />
+        Loading campaign board…
+      </div>
     )
   }
 
   return (
-    <ModuleShell>
+    <div className="flex min-h-0 min-w-0 max-w-full flex-col gap-6 overflow-x-hidden">
       <ModulePageHeader
         title="Campaign Board"
-        description="Visual pipeline for music releases, merch drops, product launches, and content campaigns."
+        description="Production pipeline overview for music releases, merch drops, product launches, and content campaigns."
         action={
           <div className="flex flex-wrap items-center gap-2">
             <Link href="/campaigns" className={buttonVariants({ size: "sm" })}>
@@ -425,8 +423,8 @@ export function CampaignBoardPage() {
           secondaryActionHref="/backups"
         />
       ) : (
-        <>
-          <Card className={RECENT_RECORDS_CARD_CLASS}>
+        <div className="flex min-h-0 min-w-0 max-w-full flex-col gap-6 overflow-x-hidden">
+          <Card className={cn("w-full", RECENT_RECORDS_CARD_CLASS)}>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Filters</CardTitle>
               <CardDescription>Search and narrow the pipeline view.</CardDescription>
@@ -544,7 +542,7 @@ export function CampaignBoardPage() {
             </CardContent>
           </Card>
 
-          <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
+          <div className="flex w-full items-center justify-between gap-2 text-sm text-muted-foreground">
             <span>
               {filteredCampaigns.length} campaign{filteredCampaigns.length === 1 ? "" : "s"} visible
             </span>
@@ -554,8 +552,8 @@ export function CampaignBoardPage() {
             </Link>
           </div>
 
-          <div className="overflow-x-auto pb-2">
-            <div className="flex min-w-max gap-4">
+          <div className="min-w-0 max-w-full overflow-x-hidden">
+            <div className="grid auto-rows-min grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {visibleStages.map((stage) => (
                 <BoardColumn
                   key={stage.id}
@@ -568,8 +566,8 @@ export function CampaignBoardPage() {
               ))}
             </div>
           </div>
-        </>
+        </div>
       )}
-    </ModuleShell>
+    </div>
   )
 }
