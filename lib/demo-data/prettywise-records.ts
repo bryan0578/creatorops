@@ -11,6 +11,7 @@ import {
 import { buildDemoPublishingChecklist } from "@/lib/data/publishing-checklist"
 import type {
   AnalyticsRecord,
+  AssetRecord,
   ExperimentRecord,
   ArtistRecord,
   CampaignLinkedRecord,
@@ -632,6 +633,68 @@ export function buildPrettyWiseDemoRecords(now = new Date()) {
     updatedAt: ts,
   }
 
+  const assetThumbnail: AssetRecord = {
+    id: DEMO_IDS.assetThumbnail,
+    assetName: "Cotton Candy Skies Thumbnail Concept",
+    assetType: "YouTube Thumbnail",
+    status: "Ready",
+    campaignId: DEMO_IDS.campaign,
+    campaignName: DEMO_CAMPAIGN_NAME,
+    artistName: DEMO_ARTIST_NAME,
+    songTitle: DEMO_SONG_TITLE,
+    productName: "",
+    platform: "YouTube",
+    filePath: "",
+    fileUrl: "",
+    externalUrl: "",
+    sourceTool: "ChatGPT",
+    sourcePromptRunId: DEMO_IDS.promptRunThumbnail,
+    sourcePromptName: "YouTube Thumbnail Generator",
+    sourceRecordType: "youtube-thumbnail",
+    sourceRecordId: DEMO_IDS.youtubeThumbnail,
+    experimentId: DEMO_IDS.experiment,
+    analyticsRecordId: "",
+    versionLabel: "v1",
+    tags: ["prettywise", "thumbnail", "cotton candy skies", "dark k-pop"],
+    description: "Demo thumbnail asset for Cotton Candy Skies.",
+    usageNotes: "",
+    rightsNotes: "",
+    notes: DEMO_DATA_MARKER,
+    createdAt: ts,
+    updatedAt: ts,
+  }
+
+  const assetMockup: AssetRecord = {
+    id: DEMO_IDS.assetMockup,
+    assetName: "Sweet Skies Dark Secrets Shirt Mockup",
+    assetType: "Merch Mockup",
+    status: "Draft",
+    campaignId: DEMO_IDS.campaign,
+    campaignName: DEMO_CAMPAIGN_NAME,
+    artistName: DEMO_ARTIST_NAME,
+    songTitle: "",
+    productName: "Sweet Skies, Dark Secrets PrettyWise Shirt",
+    platform: "Fourthwall",
+    filePath: "",
+    fileUrl: "",
+    externalUrl: "",
+    sourceTool: "ChatGPT",
+    sourcePromptRunId: "",
+    sourcePromptName: "",
+    sourceRecordType: "mockup-prompt",
+    sourceRecordId: DEMO_IDS.mockup,
+    experimentId: "",
+    analyticsRecordId: "",
+    versionLabel: "v1",
+    tags: ["prettywise", "merch", "mockup", "shirt"],
+    description: "Demo merch mockup asset for PrettyWise.",
+    usageNotes: "",
+    rightsNotes: "",
+    notes: DEMO_DATA_MARKER,
+    createdAt: ts,
+    updatedAt: ts,
+  }
+
   const promptRuns: PromptRun[] = [
     {
       id: DEMO_IDS.promptRunYoutube,
@@ -693,5 +756,6 @@ export function buildPrettyWiseDemoRecords(now = new Date()) {
     analytics,
     experiment,
     promptRuns,
+    assets: [assetThumbnail, assetMockup],
   }
 }

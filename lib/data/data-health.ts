@@ -20,6 +20,7 @@ import {
 } from "@/lib/data/data-health-repairs"
 import type {
   AnalyticsRecord,
+  AssetRecord,
   ExperimentRecord,
   ArtistRecord,
   CampaignLinkedRecordType,
@@ -126,6 +127,7 @@ export interface DataHealthScanInput {
   workflows: Workflow[]
   workflowRuns: WorkflowRun[]
   workspaceSettings: WorkspaceSettingsRecord | null
+  assets: AssetRecord[]
   jsonFields: DataHealthJsonField[]
 }
 
@@ -1285,6 +1287,7 @@ export function countScannableRecords(input: DataHealthScanInput): number {
     input.promptRuns.length +
     input.workflows.length +
     input.workflowRuns.length +
+    input.assets.length +
     (input.workspaceSettings ? 1 : 0)
   )
 }
@@ -1327,6 +1330,149 @@ export function createDataLoadFailureIssue(
   }
 }
 
+function scanAssetWarnings(
+  input: DataHealthScanInput,
+  sets: RecordIdSets,
+  issues: DataHealthIssue[],
+): void {
+  const experimentIds = new Set(input.experiments.map((e) => e.id))
+  const promptRunIds = new Set(input.promptRuns.map((r) => r.id))
+  const sourceTypeToSet: Record<string, Set<string> | undefined> = {
+    "release-plan": sets["release-plan"],
+    "youtube-package": sets["youtube-package"],
+    "youtube-thumbnail": sets["youtube-thumbnail"],
+    "social-repurposing": sets["social-repurposing"],
+    "merch-idea": sets["merch-idea"],
+    "product-listing": sets["product-listing"],
+    "mockup-prompt": sets["mockup-prompt"],
+    "email-campaign": sets["email-campaign"],
+    analytics: sets.analytics,
+    artist: sets.artist,
+    "prompt-run": sets["prompt-run"],
+  }
+
+  for (const asset of input.assets) {
+    const title = asset.assetName || "Untitled asset"
+    const href = `/assets?recordId=${encodeURIComponent(asset.id)}`
+
+    if (!hasText(asset.assetName)) {
+      pushIssue(issues, {
+        id: issueId(["asset-missing-name", asset.id]),
+        severity: "warning",
+        category: "incomplete-records",
+        title: "Asset missing name",
+        description: `Asset ${asset.id} has no asset name.`,
+        sourceType: "asset",
+        sourceId: asset.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Add an asset name in Asset Library.",
+      })
+    }
+
+    if (!hasText(asset.assetType)) {
+      pushIssue(issues, {
+        id: issueId(["asset-missing-type", asset.id]),
+        severity: "warning",
+        category: "incomplete-records",
+        title: "Asset missing type",
+        description: `Asset "${title}" has no asset type.`,
+        sourceType: "asset",
+        sourceId: asset.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Set an asset type (e.g. YouTube Thumbnail).",
+      })
+    }
+
+    if (asset.campaignId && !sets.campaign.has(asset.campaignId)) {
+      pushIssue(issues, {
+        id: issueId(["asset-missing-campaign", asset.id]),
+        severity: "warning",
+        category: "broken-links",
+        title: "Asset links to missing campaign",
+        description: `Asset "${title}" references campaign id ${asset.campaignId} which was not found.`,
+        sourceType: "asset",
+        sourceId: asset.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Clear the campaign link or link to an existing campaign.",
+      })
+    }
+
+    if (asset.sourcePromptRunId && !promptRunIds.has(asset.sourcePromptRunId)) {
+      pushIssue(issues, {
+        id: issueId(["asset-missing-prompt-run", asset.id]),
+        severity: "warning",
+        category: "broken-links",
+        title: "Asset links to missing prompt run",
+        description: `Asset "${title}" references prompt run ${asset.sourcePromptRunId} which was not found.`,
+        sourceType: "asset",
+        sourceId: asset.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Clear the prompt run link or save the prompt run first.",
+        relatedHref: "/runner",
+      })
+    }
+
+    if (asset.sourceRecordId && asset.sourceRecordType) {
+      const sourceSet = sourceTypeToSet[asset.sourceRecordType]
+      if (sourceSet && !sourceSet.has(asset.sourceRecordId)) {
+        pushIssue(issues, {
+          id: issueId(["asset-missing-source-record", asset.id]),
+          severity: "warning",
+          category: "broken-links",
+          title: "Asset links to missing source record",
+          description: `Asset "${title}" references ${asset.sourceRecordType} ${asset.sourceRecordId} which was not found.`,
+          sourceType: "asset",
+          sourceId: asset.id,
+          sourceTitle: title,
+          href,
+          suggestedAction: "Clear the source record link or recreate the source module record.",
+        })
+      }
+    }
+
+    if (asset.experimentId && !experimentIds.has(asset.experimentId)) {
+      pushIssue(issues, {
+        id: issueId(["asset-missing-experiment", asset.id]),
+        severity: "warning",
+        category: "broken-links",
+        title: "Asset links to missing experiment",
+        description: `Asset "${title}" references experiment ${asset.experimentId} which was not found.`,
+        sourceType: "asset",
+        sourceId: asset.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Clear the experiment link or create the experiment record.",
+        relatedHref: "/experiments",
+      })
+    }
+
+    const readyStatuses = new Set(["Ready", "Published"])
+    if (
+      readyStatuses.has(asset.status) &&
+      !hasText(asset.filePath) &&
+      !hasText(asset.fileUrl) &&
+      !hasText(asset.externalUrl)
+    ) {
+      pushIssue(issues, {
+        id: issueId(["asset-ready-no-location", asset.id]),
+        severity: "warning",
+        category: "missing-assets",
+        title: "Ready asset missing file or URL",
+        description: `Asset "${title}" is marked ${asset.status} but has no file path, file URL, or external URL.`,
+        sourceType: "asset",
+        sourceId: asset.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Add a file path, file URL, or external URL in Source & Links.",
+      })
+    }
+  }
+}
+
 function safeScan(
   scannerName: string,
   issues: DataHealthIssue[],
@@ -1365,6 +1511,7 @@ export function buildDataHealthReport(
   safeScan("Prompt run links", issues, () =>
     scanPromptRunLinkWarnings(input, sets, issues),
   )
+  safeScan("Asset library", issues, () => scanAssetWarnings(input, sets, issues))
   safeScan("JSON / data issues", issues, () => scanJsonIssues(input, issues))
 
   return {

@@ -59,6 +59,7 @@ import { RatingStars } from "@/components/rating-stars"
 import { StatusBadge } from "@/components/workflows/status-badge"
 import { PromptFormDialog } from "@/components/prompts/prompt-form-dialog"
 import { RecentActivityTimeline } from "@/components/activity/recent-activity-timeline"
+import { AssetDashboardCard } from "@/components/assets/asset-widgets"
 import { AutomationDashboardCard } from "@/components/automation/automation-suggestions-card"
 import { CalendarDashboardCard } from "@/components/calendar/calendar-widgets"
 
@@ -483,9 +484,10 @@ export function DashboardHome() {
 
       <RecentActivityTimeline limit={6} compact />
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
         <AutomationDashboardCard />
         <CalendarDashboardCard />
+        <AssetDashboardCard />
       </div>
 
       <Card className="border-border/80">

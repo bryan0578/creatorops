@@ -848,6 +848,61 @@ async function searchEmailCampaigns(query: string): Promise<GlobalSearchResult[]
   )
 }
 
+async function searchAssets(query: string): Promise<GlobalSearchResult[]> {
+  const rows = await prisma.asset.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: GLOBAL_SEARCH_FETCH_BATCH,
+  })
+
+  return pushMatches(
+    rows.map((row) => ({
+      ...row,
+      tagsText: parseTagsJson(row.tags),
+    })),
+    query,
+    [
+      "assetName",
+      "assetType",
+      "campaignName",
+      "artistName",
+      "songTitle",
+      "productName",
+      "platform",
+      "sourceTool",
+      "tagsText",
+      "description",
+      "notes",
+      "usageNotes",
+    ],
+    {
+      assetName: "Asset name",
+      assetType: "Asset type",
+      campaignName: "Campaign",
+      artistName: "Artist",
+      songTitle: "Song",
+      productName: "Product",
+      platform: "Platform",
+      sourceTool: "Source tool",
+      tagsText: "Tags",
+      description: "Description",
+      notes: "Notes",
+      usageNotes: "Usage notes",
+    },
+    (row, matchedFields) =>
+      makeResult(
+        "asset",
+        row.id as string,
+        row.assetName as string,
+        [row.assetType, row.status, row.campaignName].filter(Boolean).join(" · "),
+        previewText(row.description) || previewText(row.usageNotes),
+        row.createdAt as Date,
+        row.updatedAt as Date,
+        matchedFields,
+      ),
+    GLOBAL_SEARCH_LIMIT_PER_TYPE,
+  )
+}
+
 const SEARCHERS: {
   type: GlobalSearchResultType
   search: (query: string) => Promise<GlobalSearchResult[]>
@@ -869,6 +924,7 @@ const SEARCHERS: {
   { type: "experiment", search: searchExperiments },
   { type: "campaign", search: searchCampaigns },
   { type: "preset", search: searchPresets },
+  { type: "asset", search: searchAssets },
 ]
 
 /**

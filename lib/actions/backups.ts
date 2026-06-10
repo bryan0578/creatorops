@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/navigation"
 
 import { importAnalyticsRecords } from "@/lib/actions/analytics-records"
+import { getAssets, importAssets } from "@/lib/actions/assets"
 import { importArtists } from "@/lib/actions/artists"
 import { importCampaigns } from "@/lib/actions/campaigns"
 import { importPresets } from "@/lib/actions/presets"
@@ -56,6 +57,7 @@ import { getYouTubePackages } from "@/lib/actions/youtube-packages"
 import { getYouTubeThumbnails } from "@/lib/actions/youtube-thumbnails"
 import { prisma } from "@/lib/prisma"
 import type {
+  AssetRecord,
   ExperimentRecord,
   AnalyticsRecord,
   ArtistRecord,
@@ -96,6 +98,7 @@ const REVALIDATE_PATHS = [
   "/experiments",
   "/campaigns",
   "/presets",
+  "/assets",
   "/search",
   "/settings",
 ]
@@ -141,6 +144,7 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     experiments,
     campaigns,
     presets,
+    assets,
     workspaceSettingsRow,
   ] = await Promise.all([
     getPrompts(),
@@ -160,6 +164,7 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     getExperiments(),
     getCampaigns(),
     getPresets(),
+    getAssets(),
     getWorkspaceSettings(),
   ])
 
@@ -183,6 +188,7 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     experiments,
     campaigns,
     presets,
+    assets,
     workspaceSettings,
   }
 }
@@ -245,6 +251,7 @@ async function clearAllBackupTables(): Promise<void> {
   await prisma.experiment.deleteMany()
   await prisma.campaign.deleteMany()
   await prisma.preset.deleteMany()
+  await prisma.asset.deleteMany()
   await prisma.workspaceSettings.deleteMany()
 }
 
@@ -308,6 +315,9 @@ async function importBackupData(
   }
   if (data.presets.length > 0) {
     await importPresets(data.presets as PresetRecord[])
+  }
+  if (data.assets.length > 0) {
+    await importAssets(data.assets as AssetRecord[])
   }
   if (data.workspaceSettings.length > 0) {
     await importWorkspaceSettings(data.workspaceSettings as WorkspaceSettingsRecord[])

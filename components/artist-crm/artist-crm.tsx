@@ -28,6 +28,7 @@ import type {
   ArtistMerchProduct,
   ArtistRecord,
   ArtistRelease,
+  AssetRecord,
 } from "@/lib/types"
 import {
   ARTIST_CAMPAIGN_STATUSES,
@@ -37,6 +38,8 @@ import {
 } from "@/lib/types"
 import { copyToClipboard } from "@/lib/copy-to-clipboard"
 import { migrateLocalArtistsToDatabase } from "@/lib/actions/artists"
+import { getAssets } from "@/lib/actions/assets"
+import { filterAssetsForArtist } from "@/lib/assets"
 import { downloadJson, loadArtistRecords } from "@/lib/storage"
 import {
   buildFinalThumbnailText,
@@ -238,6 +241,7 @@ export function ArtistCrm() {
     null,
   )
   const [migrating, setMigrating] = React.useState(false)
+  const [assetRecords, setAssetRecords] = React.useState<AssetRecord[]>([])
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   const showDetail = Boolean(editingId || form.artistName.trim())
@@ -426,6 +430,17 @@ export function ArtistCrm() {
       ),
     [form.artistName, releases, youtubeThumbnailRecords],
   )
+
+  const relatedAssets = React.useMemo(
+    () => filterAssetsForArtist(assetRecords, form.artistName),
+    [assetRecords, form.artistName],
+  )
+
+  React.useEffect(() => {
+    void getAssets()
+      .then(setAssetRecords)
+      .catch(() => setAssetRecords([]))
+  }, [])
 
   const primaryRelease = React.useMemo(
     () => releases.find((r) => r.songTitle.trim()) ?? releases[0],
@@ -1300,6 +1315,53 @@ export function ArtistCrm() {
                           </div>
                         )
                       })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Related assets</CardTitle>
+                  <CardDescription>
+                    Asset Library entries matching this artist name
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {relatedAssets.length === 0 ? (
+                    <EmptyState
+                      className="py-4"
+                      title="No related assets yet"
+                      description="Assets linked by artist name or campaign will appear here."
+                      primaryActionLabel="Open Asset Library"
+                      primaryActionHref="/assets"
+                    />
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {relatedAssets.slice(0, 6).map((asset) => (
+                        <Link
+                          key={asset.id}
+                          href={`/assets?recordId=${encodeURIComponent(asset.id)}`}
+                          className="flex flex-col gap-1 rounded-md border p-3 transition-colors hover:bg-muted/30"
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-medium">
+                              {asset.assetName || "Untitled asset"}
+                            </p>
+                            {asset.assetType ? (
+                              <Badge variant="secondary">{asset.assetType}</Badge>
+                            ) : null}
+                            {asset.status ? (
+                              <Badge variant="outline">{asset.status}</Badge>
+                            ) : null}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {[asset.campaignName, asset.platform]
+                              .filter(Boolean)
+                              .join(" · ") || "No campaign set"}
+                          </p>
+                        </Link>
+                      ))}
                     </div>
                   )}
                 </CardContent>

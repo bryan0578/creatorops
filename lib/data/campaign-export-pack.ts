@@ -12,8 +12,10 @@ import {
 } from "@/lib/data/campaign-pack-templates"
 import { formatPublishingChecklistMarkdown } from "@/lib/data/publishing-checklist"
 import { filterExperimentsForCampaign } from "@/lib/experiments"
+import { filterAssetsForCampaign } from "@/lib/assets"
 import type {
   AnalyticsRecord,
+  AssetRecord,
   ArtistRecord,
   CampaignLinkedRecord,
   CampaignLinkedRecordType,
@@ -42,6 +44,7 @@ export interface CampaignExportSectionContext {
   campaign: CampaignRecord
   relatedRecords: CampaignRelatedRecordsBundle
   experiments: ExperimentRecord[]
+  assets: AssetRecord[]
   missingAssets: CampaignExportMissingAsset[]
   readinessLabel: string
   taskProgress: string
@@ -916,6 +919,58 @@ export function renderLinkedRecords(ctx: CampaignExportSectionContext): string {
   ].join("\n")
 }
 
+const READY_ASSET_STATUSES = new Set(["Ready", "Used", "Published"])
+
+function formatAssetLibrarySection(
+  assets: AssetRecord[],
+  heading: string,
+): string {
+  const readyAssets = assets.filter((asset) => READY_ASSET_STATUSES.has(asset.status))
+  if (readyAssets.length === 0) {
+    return `## ${heading}\n\nNo ready assets found for this section.\n`
+  }
+
+  const lines = readyAssets.map((asset) => {
+    const location =
+      asset.fileUrl || asset.filePath || asset.externalUrl || "No file path or URL on record."
+    const usage = asset.usageNotes?.trim()
+    return [
+      `### ${mdValue(asset.assetName, "Untitled asset")}`,
+      "",
+      mdBullet("Type", asset.assetType),
+      mdBullet("Status", asset.status),
+      mdBullet("Platform", asset.platform),
+      mdBullet("Version", asset.versionLabel),
+      mdBullet("Location", location),
+      usage ? mdMultiline("Usage notes", usage) : "",
+    ]
+      .filter(Boolean)
+      .join("\n")
+  })
+
+  return [`## ${heading}`, "", ...lines, ""].join("\n")
+}
+
+export function renderAssetLibrary(ctx: CampaignExportSectionContext): string {
+  return formatAssetLibrarySection(ctx.assets, "Asset Library")
+}
+
+export function renderAssetLibraryYouTube(ctx: CampaignExportSectionContext): string {
+  const youtubeTypes = new Set(["YouTube Thumbnail", "Shorts Cover", "Video File"])
+  return formatAssetLibrarySection(
+    ctx.assets.filter((asset) => youtubeTypes.has(asset.assetType)),
+    "YouTube / Video Assets",
+  )
+}
+
+export function renderAssetLibraryMerch(ctx: CampaignExportSectionContext): string {
+  const merchTypes = new Set(["Merch Mockup", "Product Image", "Product Mockup"])
+  return formatAssetLibrarySection(
+    ctx.assets.filter((asset) => merchTypes.has(asset.assetType)),
+    "Merch / Product Assets",
+  )
+}
+
 const YOUTUBE_MISSING_KEYS = ["youtube-package", "youtube-thumbnail"]
 const SOCIAL_MISSING_KEYS = ["social-repurposing"]
 const COMMERCE_MISSING_KEYS = ["merch-idea", "product-listing", "mockup-prompt"]
@@ -1201,6 +1256,12 @@ function renderPackSection(
       return sectionExperimentVariantResults(ctx.experiments)
     case "youtube-title-thumbnail-experiments":
       return sectionYouTubeTitleThumbnailExperiments(ctx.experiments)
+    case "asset-library":
+      return renderAssetLibrary(ctx)
+    case "asset-library-youtube":
+      return renderAssetLibraryYouTube(ctx)
+    case "asset-library-merch":
+      return renderAssetLibraryMerch(ctx)
     default:
       return ""
   }
@@ -1240,8 +1301,9 @@ export function generateCampaignExportMarkdownLegacy(input: {
 }): string {
   return generateCampaignExportMarkdown({
     campaign: input.campaign,
-    relatedRecords: input.relatedRecords,
+    relatedRecords: input.    relatedRecords,
     experiments: [],
+    assets: [],
     missingAssets: input.missingAssets,
     readinessLabel: input.readinessLabel,
     taskProgress: input.taskProgress,
@@ -1283,6 +1345,7 @@ export function buildCampaignExportPack(
     templateId?: CampaignPackTemplateId | string
     generatedAt?: Date
     experiments?: ExperimentRecord[]
+    assets?: AssetRecord[]
   },
 ): CampaignExportPackResult {
   const template = getCampaignPackTemplate(options?.templateId)
@@ -1290,6 +1353,11 @@ export function buildCampaignExportPack(
   const relatedRecords = resolveCampaignRelatedRecords(campaign, store)
   const campaignExperiments = filterExperimentsForCampaign(
     options?.experiments ?? [],
+    campaign.id,
+    campaign.campaignName,
+  )
+  const campaignAssets = filterAssetsForCampaign(
+    options?.assets ?? [],
     campaign.id,
     campaign.campaignName,
   )
@@ -1317,6 +1385,7 @@ export function buildCampaignExportPack(
     campaign,
     relatedRecords,
     experiments: campaignExperiments,
+    assets: campaignAssets,
     missingAssets,
     readinessLabel: assetScore,
     taskProgress,

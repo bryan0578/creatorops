@@ -33,6 +33,7 @@ export type GlobalSearchResultType =
   | "experiment"
   | "campaign"
   | "preset"
+  | "asset"
 
 export interface GlobalSearchResult {
   id: string
@@ -143,6 +144,11 @@ export const GLOBAL_SEARCH_TYPE_META: Record<
     category: "core",
     href: "/presets",
   },
+  asset: {
+    typeLabel: "Asset",
+    category: "operations",
+    href: "/assets",
+  },
 }
 
 export function normalizeSearchQuery(raw: string): string {
@@ -195,6 +201,7 @@ const GLOBAL_SEARCH_RECORD_ID_TYPES = new Set<GlobalSearchResultType>([
   "artist",
   "prompt-run",
   "workflow-run",
+  "asset",
 ])
 
 export function buildResultHref(

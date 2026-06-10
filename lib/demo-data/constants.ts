@@ -30,6 +30,8 @@ export const DEMO_IDS = {
   experiment: `${DEMO_ID_PREFIX}prettywise-experiment`,
   promptRunYoutube: `${DEMO_ID_PREFIX}prettywise-prompt-run-youtube`,
   promptRunThumbnail: `${DEMO_ID_PREFIX}prettywise-prompt-run-thumbnail`,
+  assetThumbnail: `${DEMO_ID_PREFIX}prettywise-asset-thumbnail`,
+  assetMockup: `${DEMO_ID_PREFIX}prettywise-asset-mockup`,
 } as const
 
 export function isDemoDataNotes(notes: string | null | undefined): boolean {

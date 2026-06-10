@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 
 import { deleteAnalyticsRecordById, upsertAnalyticsRecord } from "@/lib/actions/analytics-records"
+import { createAsset, deleteAsset } from "@/lib/actions/assets"
 import { createExperiment, deleteExperiment } from "@/lib/actions/experiments"
 import { deleteArtistById, upsertArtist } from "@/lib/actions/artists"
 import { deleteCampaignById, upsertCampaign } from "@/lib/actions/campaigns"
@@ -59,6 +60,7 @@ const REVALIDATE_PATHS = [
   "/runner",
   "/search",
   "/backups",
+  "/assets",
   "/activity",
 ]
 
@@ -79,6 +81,7 @@ export type DemoDataStatus = {
     analytics: number
     experiment: number
     promptRun: number
+    asset: number
   }
   lastSeededAt: number | null
 }
@@ -104,6 +107,7 @@ async function countDemoRows() {
     analytics,
     experiments,
     promptRuns,
+    assets,
   ] = await Promise.all([
     prisma.artist.count({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
     prisma.campaign.count({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
@@ -118,6 +122,7 @@ async function countDemoRows() {
     prisma.analyticsRecord.count({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
     prisma.experiment.count({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
     prisma.promptRun.count({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
+    prisma.asset.count({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
   ])
 
   const recordCounts = {
@@ -134,6 +139,7 @@ async function countDemoRows() {
     analytics,
     experiment: experiments,
     promptRun: promptRuns,
+    asset: assets,
   }
 
   const totalRecords = Object.values(recordCounts).reduce((sum, n) => sum + n, 0)
@@ -177,6 +183,7 @@ async function findRowNotesById(
     prisma.analyticsRecord.findUnique({ where: { id }, select: { id: true, notes: true } }),
     prisma.experiment.findUnique({ where: { id }, select: { id: true, notes: true } }),
     prisma.promptRun.findUnique({ where: { id }, select: { id: true, notes: true } }),
+    prisma.asset.findUnique({ where: { id }, select: { id: true, notes: true } }),
   ]
 
   for (const query of queries) {
@@ -207,6 +214,8 @@ export async function seedDemoData(): Promise<{
       DEMO_IDS.experiment,
       DEMO_IDS.promptRunYoutube,
       DEMO_IDS.promptRunThumbnail,
+      DEMO_IDS.assetThumbnail,
+      DEMO_IDS.assetMockup,
     ]
 
     for (const id of demoIds) {
@@ -237,6 +246,9 @@ export async function seedDemoData(): Promise<{
     await upsertCampaign(demo.campaign)
     for (const run of demo.promptRuns) {
       await upsertPromptRun(run)
+    }
+    for (const asset of demo.assets) {
+      await createAsset(asset)
     }
 
     revalidateDemoRoutes()
@@ -295,6 +307,7 @@ export async function deleteDemoData(): Promise<{
       experiments,
       artists,
       promptRunRows,
+      assetRows,
     ] = await Promise.all([
       prisma.releasePlan.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
       prisma.youTubePackage.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
@@ -308,8 +321,12 @@ export async function deleteDemoData(): Promise<{
       prisma.experiment.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
       prisma.artist.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
       prisma.promptRun.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
+      prisma.asset.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
     ])
 
+    await deleteMarked(assetRows, async (id) => {
+      await deleteAsset(id)
+    })
     await deleteMarked(promptRunRows, deletePromptRunById)
     await deleteMarked(releasePlans, deleteReleasePlanById)
     await deleteMarked(youtubePackages, deleteYouTubePackageById)

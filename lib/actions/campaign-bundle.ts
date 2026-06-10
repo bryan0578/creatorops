@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache"
 
+import { getAssets } from "@/lib/actions/assets"
 import { getCampaigns } from "@/lib/actions/campaigns"
+import { assetToPrismaCreate } from "@/lib/data/assets"
 import {
   analyticsRecordToPrismaCreate,
 } from "@/lib/data/analytics-records"
@@ -51,7 +53,7 @@ import { youtubePackageToPrismaCreate } from "@/lib/data/youtube-packages"
 import { prismaYouTubeThumbnailToRecord } from "@/lib/data/youtube-thumbnails"
 import { youtubeThumbnailToPrismaCreate } from "@/lib/data/youtube-thumbnails"
 import { prisma } from "@/lib/prisma"
-import type { CampaignRecord } from "@/lib/types"
+import type { AssetRecord, CampaignRecord } from "@/lib/types"
 
 const REVALIDATE_PATHS = [
   "/",
@@ -74,6 +76,7 @@ const REVALIDATE_PATHS = [
   "/runner",
   "/workflow-runner",
   "/presets",
+  "/assets",
   "/data-health",
 ]
 
@@ -86,13 +89,14 @@ function revalidateBundleRoutes() {
 async function loadCampaignBundleStore(): Promise<
   CampaignBundleStore & { campaigns: CampaignRecord[] }
 > {
-  const [linkable, experiments, promptRuns, workflowRuns, presets, campaigns] =
+  const [linkable, experiments, promptRuns, workflowRuns, presets, assets, campaigns] =
     await Promise.all([
       loadCampaignLinkableStoreSlice(),
       prisma.experiment.findMany({ orderBy: { updatedAt: "desc" } }),
       prisma.promptRun.findMany({ orderBy: { updatedAt: "desc" } }),
       prisma.workflowRun.findMany({ orderBy: { updatedAt: "desc" } }),
       prisma.preset.findMany({ orderBy: { updatedAt: "desc" } }),
+      getAssets(),
       getCampaigns(),
     ])
 
@@ -100,6 +104,7 @@ async function loadCampaignBundleStore(): Promise<
     ...linkable,
     experiments: experiments.map(prismaExperimentToExperimentRecord),
     presets: presets.map(prismaPresetToPresetRecord),
+    assets,
     runs: promptRuns.map(prismaPromptRunToPromptRun),
     workflowRuns: workflowRuns.map(prismaWorkflowRunToWorkflowRun),
     campaigns,
@@ -164,6 +169,7 @@ export async function previewCampaignBundleImportAction(
         promptRuns: 0,
         workflowRuns: 0,
         presets: 0,
+        assets: 0,
       },
       conflicts: [],
       warnings: [],
@@ -346,6 +352,14 @@ export async function importCampaignBundle(
         "preset",
         preview,
         (record) => tx.preset.create({ data: presetToPrismaCreate(record) }),
+      )
+      await createPairedRecords(
+        tx,
+        bundle.linkedRecords.assets,
+        remapped.linkedRecords.assets,
+        "asset",
+        preview,
+        (record) => tx.asset.create({ data: assetToPrismaCreate(record as AssetRecord) }),
       )
 
       if (!skipCampaignCreate) {

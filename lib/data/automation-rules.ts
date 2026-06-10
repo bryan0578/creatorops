@@ -10,6 +10,7 @@ import {
 } from "@/lib/campaign-launch-dashboard"
 import { buildMissingAssetRepair } from "@/lib/data/data-health-repairs"
 import type { DataHealthReport } from "@/lib/data/data-health"
+import { filterAssetsForCampaign } from "@/lib/assets"
 import { normalizeStatusToStage } from "@/lib/data/campaign-board"
 import {
   generateDefaultPublishingChecklist,
@@ -18,7 +19,7 @@ import {
   isPublishedCampaignStatus,
   isReadyToPublishCampaignStatus,
 } from "@/lib/data/publishing-checklist"
-import type { CampaignLinkedRecordType, CampaignRecord, ExperimentRecord, PromptRun } from "@/lib/types"
+import type { CampaignLinkedRecordType, CampaignRecord, ExperimentRecord, AssetRecord, PromptRun } from "@/lib/types"
 
 export type AutomationPriority = "high" | "medium" | "low" | "info"
 
@@ -102,6 +103,7 @@ export interface AutomationEvaluationContext {
   store: CampaignLinkableStoreSlice & {
     experiments: ExperimentRecord[]
     runs: PromptRun[]
+    assets: AssetRecord[]
   }
   dataHealth: DataHealthReport | null
   dataHealthFailed: boolean
@@ -244,6 +246,38 @@ export const BUILTIN_AUTOMATION_RULES: BuiltinAutomationRule[] = [
     enabled: true,
   },
   {
+    id: "asset-library-missing-thumbnail",
+    name: "Thumbnail Record Without Asset",
+    description: "Campaigns with YouTube Thumbnail records but no matching Asset Library entry.",
+    category: "Missing Asset",
+    priority: "medium",
+    enabled: true,
+  },
+  {
+    id: "asset-library-missing-mockup",
+    name: "Mockup Prompt Without Asset",
+    description: "Campaigns with Mockup Prompt records but no matching Asset Library entry.",
+    category: "Missing Asset",
+    priority: "medium",
+    enabled: true,
+  },
+  {
+    id: "asset-library-ready-no-thumbnail",
+    name: "Ready to Publish Without Ready Asset",
+    description: "Ready-to-publish campaigns missing a ready thumbnail or product image asset.",
+    category: "Missing Asset",
+    priority: "medium",
+    enabled: true,
+  },
+  {
+    id: "asset-library-prompt-run-unlinked",
+    name: "Image Prompt Run Without Asset",
+    description: "Prompt runs for thumbnails or mockups without a linked asset record.",
+    category: "Missing Asset",
+    priority: "info",
+    enabled: true,
+  },
+  {
     id: "review-due",
     name: "Review Due Suggestions",
     description: "Suggests performance reviews based on launch date.",
@@ -252,6 +286,159 @@ export const BUILTIN_AUTOMATION_RULES: BuiltinAutomationRule[] = [
     enabled: true,
   },
 ]
+
+function campaignHasAssetForSourceRecord(
+  assets: AssetRecord[],
+  sourceRecordType: string,
+  sourceRecordId: string,
+): boolean {
+  return assets.some(
+    (asset) =>
+      asset.sourceRecordType === sourceRecordType &&
+      asset.sourceRecordId === sourceRecordId,
+  )
+}
+
+function campaignHasAssetType(
+  assets: AssetRecord[],
+  assetTypes: string[],
+  readyOnly = false,
+): boolean {
+  const typeSet = new Set(assetTypes.map((t) => t.toLowerCase()))
+  return assets.some((asset) => {
+    if (!typeSet.has(asset.assetType.trim().toLowerCase())) return false
+    if (!readyOnly) return true
+    return ["Ready", "Used", "Published"].includes(asset.status)
+  })
+}
+
+function evaluateMissingAssetLibrary(
+  ctx: AutomationEvaluationContext,
+  suggestions: AutomationSuggestion[],
+) {
+  const assets = ctx.store.assets ?? []
+
+  for (const campaign of ctx.campaigns) {
+    const campaignAssets = filterAssetsForCampaign(
+      assets,
+      campaign.id,
+      campaign.campaignName,
+    )
+
+    for (const link of campaign.linkedRecords) {
+      if (link.type === "youtube-thumbnail" && link.id) {
+        if (!campaignHasAssetForSourceRecord(campaignAssets, "youtube-thumbnail", link.id)) {
+          const href = `/assets?campaignId=${encodeURIComponent(campaign.id)}&sourceRecordType=youtube-thumbnail&sourceRecordId=${encodeURIComponent(link.id)}`
+          suggestions.push({
+            id: suggestionId(["asset-library-missing-thumbnail", campaign.id, link.id]),
+            ruleId: "asset-library-missing-thumbnail",
+            priority: "medium",
+            category: "Missing Asset",
+            title: "Save thumbnail as asset",
+            description: `${campaign.campaignName || "Campaign"} has a YouTube Thumbnail record without a matching Asset Library entry.`,
+            campaignId: campaign.id,
+            campaignName: campaign.campaignName,
+            sourceType: "youtube-thumbnail",
+            sourceId: link.id,
+            suggestedActionLabel: "Open Asset Library",
+            actionType: "navigate",
+            actionPayload: { href, campaignId: campaign.id },
+            href,
+            canApply: false,
+            reason: "Thumbnail concepts should be tracked in Asset Library.",
+          })
+        }
+      }
+
+      if (link.type === "mockup-prompt" && link.id) {
+        if (!campaignHasAssetForSourceRecord(campaignAssets, "mockup-prompt", link.id)) {
+          const href = `/assets?campaignId=${encodeURIComponent(campaign.id)}&sourceRecordType=mockup-prompt&sourceRecordId=${encodeURIComponent(link.id)}`
+          suggestions.push({
+            id: suggestionId(["asset-library-missing-mockup", campaign.id, link.id]),
+            ruleId: "asset-library-missing-mockup",
+            priority: "medium",
+            category: "Missing Asset",
+            title: "Save mockup as asset",
+            description: `${campaign.campaignName || "Campaign"} has a Mockup Prompt without a matching Asset Library entry.`,
+            campaignId: campaign.id,
+            campaignName: campaign.campaignName,
+            sourceType: "mockup-prompt",
+            sourceId: link.id,
+            suggestedActionLabel: "Open Asset Library",
+            actionType: "navigate",
+            actionPayload: { href, campaignId: campaign.id },
+            href,
+            canApply: false,
+            reason: "Mockup prompts should be tracked as production assets.",
+          })
+        }
+      }
+    }
+
+    if (isReadyToPublishCampaignStatus(campaign.status)) {
+      const isMusic = isMusicLaunchCampaign(campaign.campaignType)
+      const isCommerce = isCommerceLaunchCampaign(campaign.campaignType)
+      const requiredTypes = isMusic
+        ? ["YouTube Thumbnail", "Video File", "Shorts Cover"]
+        : isCommerce
+          ? ["Product Image", "Product Mockup", "Merch Mockup"]
+          : []
+
+      if (
+        requiredTypes.length > 0 &&
+        !campaignHasAssetType(campaignAssets, requiredTypes, true)
+      ) {
+        const href = `/assets?campaignId=${encodeURIComponent(campaign.id)}`
+        suggestions.push({
+          id: suggestionId(["asset-library-ready-no-thumbnail", campaign.id]),
+          ruleId: "asset-library-ready-no-thumbnail",
+          priority: "medium",
+          category: "Missing Asset",
+          title: "Add ready production asset",
+          description: `${campaign.campaignName || "Campaign"} is ready to publish but has no ready ${isMusic ? "thumbnail or video" : "product image or mockup"} asset.`,
+          campaignId: campaign.id,
+          campaignName: campaign.campaignName,
+          suggestedActionLabel: "Open Asset Library",
+          actionType: "navigate",
+          actionPayload: { href, campaignId: campaign.id },
+          href,
+          canApply: false,
+          reason: "Ready-to-publish campaigns should have at least one ready visual asset.",
+        })
+      }
+    }
+  }
+
+  for (const run of ctx.store.runs) {
+    if (run.moduleType !== "YouTube Thumbnail" && run.moduleType !== "Mockup Prompt") {
+      continue
+    }
+    const hasLinkedAsset = assets.some((asset) => asset.sourcePromptRunId === run.id)
+    if (hasLinkedAsset) continue
+
+    const href = run.campaignId
+      ? `/assets?campaignId=${encodeURIComponent(run.campaignId)}`
+      : "/assets"
+    suggestions.push({
+      id: suggestionId(["asset-library-prompt-run-unlinked", run.id]),
+      ruleId: "asset-library-prompt-run-unlinked",
+      priority: "info",
+      category: "Missing Asset",
+      title: "Save prompt run output as asset",
+      description: `${run.promptName || run.moduleType || "Prompt run"} has no linked Asset Library record.`,
+      campaignId: run.campaignId || undefined,
+      campaignName: run.campaignName || undefined,
+      sourceType: "prompt-run",
+      sourceId: run.id,
+      suggestedActionLabel: "Open Asset Library",
+      actionType: "navigate",
+      actionPayload: { href, campaignId: run.campaignId },
+      href,
+      canApply: false,
+      reason: "Image-generation prompt runs can be saved as assets.",
+    })
+  }
+}
 
 function evaluateMissingAssets(
   ctx: AutomationEvaluationContext,
@@ -701,6 +888,7 @@ function evaluateReviewDue(ctx: AutomationEvaluationContext, suggestions: Automa
 
 const RULE_EVALUATORS: Array<(ctx: AutomationEvaluationContext, out: AutomationSuggestion[]) => void> = [
   evaluateMissingAssets,
+  evaluateMissingAssetLibrary,
   evaluateMissingPublishingChecklist,
   evaluatePublishedReviewTasks,
   evaluateReadyToPublishStatus,

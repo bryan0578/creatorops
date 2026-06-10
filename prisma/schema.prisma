@@ -682,6 +682,47 @@ model Experiment {
   @@index([updatedAt])
 }
 
+/// Creative asset metadata — files, URLs, references, and production assets.
+model Asset {
+  id                 String   @id
+  assetName          String   @default("")
+  assetType          String   @default("")
+  status             String   @default("Draft")
+  campaignId         String   @default("")
+  campaignName       String   @default("")
+  artistName         String   @default("")
+  songTitle          String   @default("")
+  productName        String   @default("")
+  platform           String   @default("")
+  filePath           String   @default("")
+  fileUrl            String   @default("")
+  externalUrl        String   @default("")
+  sourceTool         String   @default("")
+  sourcePromptRunId  String   @default("")
+  sourcePromptName   String   @default("")
+  sourceRecordType   String   @default("")
+  sourceRecordId     String   @default("")
+  experimentId       String   @default("")
+  analyticsRecordId  String   @default("")
+  versionLabel       String   @default("")
+  tags               String   @default("[]")
+  description        String   @default("")
+  usageNotes         String   @default("")
+  rightsNotes        String   @default("")
+  notes              String   @default("")
+  createdAt          DateTime
+  updatedAt          DateTime
+
+  @@index([assetName])
+  @@index([assetType])
+  @@index([campaignId])
+  @@index([campaignName])
+  @@index([artistName])
+  @@index([songTitle])
+  @@index([status])
+  @@index([updatedAt])
+}
+
 /// Singleton workspace defaults for CreatorOps (single row id: creatorops-workspace-default).
 model WorkspaceSettings {
   id                    String   @id

@@ -1,5 +1,6 @@
 "use server"
 
+import { getAssets } from "@/lib/actions/assets"
 import { prismaCampaignToCampaignRecord } from "@/lib/data/campaigns"
 import { prismaExperimentToExperimentRecord } from "@/lib/data/experiments"
 import {
@@ -19,10 +20,11 @@ export async function getCampaignExportPack(
     throw new Error("Campaign id is required.")
   }
 
-  const [row, store, experimentRows] = await Promise.all([
+  const [row, store, experimentRows, assets] = await Promise.all([
     prisma.campaign.findUnique({ where: { id: trimmedId } }),
     loadCampaignLinkableStoreSlice(),
     prisma.experiment.findMany({ orderBy: { updatedAt: "desc" } }),
+    getAssets(),
   ])
 
   if (!row) {
@@ -31,5 +33,5 @@ export async function getCampaignExportPack(
 
   const campaign = prismaCampaignToCampaignRecord(row)
   const experiments = experimentRows.map(prismaExperimentToExperimentRecord)
-  return buildCampaignExportPack(campaign, store, { templateId, experiments })
+  return buildCampaignExportPack(campaign, store, { templateId, experiments, assets })
 }

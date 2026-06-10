@@ -35,6 +35,7 @@ import { CampaignBundleSection } from "@/components/campaigns/launch-dashboard/c
 import { CampaignExportPackSection } from "@/components/campaigns/launch-dashboard/campaign-export-pack-section"
 import { CampaignPublishingChecklistCard } from "@/components/campaigns/launch-dashboard/campaign-publishing-checklist-card"
 import { CampaignPromptHistoryCard } from "@/components/campaigns/launch-dashboard/campaign-prompt-history-card"
+import { CampaignAssetLibraryCard } from "@/components/assets/asset-widgets"
 import { CampaignAutomationSuggestionsCard } from "@/components/automation/automation-suggestions-card"
 import { CampaignCalendarTimelineCard } from "@/components/calendar/calendar-widgets"
 
@@ -434,6 +435,7 @@ export function CampaignLaunchDashboard({
       <div className="grid gap-4 xl:grid-cols-2">
         <CampaignAutomationSuggestionsCard campaignId={campaign.id} />
         <CampaignCalendarTimelineCard campaignId={campaign.id} />
+        <CampaignAssetLibraryCard campaignId={campaign.id} />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">

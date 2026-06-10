@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { parseImportJsonText } from "@/lib/safe-json"
 import {
   Copy,
@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner"
 
 import { migrateLocalYouTubeThumbnailsToDatabase } from "@/lib/actions/youtube-thumbnails"
+import { createAsset } from "@/lib/actions/assets"
 import { useStore, createId } from "@/lib/store"
 import type {
   YouTubeThumbnailFormValues,
@@ -38,6 +39,8 @@ import {
   YOUTUBE_THUMBNAIL_PROMPT_NAME,
   type YouTubeThumbnailFinalFields,
 } from "@/lib/youtube-thumbnails"
+import { recordFromAssetForm } from "@/lib/assets"
+import { buildAssetFromYouTubeThumbnail } from "@/lib/assets-prefill"
 import {
   campaignPrefillToastMessage,
   linkRecordToCampaign,
@@ -221,6 +224,8 @@ export function YouTubeThumbnailGenerator() {
   const [migrating, setMigrating] = React.useState(false)
   const prefillApplied = React.useRef(false)
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const [savingAsAsset, setSavingAsAsset] = React.useState(false)
   const [campaignPrefill, setCampaignPrefill] = React.useState(
     parseCampaignPrefillContext(searchParams),
   )
@@ -338,6 +343,39 @@ export function YouTubeThumbnailGenerator() {
       if (linked) toast.message("Linked to campaign")
     } catch {
       toast.error("Could not save thumbnail to database")
+    }
+  }
+
+  async function handleSaveAsAsset() {
+    if (!editingId) {
+      toast.error("Save the thumbnail record first.")
+      return
+    }
+
+    const record = normalizeYouTubeThumbnailRecord({
+      id: editingId,
+      ...form,
+      completedPrompt,
+      aiResponse,
+      ...finalThumbnail,
+      createdAt:
+        youtubeThumbnailRecords.find((r) => r.id === editingId)?.createdAt ??
+        Date.now(),
+      updatedAt: Date.now(),
+    })
+
+    setSavingAsAsset(true)
+    try {
+      const assetForm = buildAssetFromYouTubeThumbnail(record, campaignPrefill)
+      const asset = await createAsset(
+        recordFromAssetForm(createId("asset"), assetForm, { updatedAt: Date.now() }),
+      )
+      toast.success("Saved as asset")
+      router.push(`/assets?recordId=${encodeURIComponent(asset.id)}`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save asset.")
+    } finally {
+      setSavingAsAsset(false)
     }
   }
 
@@ -535,6 +573,16 @@ export function YouTubeThumbnailGenerator() {
             <Button type="button" onClick={handleSave}>
               {editingId ? "Update thumbnail" : "Save thumbnail"}
             </Button>
+            {editingId ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={savingAsAsset}
+                onClick={() => void handleSaveAsAsset()}
+              >
+                {savingAsAsset ? "Saving…" : "Save as Asset"}
+              </Button>
+            ) : null}
             {editingId ? (
               <Button type="button" variant="outline" onClick={resetForm}>
                 New thumbnail

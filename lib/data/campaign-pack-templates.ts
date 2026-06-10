@@ -73,6 +73,9 @@ export type CampaignPackSectionKey =
   | "experiment-analytics-linked"
   | "experiment-variant-results"
   | "youtube-title-thumbnail-experiments"
+  | "asset-library"
+  | "asset-library-youtube"
+  | "asset-library-merch"
 
 export interface CampaignPackTemplate {
   id: CampaignPackTemplateId
@@ -104,6 +107,7 @@ export const CAMPAIGN_PACK_TEMPLATES: CampaignPackTemplate[] = [
       "merch-idea",
       "product-listing",
       "mockup-prompt",
+      "asset-library",
       "analytics-checklist",
       "experiments-overview",
       "experiment-winners-learnings",
@@ -129,6 +133,7 @@ export const CAMPAIGN_PACK_TEMPLATES: CampaignPackTemplate[] = [
       "youtube-pinned-comment",
       "youtube-tags-hashtags",
       "youtube-title-thumbnail-experiments",
+      "asset-library-youtube",
       "launch-tasks",
       "publishing-checklist",
       "missing-youtube-assets",
@@ -170,6 +175,7 @@ export const CAMPAIGN_PACK_TEMPLATES: CampaignPackTemplate[] = [
       "merch-social-caption",
       "merch-email-subject",
       "commerce-store-details",
+      "asset-library-merch",
       "publishing-checklist",
       "missing-commerce-assets",
     ],

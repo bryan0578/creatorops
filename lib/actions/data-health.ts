@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 import { getCampaigns, upsertCampaign } from "@/lib/actions/campaigns"
 import { normalizeCampaignRecord } from "@/lib/campaigns"
 import { prismaAnalyticsRecordToAnalyticsRecord } from "@/lib/data/analytics-records"
+import { prismaAssetToAssetRecord } from "@/lib/data/assets"
 import { prismaArtistToArtistRecord } from "@/lib/data/artists"
 import { prismaCampaignToCampaignRecord } from "@/lib/data/campaigns"
 import {
@@ -212,6 +213,7 @@ async function loadScanInput(): Promise<{
     workflows,
     workflowRuns,
     workspaceSettings,
+    assets,
     jsonFields,
   ] = await Promise.all([
     safeLoad(
@@ -393,6 +395,15 @@ async function loadScanInput(): Promise<{
       loadIssues,
       null,
     ),
+    safeLoad(
+      "Assets",
+      async () => {
+        const rows = await prisma.asset.findMany({ orderBy: { updatedAt: "desc" } })
+        return rows.map(prismaAssetToAssetRecord)
+      },
+      loadIssues,
+      [],
+    ),
     safeLoad("JSON fields", loadJsonFields, loadIssues, []),
   ])
 
@@ -416,6 +427,7 @@ async function loadScanInput(): Promise<{
       workflows,
       workflowRuns,
       workspaceSettings,
+      assets,
       jsonFields,
     },
     loadIssues,

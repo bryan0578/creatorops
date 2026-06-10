@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { parseImportJsonText } from "@/lib/safe-json"
 import {
   Copy,
@@ -22,6 +22,7 @@ import {
 } from "@/lib/types"
 import { copyToClipboard } from "@/lib/copy-to-clipboard"
 import { migrateLocalMockupPromptRecordsToDatabase } from "@/lib/actions/mockup-prompts"
+import { createAsset } from "@/lib/actions/assets"
 import { downloadJson, loadMockupPromptRecords } from "@/lib/storage"
 import {
   buildFinalMockupPromptText,
@@ -33,6 +34,8 @@ import {
   normalizeMockupPromptRecord,
   type MockupPromptFinalFields,
 } from "@/lib/mockup-prompts"
+import { recordFromAssetForm } from "@/lib/assets"
+import { buildAssetFromMockupPrompt } from "@/lib/assets-prefill"
 import {
   campaignPrefillToastMessage,
   linkRecordToCampaign,
@@ -217,6 +220,8 @@ export function MockupPromptGenerator() {
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const prefillApplied = React.useRef(false)
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const [savingAsAsset, setSavingAsAsset] = React.useState(false)
   const [campaignPrefill, setCampaignPrefill] = React.useState(
     parseCampaignPrefillContext(searchParams),
   )
@@ -331,6 +336,39 @@ export function MockupPromptGenerator() {
       if (linked) toast.message("Linked to campaign")
     } catch {
       toast.error("Could not save mockup prompt to database")
+    }
+  }
+
+  async function handleSaveAsAsset() {
+    if (!editingId) {
+      toast.error("Save the mockup prompt record first.")
+      return
+    }
+
+    const record = normalizeMockupPromptRecord({
+      id: editingId,
+      ...form,
+      completedPrompt,
+      aiResponse,
+      ...finalMockup,
+      createdAt:
+        mockupPromptRecords.find((r) => r.id === editingId)?.createdAt ??
+        Date.now(),
+      updatedAt: Date.now(),
+    })
+
+    setSavingAsAsset(true)
+    try {
+      const assetForm = buildAssetFromMockupPrompt(record, campaignPrefill)
+      const asset = await createAsset(
+        recordFromAssetForm(createId("asset"), assetForm, { updatedAt: Date.now() }),
+      )
+      toast.success("Saved as asset")
+      router.push(`/assets?recordId=${encodeURIComponent(asset.id)}`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save asset.")
+    } finally {
+      setSavingAsAsset(false)
     }
   }
 
@@ -494,6 +532,16 @@ export function MockupPromptGenerator() {
             <Button type="button" onClick={handleSave}>
               {editingId ? "Update mockup prompt" : "Save mockup prompt"}
             </Button>
+            {editingId ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={savingAsAsset}
+                onClick={() => void handleSaveAsAsset()}
+              >
+                {savingAsAsset ? "Saving…" : "Save as Asset"}
+              </Button>
+            ) : null}
             {editingId ? (
               <Button type="button" variant="outline" onClick={resetForm}>
                 New project

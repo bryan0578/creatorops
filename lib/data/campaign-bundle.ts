@@ -3,6 +3,7 @@
  */
 
 import { normalizeCampaignRecord } from "@/lib/campaigns"
+import { filterAssetsForCampaign, normalizeAssetRecord } from "@/lib/assets"
 import { normalizeAnalyticsRecord } from "@/lib/analytics-tracker"
 import { normalizeArtistRecord } from "@/lib/artist-crm"
 import { normalizeEmailCampaignRecord } from "@/lib/email-campaigns"
@@ -28,6 +29,7 @@ import { parseImportJsonText } from "@/lib/safe-json"
 import { createId } from "@/lib/storage"
 import type {
   AnalyticsRecord,
+  AssetRecord,
   ArtistRecord,
   CampaignLinkedRecord,
   CampaignLinkedRecordType,
@@ -75,6 +77,7 @@ export interface CampaignBundleLinkedRecords {
   promptRuns: PromptRun[]
   workflowRuns: WorkflowRun[]
   presets: PresetRecord[]
+  assets: AssetRecord[]
 }
 
 export interface CampaignBundleRelationship {
@@ -126,6 +129,7 @@ export interface CampaignBundleSummaryCounts {
   promptRuns: number
   workflowRuns: number
   presets: number
+  assets: number
 }
 
 export interface CampaignBundleConflict {
@@ -168,6 +172,7 @@ export interface CampaignBundleReadiness {
 export interface CampaignBundleStore extends CampaignLinkableStoreSlice {
   experiments: ExperimentRecord[]
   presets: PresetRecord[]
+  assets: AssetRecord[]
 }
 
 function norm(value: string | undefined | null): string {
@@ -196,6 +201,7 @@ export function emptyCampaignBundleLinkedRecords(): CampaignBundleLinkedRecords 
     promptRuns: [],
     workflowRuns: [],
     presets: [],
+    assets: [],
   }
 }
 
@@ -218,6 +224,7 @@ export function countCampaignBundleLinkedRecords(
     promptRuns: linked.promptRuns.length,
     workflowRuns: linked.workflowRuns.length,
     presets: linked.presets.length,
+    assets: linked.assets.length,
   }
 }
 
@@ -237,7 +244,8 @@ export function totalLinkedBundleRecords(linked: CampaignBundleLinkedRecords): n
     counts.experiments +
     counts.promptRuns +
     counts.workflowRuns +
-    counts.presets
+    counts.presets +
+    counts.assets
   )
 }
 
@@ -610,6 +618,32 @@ function collectCampaignScopedRecords(
       })
     }
   }
+
+  const campaignAssets = filterAssetsForCampaign(
+    store.assets,
+    campaign.id,
+    campaign.campaignName,
+  )
+  for (const asset of campaignAssets) {
+    collector.track("assets", asset, {
+      source: "campaign-field",
+      recordTitle: asset.assetName,
+    })
+  }
+
+  const bundledIds = new Set(
+    collector.relationshipMap.map((rel) => `${rel.recordType}:${rel.recordId}`),
+  )
+  for (const asset of store.assets) {
+    if (campaignAssets.some((item) => item.id === asset.id)) continue
+    if (!asset.sourceRecordId || !asset.sourceRecordType) continue
+    if (bundledIds.has(`${asset.sourceRecordType}:${asset.sourceRecordId}`)) {
+      collector.track("assets", asset, {
+        source: "inferred",
+        recordTitle: asset.assetName,
+      })
+    }
+  }
 }
 
 /** Build a portable campaign bundle without mutating source records. */
@@ -756,6 +790,7 @@ export function parseCampaignBundleJson(
     "promptRuns",
     "workflowRuns",
     "presets",
+    "assets",
   ]
 
   for (const key of arrayKeys) {
@@ -1106,6 +1141,7 @@ function buildImportPlan(
   addItems("prompt-run", bundle.linkedRecords.promptRuns, (r) => (r as PromptRun).promptName)
   addItems("workflow-run", bundle.linkedRecords.workflowRuns, (r) => (r as WorkflowRun).workflowName)
   addItems("preset", bundle.linkedRecords.presets, (r) => (r as PresetRecord).name)
+  addItems("asset", bundle.linkedRecords.assets, (r) => (r as AssetRecord).assetName)
 
   return plan
 }
@@ -1168,6 +1204,8 @@ function prefixForRecordType(recordType: string): string {
       return "workflow-run"
     case "preset":
       return "preset"
+    case "asset":
+      return "asset"
     default:
       return "record"
   }
@@ -1325,6 +1363,24 @@ export function remapCampaignBundleForImport(
     ),
     presets: bundle.linkedRecords.presets.map((r) =>
       normalizePresetRecord({ ...r, id: remapId(idMap, r.id) }),
+    ),
+    assets: bundle.linkedRecords.assets.map((r) =>
+      normalizeAssetRecord({
+        ...r,
+        id: remapId(idMap, r.id),
+        campaignId: newCampaignId,
+        campaignName,
+        sourcePromptRunId: r.sourcePromptRunId
+          ? remapId(idMap, r.sourcePromptRunId)
+          : r.sourcePromptRunId,
+        sourceRecordId: r.sourceRecordId
+          ? remapId(idMap, r.sourceRecordId)
+          : r.sourceRecordId,
+        experimentId: r.experimentId ? remapId(idMap, r.experimentId) : r.experimentId,
+        analyticsRecordId: r.analyticsRecordId
+          ? remapId(idMap, r.analyticsRecordId)
+          : r.analyticsRecordId,
+      }),
     ),
   }
 

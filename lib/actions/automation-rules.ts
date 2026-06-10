@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 
+import { getAssets } from "@/lib/actions/assets"
 import { getCampaigns, upsertCampaign } from "@/lib/actions/campaigns"
 import { getDataHealthReport } from "@/lib/actions/data-health"
 import { getExperiments } from "@/lib/actions/experiments"
@@ -38,17 +39,18 @@ function revalidateAutomationRoutes() {
 }
 
 async function loadAutomationContext() {
-  const [campaigns, store, experiments, runs, dataHealth] = await Promise.all([
+  const [campaigns, store, experiments, runs, assets, dataHealth] = await Promise.all([
     getCampaigns(),
     loadCampaignLinkableStoreSlice(),
     getExperiments(),
     getPromptRuns(),
+    getAssets(),
     getDataHealthReport().catch(() => null),
   ])
 
   return {
     campaigns,
-    store: { ...store, experiments, runs },
+    store: { ...store, experiments, runs, assets },
     dataHealth,
     dataHealthFailed: dataHealth === null,
   }

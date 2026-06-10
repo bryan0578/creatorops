@@ -1526,3 +1526,115 @@ export type WorkspaceSettingsFormValues = Omit<
   WorkspaceSettingsRecord,
   "id" | "createdAt" | "updatedAt"
 >
+
+export const ASSET_TYPES = [
+  "Cover Art",
+  "YouTube Thumbnail",
+  "Shorts Cover",
+  "Video File",
+  "Audio File",
+  "Suno Export",
+  "Lyric Sheet",
+  "Merch Mockup",
+  "Product Image",
+  "Product Mockup",
+  "Social Graphic",
+  "Email Graphic",
+  "Brand Asset",
+  "Logo",
+  "Reference Image",
+  "Prompt Image",
+  "Visual Concept",
+  "Other",
+] as const
+
+export type AssetType = (typeof ASSET_TYPES)[number]
+
+export const ASSET_STATUSES = [
+  "Idea",
+  "Draft",
+  "In Progress",
+  "Ready",
+  "Used",
+  "Published",
+  "Archived",
+] as const
+
+export type AssetStatus = (typeof ASSET_STATUSES)[number]
+
+export const ASSET_SOURCE_TOOLS = [
+  "Suno",
+  "ChatGPT",
+  "Midjourney",
+  "Ideogram",
+  "Leonardo",
+  "Canva",
+  "Photoshop",
+  "Figma",
+  "CapCut",
+  "DaVinci Resolve",
+  "Fourthwall",
+  "YouTube Studio",
+  "Other",
+] as const
+
+export type AssetSourceTool = (typeof ASSET_SOURCE_TOOLS)[number]
+
+export interface AssetRecord {
+  id: string
+  assetName: string
+  assetType: string
+  status: string
+  campaignId: string
+  campaignName: string
+  artistName: string
+  songTitle: string
+  productName: string
+  platform: string
+  filePath: string
+  fileUrl: string
+  externalUrl: string
+  sourceTool: string
+  sourcePromptRunId: string
+  sourcePromptName: string
+  sourceRecordType: string
+  sourceRecordId: string
+  experimentId: string
+  analyticsRecordId: string
+  versionLabel: string
+  tags: string[]
+  description: string
+  usageNotes: string
+  rightsNotes: string
+  notes: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface AssetFormValues {
+  assetName: string
+  assetType: string
+  status: string
+  campaignId: string
+  campaignName: string
+  artistName: string
+  songTitle: string
+  productName: string
+  platform: string
+  filePath: string
+  fileUrl: string
+  externalUrl: string
+  sourceTool: string
+  sourcePromptRunId: string
+  sourcePromptName: string
+  sourceRecordType: string
+  sourceRecordId: string
+  experimentId: string
+  analyticsRecordId: string
+  versionLabel: string
+  tags: string
+  description: string
+  usageNotes: string
+  rightsNotes: string
+  notes: string
+}
