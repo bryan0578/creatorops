@@ -577,7 +577,21 @@ export function buildPrettyWiseDemoRecords(now = new Date()) {
     whatToImprove: "",
     linkedRecords,
     tasks,
-    publishingChecklist: buildDemoPublishingChecklist("Music Release"),
+    publishingChecklist: (() => {
+      const checklist = buildDemoPublishingChecklist("Music Release")
+      return {
+        ...checklist,
+        items: checklist.items.map((item, index) => {
+          if (index < 4) {
+            return { ...item, dueDate: dates.startDate }
+          }
+          if (item.phase === "24-Hour Review") {
+            return { ...item, dueDate: dates.launchDate }
+          }
+          return item
+        }),
+      }
+    })(),
     createdAt: ts,
     updatedAt: ts,
   }

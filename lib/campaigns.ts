@@ -1,3 +1,4 @@
+import { buildCalendarEvents } from "@/lib/data/calendar-events"
 import type {
   AnalyticsRecord,
   ArtistRecord,
@@ -455,49 +456,19 @@ export interface TimelineEvent {
 }
 
 export function buildCampaignTimeline(record: CampaignRecord): TimelineEvent[] {
-  const events: TimelineEvent[] = []
-
-  if (record.startDate) {
-    events.push({
-      id: "start",
-      date: record.startDate,
-      label: "Campaign start",
-      kind: "milestone",
-    })
-  }
-  if (record.launchDate) {
-    events.push({
-      id: "launch",
-      date: record.launchDate,
-      label: "Launch date",
-      kind: "milestone",
-    })
-  }
-  if (record.endDate) {
-    events.push({
-      id: "end",
-      date: record.endDate,
-      label: "Campaign end",
-      kind: "milestone",
-    })
-  }
-
-  for (const task of record.tasks) {
-    if (!task.dueDate) continue
-    events.push({
-      id: task.id,
-      date: task.dueDate,
-      label: task.title || "Task",
-      kind: "task",
-      status: task.status,
-    })
-  }
-
-  return events.sort((a, b) => {
-    const aTime = Date.parse(a.date) || 0
-    const bTime = Date.parse(b.date) || 0
-    return aTime - bTime
-  })
+  return buildCalendarEvents(
+    { campaigns: [record], experiments: [], analyticsRecords: [] },
+    { campaignId: record.id, includeCompleted: true },
+  ).map((event) => ({
+    id: event.id,
+    date: event.date,
+    label: event.title,
+    kind:
+      event.eventType === "campaign-task" || event.eventType === "publishing-checklist"
+        ? ("task" as const)
+        : ("milestone" as const),
+    status: event.status,
+  }))
 }
 
 export function parseCampaignLinkedRecords(raw: string): CampaignLinkedRecord[] {

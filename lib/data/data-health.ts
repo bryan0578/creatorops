@@ -5,6 +5,11 @@
 import { buildRecordHref } from "@/lib/data/related-records"
 import { isValidJsonString } from "@/lib/safe-json"
 import {
+  experimentHasInvalidDateRange,
+  hasReviewPhaseWithoutLaunch,
+  isLaunchReadyWithoutDate,
+} from "@/lib/data/calendar-events"
+import {
   hasIncompletePhaseItems,
   isPublishedCampaignStatus,
   isReadyToPublishCampaignStatus,
@@ -1062,6 +1067,66 @@ function scanExperimentAnalyticsWarnings(
   }
 }
 
+function scanCalendarWarnings(
+  input: DataHealthScanInput,
+  issues: DataHealthIssue[],
+): void {
+  for (const campaign of input.campaigns) {
+    const title = campaign.campaignName || "Untitled campaign"
+    const href = `${campaignHref(campaign.id)}&tab=overview`
+
+    if (isLaunchReadyWithoutDate(campaign)) {
+      pushIssue(issues, {
+        id: issueId(["calendar-missing-launch", campaign.id]),
+        severity: "warning",
+        category: "incomplete-records",
+        title: "Campaign missing launch date",
+        description: `Campaign "${title}" is ${campaign.status} but has no launch date for calendar planning.`,
+        sourceType: "campaign",
+        sourceId: campaign.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Add a launch date on the campaign overview.",
+        relatedHref: "/calendar",
+      })
+    }
+
+    if (hasReviewPhaseWithoutLaunch(campaign)) {
+      pushIssue(issues, {
+        id: issueId(["calendar-review-no-launch", campaign.id]),
+        severity: "warning",
+        category: "incomplete-records",
+        title: "Review checklist without launch date",
+        description: `Campaign "${title}" has review-phase checklist items but no launch date to schedule reviews.`,
+        sourceType: "campaign",
+        sourceId: campaign.id,
+        sourceTitle: title,
+        href: `${campaignHref(campaign.id)}&tab=publishing-checklist`,
+        suggestedAction: "Add a launch date or remove review-phase checklist items.",
+        relatedHref: "/calendar",
+      })
+    }
+  }
+
+  for (const experiment of input.experiments) {
+    if (!experimentHasInvalidDateRange(experiment)) continue
+    const title = experiment.experimentName || "Untitled experiment"
+    pushIssue(issues, {
+      id: issueId(["calendar-experiment-dates", experiment.id]),
+      severity: "warning",
+      category: "incomplete-records",
+      title: "Experiment end date before start date",
+      description: `Experiment "${title}" has an end date earlier than its start date.`,
+      sourceType: "experiment",
+      sourceId: experiment.id,
+      sourceTitle: title,
+      href: buildRecordHref("experiment", experiment.id),
+      suggestedAction: "Correct experiment start and end dates.",
+      relatedHref: "/calendar",
+    })
+  }
+}
+
 function scanCampaignBundleExportWarnings(
   input: DataHealthScanInput,
   sets: RecordIdSets,
@@ -1296,6 +1361,7 @@ export function buildDataHealthReport(
   safeScan("Campaign bundle export", issues, () =>
     scanCampaignBundleExportWarnings(input, sets, issues),
   )
+  safeScan("Calendar planning", issues, () => scanCalendarWarnings(input, issues))
   safeScan("Prompt run links", issues, () =>
     scanPromptRunLinkWarnings(input, sets, issues),
   )

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import {
   BarChart3,
   CalendarDays,
+  Calendar,
   FlaskConical,
   ChevronDown,
   HardDrive,
@@ -116,6 +117,7 @@ const NAV_GROUPS: NavGroup[] = [
       { title: "Campaigns", href: "/campaigns", icon: Megaphone },
       { title: "Campaign Board", href: "/campaign-board", icon: LayoutGrid },
       { title: "Tasks", href: "/tasks", icon: ListChecks },
+      { title: "Calendar", href: "/calendar", icon: CalendarDays },
       { title: "Analytics Tracker", href: "/analytics", icon: BarChart3 },
       { title: "Artist CRM", href: "/artist-crm", icon: Users },
       { title: "Backup Center", href: "/backups", icon: HardDrive },

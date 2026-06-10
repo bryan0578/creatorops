@@ -60,6 +60,7 @@ import { StatusBadge } from "@/components/workflows/status-badge"
 import { PromptFormDialog } from "@/components/prompts/prompt-form-dialog"
 import { RecentActivityTimeline } from "@/components/activity/recent-activity-timeline"
 import { AutomationDashboardCard } from "@/components/automation/automation-suggestions-card"
+import { CalendarDashboardCard } from "@/components/calendar/calendar-widgets"
 
 function CompactStatCard({
   label,
@@ -482,7 +483,10 @@ export function DashboardHome() {
 
       <RecentActivityTimeline limit={6} compact />
 
-      <AutomationDashboardCard />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <AutomationDashboardCard />
+        <CalendarDashboardCard />
+      </div>
 
       <Card className="border-border/80">
         <CardHeader className="pb-3">

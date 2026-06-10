@@ -990,8 +990,16 @@ export function CampaignBuilder() {
             <CardHeader>
               <CardTitle className="text-base">Campaign timeline</CardTitle>
               <CardDescription>
-                Milestones and task due dates in chronological order.
+                Milestones, tasks, checklist items, and review dates in chronological order.
               </CardDescription>
+              <div className="pt-1">
+                <Link
+                  href={`/calendar?campaignId=${encodeURIComponent(recordId)}`}
+                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                >
+                  Open Calendar
+                </Link>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3">
               {timeline.length === 0 ? (

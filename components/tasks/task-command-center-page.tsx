@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Circle,
   ExternalLink,
+  CalendarDays,
   LayoutGrid,
   ListChecks,
   Loader2,
@@ -340,6 +341,10 @@ export function TaskCommandCenterPage() {
             <Link href="/campaign-board" className={buttonVariants({ size: "sm", variant: "outline" })}>
               <LayoutGrid className="size-4" />
               Open Campaign Board
+            </Link>
+            <Link href="/calendar" className={buttonVariants({ size: "sm", variant: "outline" })}>
+              <CalendarDays className="size-4" />
+              View on Calendar
             </Link>
             <Button type="button" size="sm" variant="outline" onClick={handleRefresh} disabled={refreshing}>
               {refreshing ? (
