@@ -31,6 +31,7 @@ import {
 
 import { ModulePageHeader } from "@/components/app-shell"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
+import { RelatedPromptRunsPanel } from "@/components/experiments/related-prompt-runs-panel"
 import { ApplyWorkspaceDefaultsButton } from "@/components/settings/apply-workspace-defaults-button"
 import {
   EXPERIMENT_WORKFLOW_TABS,
@@ -569,6 +570,10 @@ export function ExperimentTracker() {
               </Button>
             </CardContent>
           </Card>
+          <RelatedPromptRunsPanel
+            experimentId={editingId}
+            campaignId={campaignPrefill.campaignId}
+          />
         </ModuleTabPanel>
 
         <ModuleTabPanel value="saved">

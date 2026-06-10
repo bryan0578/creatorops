@@ -46,6 +46,7 @@ import {
 } from "@/lib/preset-prefill"
 
 import { ModulePageHeader } from "@/components/app-shell"
+import { SaveLinkedPromptRunButton } from "@/components/module/save-linked-prompt-run-button"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { CampaignPromptOutputSection } from "@/components/campaigns/campaign-context-prompt-controls"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
@@ -649,16 +650,29 @@ export function SocialRepurposingEngine() {
               placeholder="Paste AI response here..."
               className="min-h-40 w-full font-mono text-xs"
             />
-            {aiResponse.trim() ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => handleCopy(aiResponse, "AI response")}
-              >
-                <Copy className="size-4" />
-                Copy AI response
-              </Button>
+            {(aiResponse.trim() || completedPrompt.trim()) ? (
+              <div className="flex flex-wrap gap-2">
+                {aiResponse.trim() ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCopy(aiResponse, "AI response")}
+                  >
+                    <Copy className="size-4" />
+                    Copy AI response
+                  </Button>
+                ) : null}
+                <SaveLinkedPromptRunButton
+                  completedPrompt={completedPrompt}
+                  aiResponse={aiResponse}
+                  moduleType="Social Repurposing"
+                  campaignId={campaignPrefill.campaignId}
+                  campaignName={campaignPrefill.campaignName}
+                  outputRecordId={editingId ?? undefined}
+                  promptName="Social Repurposing"
+                />
+              </div>
             ) : null}
           </OutputSection>
         </ModuleTabPanel>

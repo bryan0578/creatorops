@@ -18,9 +18,8 @@ import {
   type LaunchReadiness,
 } from "@/lib/campaign-launch-dashboard"
 import type { CampaignLinkableStoreSlice } from "@/lib/campaigns"
-import type { CampaignRecord } from "@/lib/types"
+import type { CampaignRecord, PromptRun, PublishingChecklist } from "@/lib/types"
 import { EmptyState } from "@/components/empty-state"
-import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Card,
@@ -34,7 +33,7 @@ import { cn } from "@/lib/utils"
 import { CampaignExperimentsSection } from "@/components/campaigns/launch-dashboard/campaign-experiments-section"
 import { CampaignExportPackSection } from "@/components/campaigns/launch-dashboard/campaign-export-pack-section"
 import { CampaignPublishingChecklistCard } from "@/components/campaigns/launch-dashboard/campaign-publishing-checklist-card"
-import type { PublishingChecklist } from "@/lib/types"
+import { CampaignPromptHistoryCard } from "@/components/campaigns/launch-dashboard/campaign-prompt-history-card"
 
 function formatLaunchDate(value: string) {
   if (!value.trim()) return "—"
@@ -363,6 +362,7 @@ export function CampaignNextActions({
 export function CampaignLaunchDashboard({
   campaign,
   store,
+  promptRuns,
   onGoToTasks,
   onGoToPublishingChecklist,
   onGeneratePublishingChecklist,
@@ -372,6 +372,7 @@ export function CampaignLaunchDashboard({
 }: {
   campaign: CampaignRecord
   store: CampaignLinkableStoreSlice
+  promptRuns: PromptRun[]
   onGoToTasks: () => void
   onGoToPublishingChecklist: () => void
   onGeneratePublishingChecklist: (checklist: PublishingChecklist) => void
@@ -443,6 +444,8 @@ export function CampaignLaunchDashboard({
         onOpenChecklist={onGoToPublishingChecklist}
         onGenerateChecklist={onGeneratePublishingChecklist}
       />
+
+      <CampaignPromptHistoryCard campaign={campaign} runs={promptRuns} />
 
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onGoToSaved}>

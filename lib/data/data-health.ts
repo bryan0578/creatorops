@@ -260,6 +260,10 @@ function campaignHref(campaignId: string): string {
   return `/campaigns?campaignId=${encodeURIComponent(campaignId)}`
 }
 
+function promptRunHref(runId: string): string {
+  return `/runner?recordId=${encodeURIComponent(runId)}`
+}
+
 function isMusicCampaign(campaignType: string): boolean {
   return MUSIC_CAMPAIGN_TYPES.has(norm(campaignType))
 }
@@ -919,6 +923,57 @@ function scanPublishingChecklistWarnings(
   }
 }
 
+function scanPromptRunLinkWarnings(
+  input: DataHealthScanInput,
+  sets: RecordIdSets,
+  issues: DataHealthIssue[],
+): void {
+  for (const run of input.promptRuns) {
+    const title = run.promptName || "Prompt run"
+    const href = promptRunHref(run.id)
+
+    if (run.campaignId && !sets.campaign.has(run.campaignId)) {
+      pushIssue(issues, {
+        id: issueId(["prompt-run-campaign", run.id, run.campaignId]),
+        severity: "warning",
+        category: "broken-links",
+        title: "Prompt run links to missing campaign",
+        description: `Prompt run "${title}" references missing campaign ${run.campaignId}.`,
+        sourceType: "prompt-run",
+        sourceId: run.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Clear the campaign link or restore the campaign.",
+        relatedHref: campaignHref(run.campaignId),
+      })
+    }
+
+    if (run.outputRecordId && run.outputRecordType) {
+      const linkType = run.outputRecordType as CampaignLinkedRecordType
+      if (!recordExists(sets, linkType, run.outputRecordId)) {
+        pushIssue(issues, {
+          id: issueId([
+            "prompt-run-output",
+            run.id,
+            run.outputRecordType,
+            run.outputRecordId,
+          ]),
+          severity: "warning",
+          category: "broken-links",
+          title: "Prompt run links to missing output record",
+          description: `Prompt run "${title}" references missing ${LINK_TYPE_LABELS[linkType] ?? run.outputRecordType}.`,
+          sourceType: "prompt-run",
+          sourceId: run.id,
+          sourceTitle: title,
+          href,
+          suggestedAction: "Clear the output link or restore the linked record.",
+          relatedHref: canonicalHref(linkType, run.outputRecordId),
+        })
+      }
+    }
+  }
+}
+
 function isValidJson(raw: string, expected: "array" | "object"): boolean {
   return isValidJsonString(raw, expected)
 }
@@ -1066,6 +1121,9 @@ export function buildDataHealthReport(
   )
   safeScan("Publishing checklist", issues, () =>
     scanPublishingChecklistWarnings(input, issues),
+  )
+  safeScan("Prompt run links", issues, () =>
+    scanPromptRunLinkWarnings(input, sets, issues),
   )
   safeScan("JSON / data issues", issues, () => scanJsonIssues(input, issues))
 

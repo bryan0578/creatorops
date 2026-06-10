@@ -571,6 +571,7 @@ export function CampaignBuilder() {
             <CampaignLaunchDashboard
               campaign={launchCampaign}
               store={linkableStore}
+              promptRuns={store.runs}
               onGoToTasks={() => setActiveTab("tasks")}
               onGoToPublishingChecklist={() => setActiveTab("publishing-checklist")}
               onGeneratePublishingChecklist={handleGeneratePublishingChecklist}

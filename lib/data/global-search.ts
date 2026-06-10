@@ -211,6 +211,14 @@ export function buildResultHref(
     }
   }
 
+  if (type === "prompt-run") {
+    return {
+      href: `/runner?recordId=${encodeURIComponent(id)}`,
+      directOpen: true,
+      openNote: "Opens in Prompt Runner with this run loaded.",
+    }
+  }
+
   if (type === "campaign") {
     return {
       href: `${base}?campaignId=${encodeURIComponent(id)}`,

@@ -28,6 +28,8 @@ export const DEMO_IDS = {
   mockup: `${DEMO_ID_PREFIX}prettywise-mockup`,
   analytics: `${DEMO_ID_PREFIX}prettywise-analytics`,
   experiment: `${DEMO_ID_PREFIX}prettywise-experiment`,
+  promptRunYoutube: `${DEMO_ID_PREFIX}prettywise-prompt-run-youtube`,
+  promptRunThumbnail: `${DEMO_ID_PREFIX}prettywise-prompt-run-thumbnail`,
 } as const
 
 export function isDemoDataNotes(notes: string | null | undefined): boolean {

@@ -20,6 +20,7 @@ import type {
   MerchIdea,
   MockupPromptRecord,
   ProductListing,
+  PromptRun,
   ReleasePlan,
   SocialRepurposingRecord,
   YouTubePackage,
@@ -609,6 +610,53 @@ export function buildPrettyWiseDemoRecords(now = new Date()) {
     updatedAt: ts,
   }
 
+  const promptRuns: PromptRun[] = [
+    {
+      id: DEMO_IDS.promptRunYoutube,
+      promptId: "",
+      promptName: "PrettyWise YouTube Metadata Prompt Run",
+      category: "YouTube",
+      inputValues: {},
+      completedPrompt: youtubePackage.completedPrompt,
+      aiResponse: youtubePackage.aiResponse,
+      notes: DEMO_DATA_MARKER,
+      campaignId: DEMO_IDS.campaign,
+      campaignName: DEMO_CAMPAIGN_NAME,
+      moduleType: "YouTube Packaging",
+      outputRecordId: DEMO_IDS.youtubePackage,
+      outputRecordType: "youtube-package",
+      experimentId: "",
+      sourcePromptId: "",
+      sourcePromptName: "YouTube Metadata Generator",
+      runType: "module",
+      tags: ["demo", "prettywise", "youtube"],
+      createdAt: ts,
+      updatedAt: ts,
+    },
+    {
+      id: DEMO_IDS.promptRunThumbnail,
+      promptId: "",
+      promptName: "PrettyWise Thumbnail Prompt Run",
+      category: "YouTube",
+      inputValues: {},
+      completedPrompt: youtubeThumbnail.completedPrompt,
+      aiResponse: youtubeThumbnail.aiResponse,
+      notes: DEMO_DATA_MARKER,
+      campaignId: DEMO_IDS.campaign,
+      campaignName: DEMO_CAMPAIGN_NAME,
+      moduleType: "YouTube Thumbnail",
+      outputRecordId: DEMO_IDS.youtubeThumbnail,
+      outputRecordType: "youtube-thumbnail",
+      experimentId: DEMO_IDS.experiment,
+      sourcePromptId: "",
+      sourcePromptName: "YouTube Thumbnail Generator",
+      runType: "module",
+      tags: ["demo", "prettywise", "thumbnail"],
+      createdAt: ts,
+      updatedAt: ts,
+    },
+  ]
+
   return {
     artist,
     campaign,
@@ -622,5 +670,6 @@ export function buildPrettyWiseDemoRecords(now = new Date()) {
     mockup,
     analytics,
     experiment,
+    promptRuns,
   }
 }

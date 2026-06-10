@@ -47,6 +47,7 @@ import {
 } from "@/lib/preset-prefill"
 
 import { ModulePageHeader } from "@/components/app-shell"
+import { SaveLinkedPromptRunButton } from "@/components/module/save-linked-prompt-run-button"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { CampaignPromptOutputSection } from "@/components/campaigns/campaign-context-prompt-controls"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
@@ -775,6 +776,16 @@ export function AnalyticsTracker() {
               niche: form.niche,
             }}
           />
+          {insightsPrompt.trim() ? (
+            <SaveLinkedPromptRunButton
+              completedPrompt={insightsPrompt}
+              moduleType="Analytics"
+              campaignId={campaignPrefill.campaignId}
+              campaignName={campaignPrefill.campaignName}
+              outputRecordId={editingId ?? undefined}
+              promptName="Analytics Insights Prompt"
+            />
+          ) : null}
         </ModuleTabPanel>
 
         <ModuleTabPanel value="related">

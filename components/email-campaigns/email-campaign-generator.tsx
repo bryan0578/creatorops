@@ -48,6 +48,7 @@ import {
 } from "@/lib/preset-prefill"
 
 import { ModulePageHeader } from "@/components/app-shell"
+import { SaveLinkedPromptRunButton } from "@/components/module/save-linked-prompt-run-button"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { CampaignPromptOutputSection } from "@/components/campaigns/campaign-context-prompt-controls"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
@@ -612,16 +613,29 @@ export function EmailCampaignGenerator() {
               placeholder="Paste AI response here..."
               className="min-h-[min(24rem,50vh)] w-full font-mono text-xs"
             />
-            {aiResponse.trim() ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => handleCopy(aiResponse, "AI response")}
-              >
-                <Copy className="size-4" />
-                Copy AI response
-              </Button>
+            {(aiResponse.trim() || completedPrompt.trim()) ? (
+              <div className="flex flex-wrap gap-2">
+                {aiResponse.trim() ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCopy(aiResponse, "AI response")}
+                  >
+                    <Copy className="size-4" />
+                    Copy AI response
+                  </Button>
+                ) : null}
+                <SaveLinkedPromptRunButton
+                  completedPrompt={completedPrompt}
+                  aiResponse={aiResponse}
+                  moduleType="Email Campaign"
+                  campaignId={campaignPrefill.campaignId}
+                  campaignName={campaignPrefill.campaignName}
+                  outputRecordId={editingId ?? undefined}
+                  promptName="Email Campaign Generator"
+                />
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground">
                 Paste your AI output here after running the completed prompt.

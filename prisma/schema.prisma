@@ -74,10 +74,25 @@ model PromptRun {
   completedPrompt String   @default("")
   aiResponse      String   @default("")
   notes           String   @default("")
+  campaignId      String   @default("")
+  campaignName    String   @default("")
+  moduleType      String   @default("")
+  outputRecordId  String   @default("")
+  outputRecordType String  @default("")
+  experimentId    String   @default("")
+  sourcePromptId  String   @default("")
+  sourcePromptName String  @default("")
+  runType         String   @default("")
+  /// JSON string[]
+  tags            String   @default("[]")
   createdAt       DateTime
   updatedAt       DateTime
 
   @@index([promptId])
+  @@index([campaignId])
+  @@index([moduleType])
+  @@index([outputRecordId])
+  @@index([experimentId])
   @@index([updatedAt])
 }
 

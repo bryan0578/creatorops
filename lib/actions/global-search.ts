@@ -173,27 +173,50 @@ async function searchPromptRuns(query: string): Promise<GlobalSearchResult[]> {
   })
 
   return pushMatches(
-    rows,
+    rows.map((row) => ({
+      ...row,
+      tagsText: parseTagsArray(row.tags).join(" "),
+    })),
     query,
-    ["promptName", "category", "completedPrompt", "aiResponse", "notes"],
+    [
+      "promptName",
+      "category",
+      "campaignName",
+      "moduleType",
+      "completedPrompt",
+      "aiResponse",
+      "notes",
+      "tagsText",
+    ],
     {
       promptName: "Prompt name",
       category: "Category",
+      campaignName: "Campaign",
+      moduleType: "Module",
       completedPrompt: "Completed prompt",
       aiResponse: "AI response",
       notes: "Notes",
+      tagsText: "Tags",
     },
-    (row, matchedFields) =>
-      makeResult(
+    (row, matchedFields) => {
+      const subtitle = [
+        row.moduleType,
+        row.campaignName,
+        row.category,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+      return makeResult(
         "prompt-run",
         row.id as string,
         row.promptName as string,
-        String(row.category ?? ""),
+        subtitle,
         previewText(row.aiResponse) || previewText(row.completedPrompt),
         row.createdAt as Date,
         row.updatedAt as Date,
         matchedFields,
-      ),
+      )
+    },
     GLOBAL_SEARCH_LIMIT_PER_TYPE,
   )
 }

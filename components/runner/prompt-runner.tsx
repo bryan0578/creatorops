@@ -20,7 +20,10 @@ import { toast } from "sonner"
 import { migrateLocalPromptRunsToDatabase } from "@/lib/actions/prompt-runs"
 import { useStore, createId } from "@/lib/store"
 import type { Prompt, PromptRun } from "@/lib/types"
-import { copyToClipboard } from "@/lib/copy-to-clipboard"
+import {
+  getOutputRecordHref,
+  promptRunsForCampaignHref,
+} from "@/lib/prompt-run-linking"
 import { downloadJson, loadRuns } from "@/lib/storage"
 import {
   buildCompletedPrompt,
@@ -73,6 +76,7 @@ export function PromptRunner() {
   const searchParams = useSearchParams()
   const promptIdParam = searchParams.get("promptId")
   const recordIdParam = searchParams.get("recordId")
+  const campaignIdParam = searchParams.get("campaignId")
 
   const {
     prompts,
@@ -142,14 +146,33 @@ export function PromptRunner() {
 
   const filteredRuns = React.useMemo(() => {
     const q = runSearch.trim().toLowerCase()
-    const sorted = [...runs].sort((a, b) => b.updatedAt - a.updatedAt)
-    if (!q) return sorted
-    return sorted.filter(
+    let list = [...runs]
+    if (campaignIdParam) {
+      list = list.filter((run) => run.campaignId === campaignIdParam)
+    }
+    list.sort((a, b) => b.updatedAt - a.updatedAt)
+    if (!q) return list
+    return list.filter(
       (r) =>
         r.promptName.toLowerCase().includes(q) ||
-        r.category.toLowerCase().includes(q),
+        r.category.toLowerCase().includes(q) ||
+        r.campaignName.toLowerCase().includes(q) ||
+        r.moduleType.toLowerCase().includes(q) ||
+        r.completedPrompt.toLowerCase().includes(q) ||
+        r.aiResponse.toLowerCase().includes(q) ||
+        r.notes.toLowerCase().includes(q) ||
+        r.tags.some((tag) => tag.toLowerCase().includes(q)),
     )
-  }, [runs, runSearch])
+  }, [runs, runSearch, campaignIdParam])
+
+  const editingRun = React.useMemo(
+    () => (editingRunId ? runs.find((r) => r.id === editingRunId) ?? null : null),
+    [editingRunId, runs],
+  )
+
+  const displayCompletedPrompt = selectedPrompt
+    ? completedPrompt
+    : (editingRun?.completedPrompt ?? "")
 
   function selectPrompt(prompt: Prompt) {
     setSelectedPromptId(prompt.id)
@@ -188,7 +211,7 @@ export function PromptRunner() {
 
   async function handleCopyCompleted() {
     try {
-      await copyToClipboard(completedPrompt)
+      await copyToClipboard(displayCompletedPrompt)
       toast.success("Copied completed prompt")
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not copy")
@@ -205,21 +228,33 @@ export function PromptRunner() {
   }
 
   async function handleSaveRun() {
-    if (!selectedPrompt) return
+    const existing = editingRunId
+      ? runs.find((r) => r.id === editingRunId)
+      : undefined
+
+    if (!selectedPrompt && !existing) return
 
     const now = Date.now()
     const run: PromptRun = {
       id: editingRunId ?? createId("run"),
-      promptId: selectedPrompt.id,
-      promptName: selectedPrompt.name,
-      category: selectedPrompt.category,
+      promptId: selectedPrompt?.id ?? existing?.promptId ?? "",
+      promptName: selectedPrompt?.name ?? existing?.promptName ?? "Prompt run",
+      category: selectedPrompt?.category ?? existing?.category ?? "General",
       inputValues: { ...inputValues },
-      completedPrompt,
+      completedPrompt: displayCompletedPrompt,
       aiResponse,
       notes: runNotes,
-      createdAt: editingRunId
-        ? (runs.find((r) => r.id === editingRunId)?.createdAt ?? now)
-        : now,
+      campaignId: existing?.campaignId ?? "",
+      campaignName: existing?.campaignName ?? "",
+      moduleType: existing?.moduleType ?? "",
+      outputRecordId: existing?.outputRecordId ?? "",
+      outputRecordType: existing?.outputRecordType ?? "",
+      experimentId: existing?.experimentId ?? "",
+      sourcePromptId: existing?.sourcePromptId ?? selectedPrompt?.id ?? "",
+      sourcePromptName: existing?.sourcePromptName ?? selectedPrompt?.name ?? "",
+      runType: existing?.runType ?? "runner",
+      tags: existing?.tags ?? [],
+      createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     }
 
@@ -238,7 +273,8 @@ export function PromptRunner() {
   }
 
   function openRun(run: PromptRun) {
-    setSelectedPromptId(run.promptId)
+    const prompt = run.promptId ? prompts.find((p) => p.id === run.promptId) : null
+    setSelectedPromptId(prompt?.id ?? null)
     setInputValues({ ...run.inputValues })
     setAiResponse(run.aiResponse)
     setRunNotes(run.notes)
@@ -336,6 +372,51 @@ export function PromptRunner() {
         title="Prompt Runner"
         description="Select a prompt, fill variables, copy the completed prompt, paste your AI response, and save the run."
       />
+
+      {campaignIdParam ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/80 bg-muted/30 px-4 py-3">
+          <span className="text-sm text-muted-foreground">Filtered by campaign</span>
+          <Badge variant="secondary">
+            {runs.find((r) => r.campaignId === campaignIdParam)?.campaignName ||
+              campaignIdParam}
+          </Badge>
+          <Link href="/runner" className={buttonVariants({ variant: "ghost", size: "sm" })}>
+            <X className="size-4" />
+            Clear filter
+          </Link>
+        </div>
+      ) : null}
+
+      {editingRun?.campaignId || editingRun?.moduleType ? (
+        <Card className="border-border/80">
+          <CardContent className="flex flex-wrap items-center gap-2 pt-4">
+            {editingRun.moduleType ? (
+              <Badge variant="outline">{editingRun.moduleType}</Badge>
+            ) : null}
+            {editingRun.campaignName ? (
+              <Link
+                href={`/campaigns?campaignId=${encodeURIComponent(editingRun.campaignId)}`}
+                className={buttonVariants({ variant: "secondary", size: "sm" })}
+              >
+                {editingRun.campaignName}
+              </Link>
+            ) : null}
+            {editingRun.outputRecordId && editingRun.outputRecordType ? (
+              <Link
+                href={
+                  getOutputRecordHref(
+                    editingRun.outputRecordType,
+                    editingRun.outputRecordId,
+                  ) ?? "#"
+                }
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                Open output record
+              </Link>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="flex flex-col gap-6">
@@ -473,7 +554,7 @@ export function PromptRunner() {
               <Button
                 type="button"
                 size="sm"
-                disabled={!selectedPrompt || !completedPrompt.trim()}
+                disabled={!displayCompletedPrompt.trim()}
                 onClick={handleCopyCompleted}
               >
                 <Copy className="size-4" />
@@ -500,11 +581,11 @@ export function PromptRunner() {
               ) : null}
 
               <PromptPreviewBlock
-                value={selectedPrompt ? completedPrompt : ""}
+                value={displayCompletedPrompt}
                 emptyMessage={
-                  selectedPrompt
+                  selectedPrompt || editingRun
                     ? "—"
-                    : "Select a prompt to see the preview."
+                    : "Select a prompt or open a saved run."
                 }
               />
           </OutputSection>
@@ -542,7 +623,7 @@ export function PromptRunner() {
           <StickyActionBar>
             <Button
               type="button"
-              disabled={!selectedPrompt}
+              disabled={!selectedPrompt && !editingRun}
               onClick={handleSaveRun}
             >
               {editingRunId ? "Update run" : "Save run"}
@@ -636,6 +717,16 @@ export function PromptRunner() {
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium">{run.promptName}</p>
                       <Badge variant="secondary">{run.category}</Badge>
+                      {run.moduleType ? (
+                        <Badge variant="outline" className="text-xs">
+                          {run.moduleType}
+                        </Badge>
+                      ) : null}
+                      {run.campaignName ? (
+                        <Badge variant="outline" className="text-xs">
+                          {run.campaignName}
+                        </Badge>
+                      ) : null}
                       {editingRunId === run.id ? (
                         <Badge variant="outline" className="text-xs">
                           Editing

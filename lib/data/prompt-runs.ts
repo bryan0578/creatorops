@@ -1,8 +1,9 @@
+import { parseJsonStringArray } from "@/lib/safe-json"
 import {
-  parseJsonStringArray,
-  stringifyJsonArray,
-} from "@/lib/data/prompts"
+  normalizePromptRunModuleType,
+} from "@/lib/prompt-run-linking"
 import type { PromptCategory, PromptRun } from "@/lib/types"
+import type { CampaignLinkedRecordType } from "@/lib/types"
 import type { PromptRun as PrismaPromptRun } from "@/lib/generated/prisma/client"
 
 /**
@@ -32,6 +33,14 @@ export function stringifyJsonRecord(values: Record<string, string>): string {
   return JSON.stringify(values)
 }
 
+function parseTags(raw: string | null | undefined): string[] {
+  return parseJsonStringArray(raw ?? "[]", [])
+}
+
+function stringifyTags(tags: string[]): string {
+  return JSON.stringify(tags.filter(Boolean))
+}
+
 export function normalizePromptRun(
   run: Partial<PromptRun> & Pick<PromptRun, "id">,
 ): PromptRun {
@@ -45,6 +54,12 @@ export function normalizePromptRun(
         )
       : {}
 
+  const outputType = run.outputRecordType ?? ""
+  const linkedOutputType =
+    outputType && typeof outputType === "string"
+      ? (outputType as CampaignLinkedRecordType)
+      : ""
+
   return {
     id: run.id,
     promptId: run.promptId ?? "",
@@ -54,6 +69,16 @@ export function normalizePromptRun(
     completedPrompt: run.completedPrompt ?? "",
     aiResponse: run.aiResponse ?? "",
     notes: run.notes ?? "",
+    campaignId: run.campaignId ?? "",
+    campaignName: run.campaignName ?? "",
+    moduleType: normalizePromptRunModuleType(run.moduleType),
+    outputRecordId: run.outputRecordId ?? "",
+    outputRecordType: linkedOutputType,
+    experimentId: run.experimentId ?? "",
+    sourcePromptId: run.sourcePromptId ?? "",
+    sourcePromptName: run.sourcePromptName ?? "",
+    runType: run.runType ?? "",
+    tags: Array.isArray(run.tags) ? run.tags.filter(Boolean) : parseTags(""),
     createdAt: run.createdAt ?? now,
     updatedAt: run.updatedAt ?? now,
   }
@@ -70,6 +95,16 @@ export function promptRunToPrismaCreate(run: PromptRun) {
     completedPrompt: normalized.completedPrompt,
     aiResponse: normalized.aiResponse,
     notes: normalized.notes,
+    campaignId: normalized.campaignId,
+    campaignName: normalized.campaignName,
+    moduleType: normalized.moduleType,
+    outputRecordId: normalized.outputRecordId,
+    outputRecordType: normalized.outputRecordType,
+    experimentId: normalized.experimentId,
+    sourcePromptId: normalized.sourcePromptId,
+    sourcePromptName: normalized.sourcePromptName,
+    runType: normalized.runType,
+    tags: stringifyTags(normalized.tags),
     createdAt: new Date(normalized.createdAt),
     updatedAt: new Date(normalized.updatedAt),
   }
@@ -85,6 +120,16 @@ export function promptRunToPrismaUpdate(run: PromptRun) {
     completedPrompt: normalized.completedPrompt,
     aiResponse: normalized.aiResponse,
     notes: normalized.notes,
+    campaignId: normalized.campaignId,
+    campaignName: normalized.campaignName,
+    moduleType: normalized.moduleType,
+    outputRecordId: normalized.outputRecordId,
+    outputRecordType: normalized.outputRecordType,
+    experimentId: normalized.experimentId,
+    sourcePromptId: normalized.sourcePromptId,
+    sourcePromptName: normalized.sourcePromptName,
+    runType: normalized.runType,
+    tags: stringifyTags(normalized.tags),
     updatedAt: new Date(normalized.updatedAt),
   }
 }
@@ -99,10 +144,17 @@ export function prismaPromptRunToPromptRun(row: PrismaPromptRun): PromptRun {
     completedPrompt: row.completedPrompt,
     aiResponse: row.aiResponse,
     notes: row.notes,
+    campaignId: row.campaignId ?? "",
+    campaignName: row.campaignName ?? "",
+    moduleType: row.moduleType ?? "",
+    outputRecordId: row.outputRecordId ?? "",
+    outputRecordType: (row.outputRecordType ?? "") as CampaignLinkedRecordType | "",
+    experimentId: row.experimentId ?? "",
+    sourcePromptId: row.sourcePromptId ?? "",
+    sourcePromptName: row.sourcePromptName ?? "",
+    runType: row.runType ?? "",
+    tags: parseTags(row.tags),
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
   })
 }
-
-// Re-export for callers that need JSON helpers alongside prompt-run mappers.
-export { parseJsonStringArray, stringifyJsonArray }

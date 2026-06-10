@@ -99,6 +99,15 @@ export const COMMAND_PALETTE_QUICK_ACTIONS: CommandPaletteStaticItem[] = [
     keywords: "publishing checklist release launch pre-publish",
   },
   {
+    id: "qa-prompt-history",
+    group: "quick-actions",
+    title: "Open Prompt History",
+    subtitle: "Prompt Runner — saved AI runs",
+    href: "/runner",
+    icon: Play,
+    keywords: "prompt run history ai generation linked campaign",
+  },
+  {
     id: "qa-new-campaign",
     group: "quick-actions",
     title: "New Campaign",

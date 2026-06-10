@@ -83,7 +83,12 @@ async function loadJsonFields(): Promise<DataHealthJsonField[]> {
       select: { id: true, name: true, variables: true, tags: true },
     }),
     prisma.promptRun.findMany({
-      select: { id: true, promptId: true, inputValues: true },
+      select: {
+        id: true,
+        promptName: true,
+        inputValues: true,
+        tags: true,
+      },
     }),
   ])
 
@@ -159,14 +164,24 @@ async function loadJsonFields(): Promise<DataHealthJsonField[]> {
   }
 
   for (const row of promptRunRows) {
-    fields.push({
-      sourceType: "prompt-run",
-      sourceId: row.id,
-      sourceTitle: `Prompt run (${row.promptId || "unknown"})`,
-      fieldName: "inputValues",
-      raw: row.inputValues,
-      expected: "object",
-    })
+    fields.push(
+      {
+        sourceType: "prompt-run",
+        sourceId: row.id,
+        sourceTitle: row.promptName || "Prompt run",
+        fieldName: "inputValues",
+        raw: row.inputValues,
+        expected: "object",
+      },
+      {
+        sourceType: "prompt-run",
+        sourceId: row.id,
+        sourceTitle: row.promptName || "Prompt run",
+        fieldName: "tags",
+        raw: row.tags ?? "[]",
+        expected: "array",
+      },
+    )
   }
 
   return fields

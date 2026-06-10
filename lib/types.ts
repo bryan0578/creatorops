@@ -54,9 +54,48 @@ export interface PromptRun {
   completedPrompt: string
   aiResponse: string
   notes: string
+  campaignId: string
+  campaignName: string
+  moduleType: PromptRunModuleType | ""
+  outputRecordId: string
+  outputRecordType: CampaignLinkedRecordType | ""
+  experimentId: string
+  sourcePromptId: string
+  sourcePromptName: string
+  runType: string
+  tags: string[]
   createdAt: number
   updatedAt: number
 }
+
+export type PromptRunModuleType =
+  | "YouTube Packaging"
+  | "YouTube Thumbnail"
+  | "Release Plan"
+  | "Social Repurposing"
+  | "Email Campaign"
+  | "Merch Idea"
+  | "Product Listing"
+  | "Mockup Prompt"
+  | "Analytics"
+  | "Campaign Context"
+  | "Experiment"
+  | "Other"
+
+export const PROMPT_RUN_MODULE_TYPES: PromptRunModuleType[] = [
+  "YouTube Packaging",
+  "YouTube Thumbnail",
+  "Release Plan",
+  "Social Repurposing",
+  "Email Campaign",
+  "Merch Idea",
+  "Product Listing",
+  "Mockup Prompt",
+  "Analytics",
+  "Campaign Context",
+  "Experiment",
+  "Other",
+]
 
 export type StepRunStatus =
   | "Not started"
