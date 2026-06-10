@@ -494,15 +494,15 @@ export function ProductListingGenerator() {
                 New listing
               </Button>
             ) : null}
-            {editingId ? (
-              <QualityReviewActionLink
-                recordId={editingId}
-                campaignId={campaignPrefill.campaignId}
-                sourceRecordType="product-listing"
-                reviewType="Product Listing"
-                label="Review Product Listing"
-              />
-            ) : null}
+            <QualityReviewActionLink
+              recordId={editingId}
+              campaignId={campaignPrefill.campaignId}
+              campaignName={campaignPrefill.campaignName}
+              sourceRecordType="product-listing"
+              reviewType="Product Listing"
+              label="Review Product Listing"
+              contextTitle={form.designConcept || form.productType}
+            />
           </div>
         }
       />

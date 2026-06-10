@@ -76,6 +76,10 @@ export type CampaignPackSectionKey =
   | "asset-library"
   | "asset-library-youtube"
   | "asset-library-merch"
+  | "quality-review-summary"
+  | "quality-review-youtube"
+  | "quality-review-merch"
+  | "quality-review-analytics"
 
 export interface CampaignPackTemplate {
   id: CampaignPackTemplateId
@@ -98,6 +102,7 @@ export const CAMPAIGN_PACK_TEMPLATES: CampaignPackTemplate[] = [
     sections: [
       "campaign-summary",
       "readiness-summary",
+      "quality-review-summary",
       "artist-context",
       "release-plan",
       "youtube-package",
@@ -132,6 +137,7 @@ export const CAMPAIGN_PACK_TEMPLATES: CampaignPackTemplate[] = [
       "youtube-community-post",
       "youtube-pinned-comment",
       "youtube-tags-hashtags",
+      "quality-review-youtube",
       "youtube-title-thumbnail-experiments",
       "asset-library-youtube",
       "launch-tasks",
@@ -175,6 +181,7 @@ export const CAMPAIGN_PACK_TEMPLATES: CampaignPackTemplate[] = [
       "merch-social-caption",
       "merch-email-subject",
       "commerce-store-details",
+      "quality-review-merch",
       "asset-library-merch",
       "publishing-checklist",
       "missing-commerce-assets",
@@ -212,6 +219,7 @@ export const CAMPAIGN_PACK_TEMPLATES: CampaignPackTemplate[] = [
       "thumbnail-text-concept",
       "analytics-record",
       "analytics-current-metrics",
+      "quality-review-analytics",
       "analytics-24h-checklist",
       "analytics-7d-checklist",
       "analytics-30d-checklist",

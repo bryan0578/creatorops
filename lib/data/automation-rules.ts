@@ -305,6 +305,22 @@ export const BUILTIN_AUTOMATION_RULES: BuiltinAutomationRule[] = [
     enabled: true,
   },
   {
+    id: "quality-review-missing-youtube-thumbnail",
+    name: "YouTube Thumbnail Without Quality Review",
+    description: "Campaigns with a YouTube thumbnail but no quality review for it.",
+    category: "Missing Asset",
+    priority: "info",
+    enabled: true,
+  },
+  {
+    id: "quality-review-missing-product-listing",
+    name: "Product Listing Without Quality Review",
+    description: "Campaigns with a product listing but no quality review for it.",
+    category: "Missing Asset",
+    priority: "info",
+    enabled: true,
+  },
+  {
     id: "quality-review-low-score",
     name: "Low Quality Score",
     description: "Quality reviews below 60 suggest revision before publishing.",
@@ -979,6 +995,80 @@ function evaluateQualityReviews(
         href: `/quality?campaignId=${encodeURIComponent(campaign.id)}&sourceRecordType=youtube-package&sourceRecordId=${encodeURIComponent(youtubeLink.id)}&reviewType=${encodeURIComponent("YouTube Package")}`,
         canApply: false,
         reason: "Score metadata before publishing.",
+      })
+    }
+
+    const thumbnailLink = campaign.linkedRecords.find(
+      (link) => link.type === "youtube-thumbnail",
+    )
+    if (
+      thumbnailLink &&
+      !campaignHasReview(
+        reviews,
+        campaign,
+        "Thumbnail",
+        "youtube-thumbnail",
+        thumbnailLink.id,
+      )
+    ) {
+      suggestions.push({
+        id: suggestionId([
+          "quality-review-missing-youtube-thumbnail",
+          campaign.id,
+          thumbnailLink.id,
+        ]),
+        ruleId: "quality-review-missing-youtube-thumbnail",
+        priority: "info",
+        category: "Missing Asset",
+        title: "Review YouTube thumbnail",
+        description: `${campaign.campaignName || "Campaign"} has a YouTube thumbnail without a quality review.`,
+        campaignId: campaign.id,
+        campaignName: campaign.campaignName,
+        suggestedActionLabel: "Review Thumbnail",
+        actionType: "navigate",
+        actionPayload: {
+          href: `/quality?campaignId=${encodeURIComponent(campaign.id)}&sourceRecordType=youtube-thumbnail&sourceRecordId=${encodeURIComponent(thumbnailLink.id)}&reviewType=${encodeURIComponent("Thumbnail")}`,
+        },
+        href: `/quality?campaignId=${encodeURIComponent(campaign.id)}&sourceRecordType=youtube-thumbnail&sourceRecordId=${encodeURIComponent(thumbnailLink.id)}&reviewType=${encodeURIComponent("Thumbnail")}`,
+        canApply: false,
+        reason: "Score thumbnail creative before publishing.",
+      })
+    }
+
+    const productListingLink = campaign.linkedRecords.find(
+      (link) => link.type === "product-listing",
+    )
+    if (
+      productListingLink &&
+      !campaignHasReview(
+        reviews,
+        campaign,
+        "Product Listing",
+        "product-listing",
+        productListingLink.id,
+      )
+    ) {
+      suggestions.push({
+        id: suggestionId([
+          "quality-review-missing-product-listing",
+          campaign.id,
+          productListingLink.id,
+        ]),
+        ruleId: "quality-review-missing-product-listing",
+        priority: "info",
+        category: "Missing Asset",
+        title: "Review product listing",
+        description: `${campaign.campaignName || "Campaign"} has a product listing without a quality review.`,
+        campaignId: campaign.id,
+        campaignName: campaign.campaignName,
+        suggestedActionLabel: "Create Quality Review",
+        actionType: "navigate",
+        actionPayload: {
+          href: `/quality?campaignId=${encodeURIComponent(campaign.id)}&sourceRecordType=product-listing&sourceRecordId=${encodeURIComponent(productListingLink.id)}&reviewType=${encodeURIComponent("Product Listing")}`,
+        },
+        href: `/quality?campaignId=${encodeURIComponent(campaign.id)}&sourceRecordType=product-listing&sourceRecordId=${encodeURIComponent(productListingLink.id)}&reviewType=${encodeURIComponent("Product Listing")}`,
+        canApply: false,
+        reason: "Score product copy before publishing.",
       })
     }
 

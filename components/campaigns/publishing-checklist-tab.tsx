@@ -5,6 +5,7 @@ import Link from "next/link"
 import {
   AlertTriangle,
   CheckCircle2,
+  ClipboardCheck,
   ClipboardList,
   Download,
   ExternalLink,
@@ -24,6 +25,7 @@ import {
   getQuickActionHref,
   getQuickActionLabel,
   isPublishingChecklistMalformed,
+  isReadyToPublishCampaignStatus,
   PUBLISHING_CHECKLIST_PHASES,
   PUBLISHING_CHECKLIST_STATUSES,
   PUBLISHING_PHASE_DESCRIPTIONS,
@@ -31,11 +33,14 @@ import {
   updateChecklistItem,
   updateChecklistItemStatus,
 } from "@/lib/data/publishing-checklist"
+import { getQualityReviewsForCampaign } from "@/lib/actions/quality-reviews"
+import { buildQualityReviewUrl } from "@/lib/quality-prefill"
 import type {
   CampaignFormValues,
   PublishingChecklist,
   PublishingChecklistItemStatus,
   PublishingChecklistPhase,
+  QualityReviewRecord,
 } from "@/lib/types"
 import { copyToClipboard } from "@/lib/copy-to-clipboard"
 import { EmptyState } from "@/components/empty-state"
@@ -77,6 +82,98 @@ const STATUS_LABELS: Record<PublishingChecklistItemStatus, string> = {
   done: "Done",
   skipped: "Skipped",
   blocked: "Blocked",
+}
+
+function PublishingQualityWarningCard({
+  campaignId,
+  campaignName,
+  campaignStatus,
+}: {
+  campaignId: string
+  campaignName: string
+  campaignStatus: string
+}) {
+  const [reviews, setReviews] = React.useState<QualityReviewRecord[]>([])
+  const [loading, setLoading] = React.useState(true)
+
+  React.useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    void getQualityReviewsForCampaign(campaignId, campaignName)
+      .then((rows) => {
+        if (!cancelled) setReviews(rows)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [campaignId, campaignName])
+
+  if (loading || !campaignId) return null
+
+  const readinessReviews = reviews.filter(
+    (review) => review.reviewType === "Campaign Readiness",
+  )
+  const latestReadiness = [...readinessReviews].sort(
+    (a, b) => b.updatedAt - a.updatedAt,
+  )[0]
+
+  const lowScore =
+    latestReadiness &&
+    latestReadiness.overallScore > 0 &&
+    latestReadiness.overallScore < 70
+
+  const missingReadiness =
+    isReadyToPublishCampaignStatus(campaignStatus) && !latestReadiness
+
+  if (!lowScore && !missingReadiness) return null
+
+  const qualityHref = lowScore
+    ? `/quality?recordId=${encodeURIComponent(latestReadiness.id)}`
+    : buildQualityReviewUrl({
+        campaignId,
+        campaignName,
+        reviewType: "Campaign Readiness",
+      })
+
+  return (
+    <Card
+      className={cn(
+        "border-border/80",
+        lowScore
+          ? "border-amber-500/40 bg-amber-500/10"
+          : "border-sky-500/30 bg-sky-500/5",
+      )}
+    >
+      <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-2">
+          {lowScore ? (
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-700 dark:text-amber-300" />
+          ) : (
+            <ClipboardCheck className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+          )}
+          <div className="space-y-1">
+            <p className="text-sm font-medium">
+              {lowScore ? "Quality review needs attention" : "No campaign readiness review found"}
+            </p>
+            <p className="text-sm text-muted-foreground text-pretty">
+              {lowScore
+                ? `Latest campaign readiness score is ${latestReadiness.overallScore}/100 — below 70. Review recommendations before publishing.`
+                : "This campaign is Ready to Publish but has no Campaign Readiness quality review yet."}
+            </p>
+          </div>
+        </div>
+        <Link
+          href={qualityHref}
+          className={buttonVariants({ size: "sm", variant: lowScore ? "default" : "outline" })}
+        >
+          {lowScore ? "Open Quality Review" : "Create Quality Review"}
+        </Link>
+      </CardContent>
+    </Card>
+  )
 }
 
 function statusBadgeVariant(
@@ -239,6 +336,12 @@ export function PublishingChecklistTab({
           </CardContent>
         </Card>
       ) : null}
+
+      <PublishingQualityWarningCard
+        campaignId={campaignId}
+        campaignName={campaignName}
+        campaignStatus={form.status}
+      />
 
       <Card className={RECENT_RECORDS_CARD_CLASS}>
         <CardHeader className="pb-3">

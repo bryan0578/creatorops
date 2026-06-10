@@ -54,17 +54,27 @@ export const CAMPAIGN_BUILDER_TABS = [
 
 export function ModuleWorkflowTabs({
   defaultTab,
+  value,
+  onValueChange,
   tabs,
   children,
   className,
 }: {
-  defaultTab: string
+  defaultTab?: string
+  value?: string
+  onValueChange?: (value: string) => void
   tabs: readonly { value: string; label: string }[]
   children: React.ReactNode
   className?: string
 }) {
+  const resolvedDefault = defaultTab ?? tabs[0]?.value ?? ""
+  const rootProps =
+    value !== undefined && onValueChange
+      ? { value, onValueChange }
+      : { defaultValue: resolvedDefault }
+
   return (
-    <Tabs defaultValue={defaultTab} className={cn("w-full gap-6", className)}>
+    <Tabs {...rootProps} className={cn("w-full gap-6", className)}>
       <TabRow>
         {tabs.map((tab) => (
           <TabsTrigger key={tab.value} value={tab.value}>

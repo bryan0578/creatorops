@@ -69,7 +69,8 @@ async function safeLoad<T>(
 async function loadJsonFields(): Promise<DataHealthJsonField[]> {
   const fields: DataHealthJsonField[] = []
 
-  const [campaignRows, presetRows, promptRows, promptRunRows] = await Promise.all([
+  const [campaignRows, presetRows, promptRows, promptRunRows, qualityReviewRows] =
+    await Promise.all([
     prisma.campaign.findMany({
       select: {
         id: true,
@@ -90,6 +91,14 @@ async function loadJsonFields(): Promise<DataHealthJsonField[]> {
         id: true,
         promptName: true,
         inputValues: true,
+        tags: true,
+      },
+    }),
+    prisma.qualityReview.findMany({
+      select: {
+        id: true,
+        reviewName: true,
+        scoreBreakdown: true,
         tags: true,
       },
     }),
@@ -182,6 +191,27 @@ async function loadJsonFields(): Promise<DataHealthJsonField[]> {
         sourceTitle: row.promptName || "Prompt run",
         fieldName: "tags",
         raw: row.tags ?? "[]",
+        expected: "array",
+      },
+    )
+  }
+
+  for (const row of qualityReviewRows) {
+    fields.push(
+      {
+        sourceType: "quality-review",
+        sourceId: row.id,
+        sourceTitle: row.reviewName || "Untitled review",
+        fieldName: "scoreBreakdown",
+        raw: row.scoreBreakdown,
+        expected: "object",
+      },
+      {
+        sourceType: "quality-review",
+        sourceId: row.id,
+        sourceTitle: row.reviewName || "Untitled review",
+        fieldName: "tags",
+        raw: row.tags,
         expected: "array",
       },
     )

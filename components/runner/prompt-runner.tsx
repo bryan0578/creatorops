@@ -629,15 +629,15 @@ export function PromptRunner() {
             >
               {editingRunId ? "Update run" : "Save run"}
             </Button>
-            {editingRunId ? (
-              <QualityReviewActionLink
-                recordId={editingRunId}
-                campaignId={editingRun?.campaignId}
-                sourcePromptRunId={editingRunId}
-                reviewType="Prompt Quality"
-                label="Review Prompt Quality"
-              />
-            ) : null}
+            <QualityReviewActionLink
+              recordId={editingRunId}
+              campaignId={editingRun?.campaignId}
+              campaignName={editingRun?.campaignName}
+              sourcePromptRunId={editingRunId ?? undefined}
+              reviewType="Prompt Quality"
+              label="Review Prompt Quality"
+              contextTitle={editingRun?.promptName}
+            />
           </StickyActionBar>
         </div>
       </div>

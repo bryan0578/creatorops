@@ -513,15 +513,15 @@ export function SocialRepurposingEngine() {
                 New campaign
               </Button>
             ) : null}
-            {editingId ? (
-              <QualityReviewActionLink
-                recordId={editingId}
-                campaignId={campaignPrefill.campaignId}
-                sourceRecordType="social-repurposing"
-                reviewType="Social Caption"
-                label="Review Social Captions"
-              />
-            ) : null}
+            <QualityReviewActionLink
+              recordId={editingId}
+              campaignId={campaignPrefill.campaignId}
+              campaignName={campaignPrefill.campaignName}
+              sourceRecordType="social-repurposing"
+              reviewType="Social Caption"
+              label="Review Social Captions"
+              contextTitle={form.campaignName}
+            />
           </div>
         }
       />

@@ -562,15 +562,15 @@ export function ExperimentTracker() {
                     New Experiment
                   </Button>
                 ) : null}
-                {editingId ? (
-                  <QualityReviewActionLink
-                    recordId={editingId}
-                    campaignId={form.campaignId}
-                    sourceExperimentId={editingId}
-                    reviewType="Experiment Variant"
-                    label="Review Experiment Variant"
-                  />
-                ) : null}
+                <QualityReviewActionLink
+                  recordId={editingId}
+                  campaignId={form.campaignId}
+                  campaignName={form.campaignName}
+                  sourceExperimentId={editingId ?? undefined}
+                  reviewType="Experiment Variant"
+                  label="Review Experiment Variant"
+                  contextTitle={form.experimentName}
+                />
               </div>
             </CardContent>
           </Card>

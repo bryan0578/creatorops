@@ -548,15 +548,15 @@ export function MockupPromptGenerator() {
                 New project
               </Button>
             ) : null}
-            {editingId ? (
-              <QualityReviewActionLink
-                recordId={editingId}
-                campaignId={campaignPrefill.campaignId}
-                sourceRecordType="mockup-prompt"
-                reviewType="Mockup Prompt"
-                label="Review Mockup Prompt"
-              />
-            ) : null}
+            <QualityReviewActionLink
+              recordId={editingId}
+              campaignId={campaignPrefill.campaignId}
+              campaignName={campaignPrefill.campaignName}
+              sourceRecordType="mockup-prompt"
+              reviewType="Mockup Prompt"
+              label="Review Mockup Prompt"
+              contextTitle={form.projectName || form.mockupType}
+            />
           </div>
         }
       />

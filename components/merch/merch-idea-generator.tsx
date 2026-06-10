@@ -480,15 +480,15 @@ export function MerchIdeaGenerator() {
                 New idea
               </Button>
             ) : null}
-            {editingId ? (
-              <QualityReviewActionLink
-                recordId={editingId}
-                campaignId={campaignPrefill.campaignId}
-                sourceRecordType="merch-idea"
-                reviewType="Merch Concept"
-                label="Review Merch Concept"
-              />
-            ) : null}
+            <QualityReviewActionLink
+              recordId={editingId}
+              campaignId={campaignPrefill.campaignId}
+              campaignName={campaignPrefill.campaignName}
+              sourceRecordType="merch-idea"
+              reviewType="Merch Concept"
+              label="Review Merch Concept"
+              contextTitle={form.noun || form.productType}
+            />
           </div>
         }
       />

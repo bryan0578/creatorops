@@ -13,6 +13,10 @@ import {
 import { formatPublishingChecklistMarkdown } from "@/lib/data/publishing-checklist"
 import { filterExperimentsForCampaign } from "@/lib/experiments"
 import { filterAssetsForCampaign } from "@/lib/assets"
+import {
+  filterQualityReviewsForCampaign,
+  filterQualityReviewsForSource,
+} from "@/lib/quality-reviews"
 import type {
   AnalyticsRecord,
   AssetRecord,
@@ -26,6 +30,7 @@ import type {
   MerchIdea,
   MockupPromptRecord,
   ProductListing,
+  QualityReviewRecord,
   ReleasePlan,
   SocialRepurposingRecord,
   YouTubePackage,
@@ -43,6 +48,7 @@ export interface CampaignExportMissingAsset {
 export interface CampaignExportSectionContext {
   campaign: CampaignRecord
   relatedRecords: CampaignRelatedRecordsBundle
+  qualityReviews: QualityReviewRecord[]
   experiments: ExperimentRecord[]
   assets: AssetRecord[]
   missingAssets: CampaignExportMissingAsset[]
@@ -975,6 +981,232 @@ const YOUTUBE_MISSING_KEYS = ["youtube-package", "youtube-thumbnail"]
 const SOCIAL_MISSING_KEYS = ["social-repurposing"]
 const COMMERCE_MISSING_KEYS = ["merch-idea", "product-listing", "mockup-prompt"]
 
+function latestReviewOfType(
+  reviews: QualityReviewRecord[],
+  reviewType: string,
+): QualityReviewRecord | null {
+  const matches = reviews.filter((review) => review.reviewType === reviewType)
+  if (!matches.length) return null
+  return [...matches].sort((a, b) => b.updatedAt - a.updatedAt)[0]
+}
+
+function latestReviewForSource(
+  reviews: QualityReviewRecord[],
+  sourceType: string,
+  sourceId: string | undefined | null,
+): QualityReviewRecord | null {
+  if (!sourceId) return null
+  const matches = filterQualityReviewsForSource(reviews, sourceType, sourceId)
+  if (!matches.length) return null
+  return [...matches].sort((a, b) => b.updatedAt - a.updatedAt)[0]
+}
+
+function lowestScoringReview(
+  reviews: QualityReviewRecord[],
+): QualityReviewRecord | null {
+  const scored = reviews.filter((review) => review.overallScore > 0)
+  if (!scored.length) return null
+  return [...scored].sort((a, b) => a.overallScore - b.overallScore)[0]
+}
+
+function formatQualityReviewDetail(review: QualityReviewRecord): string[] {
+  return [
+    mdBullet("Review name", review.reviewName),
+    mdBullet("Review type", review.reviewType),
+    mdBullet("Overall score", `${review.overallScore}/100`),
+    mdBullet("Readiness label", review.readinessLabel || review.status),
+    mdMultiline("Strengths", review.strengths),
+    mdMultiline("Weaknesses", review.weaknesses),
+    mdMultiline("Recommended actions", review.recommendedActions),
+    "",
+  ]
+}
+
+function formatQualityReviewSubsection(
+  heading: string,
+  review: QualityReviewRecord | null,
+): string {
+  if (!review) {
+    return `### ${heading}\n\nNot available.\n`
+  }
+  return [`### ${heading}`, "", ...formatQualityReviewDetail(review)].join("\n")
+}
+
+function sectionQualityReviewEmpty(heading: string): string {
+  return `## ${heading}\n\nNo quality reviews linked yet.\n`
+}
+
+function sectionQualityReviewSummary(reviews: QualityReviewRecord[]): string {
+  if (!reviews.length) {
+    return sectionQualityReviewEmpty("Quality Review Summary")
+  }
+
+  const readiness = latestReviewOfType(reviews, "Campaign Readiness")
+  const youtubePackage =
+    latestReviewOfType(reviews, "YouTube Package") ??
+    latestReviewForSource(
+      reviews,
+      "youtube-package",
+      reviews.find((r) => r.sourceRecordType === "youtube-package")?.sourceRecordId,
+    )
+  const thumbnail =
+    latestReviewOfType(reviews, "Thumbnail") ??
+    latestReviewForSource(
+      reviews,
+      "youtube-thumbnail",
+      reviews.find((r) => r.sourceRecordType === "youtube-thumbnail")?.sourceRecordId,
+    )
+  const lowest = lowestScoringReview(reviews)
+
+  const lines = ["## Quality Review Summary", ""]
+
+  lines.push(formatQualityReviewSubsection("Latest Campaign Readiness Review", readiness))
+  lines.push(formatQualityReviewSubsection("Latest YouTube Package Review", youtubePackage))
+  lines.push(formatQualityReviewSubsection("Latest Thumbnail Review", thumbnail))
+
+  if (lowest) {
+    lines.push(
+      "### Lowest Scoring Linked Review",
+      "",
+      ...formatQualityReviewDetail(lowest),
+    )
+  }
+
+  return lines.join("\n")
+}
+
+function sectionQualityReviewYouTube(
+  reviews: QualityReviewRecord[],
+  relatedRecords: CampaignRelatedRecordsBundle,
+): string {
+  if (!reviews.length) {
+    return sectionQualityReviewEmpty("Quality Review Notes")
+  }
+
+  const youtubeReview =
+    latestReviewForSource(
+      reviews,
+      "youtube-package",
+      relatedRecords.youtubePackage?.id,
+    ) ?? latestReviewOfType(reviews, "YouTube Package")
+  const thumbnailReview =
+    latestReviewForSource(
+      reviews,
+      "youtube-thumbnail",
+      relatedRecords.youtubeThumbnail?.id,
+    ) ?? latestReviewOfType(reviews, "Thumbnail")
+
+  if (!youtubeReview && !thumbnailReview) {
+    return sectionQualityReviewEmpty("Quality Review Notes")
+  }
+
+  const lines = ["## Quality Review Notes", ""]
+  lines.push(formatQualityReviewSubsection("YouTube Package Review", youtubeReview))
+  lines.push(formatQualityReviewSubsection("Thumbnail Review", thumbnailReview))
+
+  const titleRec =
+    youtubeReview?.recommendedActions?.trim() ||
+    youtubeReview?.improvementIdeas?.trim()
+  const thumbnailRec =
+    thumbnailReview?.recommendedActions?.trim() ||
+    thumbnailReview?.improvementIdeas?.trim()
+
+  if (titleRec || thumbnailRec) {
+    lines.push("### Title / Thumbnail Recommendations", "")
+    if (titleRec) lines.push(mdMultiline("YouTube package", titleRec))
+    if (thumbnailRec) lines.push(mdMultiline("Thumbnail", thumbnailRec))
+    lines.push("")
+  }
+
+  return lines.join("\n")
+}
+
+function sectionQualityReviewMerch(
+  reviews: QualityReviewRecord[],
+  relatedRecords: CampaignRelatedRecordsBundle,
+): string {
+  if (!reviews.length) {
+    return sectionQualityReviewEmpty("Quality Review Notes")
+  }
+
+  const merchReview =
+    latestReviewForSource(reviews, "merch-idea", relatedRecords.merchIdea?.id) ??
+    latestReviewOfType(reviews, "Merch Concept")
+  const listingReview =
+    latestReviewForSource(
+      reviews,
+      "product-listing",
+      relatedRecords.productListing?.id,
+    ) ?? latestReviewOfType(reviews, "Product Listing")
+  const mockupReview =
+    latestReviewForSource(reviews, "mockup-prompt", relatedRecords.mockupPrompt?.id) ??
+    latestReviewOfType(reviews, "Mockup Prompt")
+
+  if (!merchReview && !listingReview && !mockupReview) {
+    return sectionQualityReviewEmpty("Quality Review Notes")
+  }
+
+  const lines = ["## Quality Review Notes", ""]
+  if (merchReview) {
+    lines.push(formatQualityReviewSubsection("Merch Concept Review", merchReview))
+  }
+  if (listingReview) {
+    lines.push(formatQualityReviewSubsection("Product Listing Review", listingReview))
+  }
+  lines.push(formatQualityReviewSubsection("Mockup Prompt Review", mockupReview))
+  return lines.join("\n")
+}
+
+function sectionQualityReviewAnalytics(reviews: QualityReviewRecord[]): string {
+  if (!reviews.length) {
+    return sectionQualityReviewEmpty("Quality Review Notes")
+  }
+
+  const readiness = latestReviewOfType(reviews, "Campaign Readiness")
+  const lowScoring = [...reviews]
+    .filter((review) => review.overallScore > 0 && review.overallScore < 70)
+    .sort((a, b) => a.overallScore - b.overallScore)
+
+  const lines = ["## Quality Review Notes", ""]
+
+  if (readiness && readiness.overallScore > 0) {
+    lines.push(
+      "### Quality Score at Publish",
+      "",
+      mdBullet("Campaign readiness score", `${readiness.overallScore}/100`),
+      mdBullet("Readiness label", readiness.readinessLabel || readiness.status),
+      mdMultiline("Recommended actions", readiness.recommendedActions),
+      "",
+    )
+  } else {
+    lines.push("### Quality Score at Publish", "", "No campaign readiness review on file.", "")
+  }
+
+  if (lowScoring.length > 0) {
+    lines.push("### Low-Scoring Items to Compare Against Performance", "")
+    for (const review of lowScoring) {
+      lines.push(
+        `#### ${review.reviewName || review.reviewType}`,
+        "",
+        mdBullet("Score", `${review.overallScore}/100`),
+        mdBullet("Type", review.reviewType),
+        mdMultiline("Weaknesses", review.weaknesses),
+        mdMultiline("Recommended actions", review.recommendedActions),
+        "",
+      )
+    }
+  } else {
+    lines.push(
+      "### Low-Scoring Items to Compare Against Performance",
+      "",
+      "No low-scoring quality reviews linked to this campaign.",
+      "",
+    )
+  }
+
+  return lines.join("\n")
+}
+
 function renderPackSection(
   key: CampaignPackSectionKey,
   ctx: CampaignExportSectionContext,
@@ -1262,6 +1494,14 @@ function renderPackSection(
       return renderAssetLibraryYouTube(ctx)
     case "asset-library-merch":
       return renderAssetLibraryMerch(ctx)
+    case "quality-review-summary":
+      return sectionQualityReviewSummary(ctx.qualityReviews)
+    case "quality-review-youtube":
+      return sectionQualityReviewYouTube(ctx.qualityReviews, relatedRecords)
+    case "quality-review-merch":
+      return sectionQualityReviewMerch(ctx.qualityReviews, relatedRecords)
+    case "quality-review-analytics":
+      return sectionQualityReviewAnalytics(ctx.qualityReviews)
     default:
       return ""
   }
@@ -1301,7 +1541,8 @@ export function generateCampaignExportMarkdownLegacy(input: {
 }): string {
   return generateCampaignExportMarkdown({
     campaign: input.campaign,
-    relatedRecords: input.    relatedRecords,
+    relatedRecords: input.relatedRecords,
+    qualityReviews: [],
     experiments: [],
     assets: [],
     missingAssets: input.missingAssets,
@@ -1346,6 +1587,7 @@ export function buildCampaignExportPack(
     generatedAt?: Date
     experiments?: ExperimentRecord[]
     assets?: AssetRecord[]
+    qualityReviews?: QualityReviewRecord[]
   },
 ): CampaignExportPackResult {
   const template = getCampaignPackTemplate(options?.templateId)
@@ -1362,6 +1604,11 @@ export function buildCampaignExportPack(
     campaign.campaignName,
   )
   const dashboard = buildLaunchDashboardData(campaign, store)
+  const qualityReviews = filterQualityReviewsForCampaign(
+    options?.qualityReviews ?? [],
+    campaign.id,
+    campaign.campaignName,
+  )
 
   const missingAssets: CampaignExportMissingAsset[] = dashboard.readiness.assets
     .filter((asset) => !asset.completed)
@@ -1384,6 +1631,7 @@ export function buildCampaignExportPack(
   const sectionContext: CampaignExportSectionContext = {
     campaign,
     relatedRecords,
+    qualityReviews,
     experiments: campaignExperiments,
     assets: campaignAssets,
     missingAssets,

@@ -589,24 +589,25 @@ export function YouTubeThumbnailGenerator() {
                 New thumbnail
               </Button>
             ) : null}
-            {editingId ? (
-              <>
-                <QualityReviewActionLink
-                  recordId={editingId}
-                  campaignId={campaignPrefill.campaignId}
-                  sourceRecordType="youtube-thumbnail"
-                  reviewType="Thumbnail"
-                  label="Review Thumbnail"
-                />
-                <QualityReviewActionLink
-                  recordId={editingId}
-                  campaignId={campaignPrefill.campaignId}
-                  sourceRecordType="youtube-thumbnail"
-                  reviewType="Thumbnail Prompt"
-                  label="Review Thumbnail Prompt"
-                />
-              </>
-            ) : null}
+            <QualityReviewActionLink
+              recordId={editingId}
+              campaignId={campaignPrefill.campaignId}
+              campaignName={campaignPrefill.campaignName}
+              sourceRecordType="youtube-thumbnail"
+              reviewType="Thumbnail"
+              label="Review Thumbnail"
+              contextTitle={finalThumbnail.finalTextOverlay || form.videoTitle || form.trackTitle}
+            />
+            <QualityReviewActionLink
+              recordId={editingId}
+              campaignId={campaignPrefill.campaignId}
+              campaignName={campaignPrefill.campaignName}
+              sourceRecordType="youtube-thumbnail"
+              reviewType="Thumbnail Prompt"
+              label="Review Thumbnail Prompt"
+              contextTitle={form.videoTitle || form.trackTitle}
+              hidden={!finalThumbnail.finalImagePrompt?.trim()}
+            />
           </div>
         }
       />

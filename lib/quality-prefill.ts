@@ -1,31 +1,53 @@
 import type { QualityReviewFormValues } from "@/lib/types"
 import { emptyQualityReviewForm } from "@/lib/quality-reviews"
 
+export function normalizeSourceRecordType(value: string | undefined | null): string {
+  const trimmed = (value ?? "").trim()
+  if (!trimmed) return ""
+  const lower = trimmed.toLowerCase()
+  if (lower === "youtubepackage" || lower === "youtube-package") return "youtube-package"
+  if (lower === "youtubethumbnail" || lower === "youtube-thumbnail") return "youtube-thumbnail"
+  if (lower === "socialrepurposing" || lower === "social-repurposing") return "social-repurposing"
+  if (lower === "emailcampaign" || lower === "email-campaign") return "email-campaign"
+  if (lower === "merchidea" || lower === "merch-idea") return "merch-idea"
+  if (lower === "productlisting" || lower === "product-listing") return "product-listing"
+  if (lower === "mockupprompt" || lower === "mockup-prompt") return "mockup-prompt"
+  if (lower === "promptrun" || lower === "prompt-run") return "prompt-run"
+  if (lower === "experiment") return "experiment"
+  if (lower === "asset") return "asset"
+  return trimmed
+}
+
 export function buildQualityReviewUrl(params: {
   campaignId?: string
+  campaignName?: string
   sourceRecordType?: string
   sourceRecordId?: string
   sourcePromptRunId?: string
   sourceExperimentId?: string
   reviewType?: string
   recordId?: string
+  contextTitle?: string
 }): string {
   const search = new URLSearchParams()
   if (params.recordId) search.set("recordId", params.recordId)
   if (params.campaignId) search.set("campaignId", params.campaignId)
-  if (params.sourceRecordType) search.set("sourceRecordType", params.sourceRecordType)
+  if (params.campaignName) search.set("campaignName", params.campaignName)
+  const sourceType = normalizeSourceRecordType(params.sourceRecordType)
+  if (sourceType) search.set("sourceRecordType", sourceType)
   if (params.sourceRecordId) search.set("sourceRecordId", params.sourceRecordId)
   if (params.sourcePromptRunId) search.set("sourcePromptRunId", params.sourcePromptRunId)
   if (params.sourceExperimentId) search.set("sourceExperimentId", params.sourceExperimentId)
   if (params.reviewType) search.set("reviewType", params.reviewType)
+  if (params.contextTitle?.trim()) search.set("contextTitle", params.contextTitle.trim())
   const qs = search.toString()
   return qs ? `/quality?${qs}` : "/quality"
 }
 
 export function reviewTypeForSource(sourceRecordType: string, variant?: string): string {
-  const type = sourceRecordType.trim().toLowerCase()
-  if (type === "youtube-package" || type === "youtubepackage") return "YouTube Package"
-  if (type === "youtube-thumbnail" || type === "youtubethumbnail") {
+  const type = normalizeSourceRecordType(sourceRecordType)
+  if (type === "youtube-package") return "YouTube Package"
+  if (type === "youtube-thumbnail") {
     return variant === "prompt" ? "Thumbnail Prompt" : "Thumbnail"
   }
   if (type === "social-repurposing") return "Social Caption"
@@ -33,8 +55,24 @@ export function reviewTypeForSource(sourceRecordType: string, variant?: string):
   if (type === "merch-idea") return "Merch Concept"
   if (type === "product-listing") return "Product Listing"
   if (type === "mockup-prompt") return "Mockup Prompt"
+  if (type === "prompt-run") return "Prompt Quality"
+  if (type === "experiment") return "Experiment Variant"
   if (type === "asset") return "Thumbnail"
   return "Other"
+}
+
+export function buildSuggestedReviewName(
+  reviewType: string,
+  params?: {
+    contextTitle?: string | null
+    campaignName?: string | null
+  },
+): string {
+  const contextTitle = params?.contextTitle?.trim()
+  if (contextTitle) return `${reviewType} — ${contextTitle}`
+  const campaignName = params?.campaignName?.trim()
+  if (campaignName) return `${reviewType} — ${campaignName}`
+  return `${reviewType} Review`
 }
 
 export function applyCampaignPrefillToQualityForm(
@@ -60,15 +98,18 @@ export function applyCampaignPrefillToQualityForm(
 export function newQualityReviewFormFromParams(params: {
   reviewType?: string | null
   campaignId?: string | null
+  campaignName?: string | null
+  contextTitle?: string | null
   sourceRecordType?: string | null
   sourceRecordId?: string | null
   sourcePromptRunId?: string | null
   sourceExperimentId?: string | null
 }): QualityReviewFormValues {
+  const sourceRecordType = normalizeSourceRecordType(params.sourceRecordType)
   const reviewType =
     params.reviewType?.trim() ||
-    (params.sourceRecordType
-      ? reviewTypeForSource(params.sourceRecordType)
+    (sourceRecordType
+      ? reviewTypeForSource(sourceRecordType)
       : params.sourcePromptRunId
         ? "Prompt Quality"
         : params.sourceExperimentId
@@ -78,10 +119,17 @@ export function newQualityReviewFormFromParams(params: {
             : "Other")
 
   const form = emptyQualityReviewForm(reviewType)
+  const reviewName = buildSuggestedReviewName(reviewType, {
+    contextTitle: params.contextTitle,
+    campaignName: params.campaignName,
+  })
+
   return {
     ...form,
+    reviewName,
     campaignId: params.campaignId?.trim() ?? "",
-    sourceRecordType: params.sourceRecordType?.trim() ?? "",
+    campaignName: params.campaignName?.trim() ?? "",
+    sourceRecordType,
     sourceRecordId: params.sourceRecordId?.trim() ?? "",
     sourcePromptRunId: params.sourcePromptRunId?.trim() ?? "",
     sourceExperimentId: params.sourceExperimentId?.trim() ?? "",

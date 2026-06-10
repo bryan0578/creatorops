@@ -20,6 +20,7 @@ import {
 import type { CampaignLinkableStoreSlice } from "@/lib/campaigns"
 import type { CampaignRecord, PromptRun, PublishingChecklist } from "@/lib/types"
 import { EmptyState } from "@/components/empty-state"
+import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Card,
@@ -443,6 +444,7 @@ export function CampaignLaunchDashboard({
         <CampaignQualityReviewCard
           campaignId={campaign.id}
           campaignName={campaign.campaignName}
+          linkedRecords={campaign.linkedRecords}
         />
       </div>
 

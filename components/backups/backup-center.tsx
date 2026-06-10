@@ -4,6 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import {
   AlertTriangle,
+  ClipboardCheck,
   Database,
   Download,
   HardDrive,
@@ -231,6 +232,8 @@ export function BackupCenter() {
   }
 
   const modules = summary?.modules ?? []
+  const qualityReviewCount =
+    modules.find((module) => module.key === "qualityReviews")?.count ?? 0
 
   return (
     <div className="flex flex-col gap-8">
@@ -266,9 +269,15 @@ export function BackupCenter() {
           icon={Database}
         />
         <SummaryCard
+          label="Quality Reviews"
+          value={loadingSummary ? "…" : qualityReviewCount}
+          hint="Included in full backup and module exports"
+          icon={ClipboardCheck}
+        />
+        <SummaryCard
           label="Modules included"
-          value={summary?.modulesIncluded ?? 15}
-          hint="Prompts through campaigns"
+          value={summary?.modulesIncluded ?? 20}
+          hint="Prompts through quality reviews"
           icon={HardDrive}
         />
         <SummaryCard

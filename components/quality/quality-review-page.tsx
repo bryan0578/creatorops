@@ -269,6 +269,8 @@ export function QualityReviewPage() {
     const nextForm = newQualityReviewFormFromParams({
       reviewType: searchParams.get("reviewType"),
       campaignId: searchParams.get("campaignId"),
+      campaignName: searchParams.get("campaignName"),
+      contextTitle: searchParams.get("contextTitle"),
       sourceRecordType: searchParams.get("sourceRecordType"),
       sourceRecordId: searchParams.get("sourceRecordId"),
       sourcePromptRunId: searchParams.get("sourcePromptRunId"),
@@ -601,9 +603,9 @@ export function QualityReviewPage() {
         <CampaignPrefillBanner campaign={campaignPrefill.campaign} />
       ) : null}
 
-      <ModuleWorkflowTabs tabs={QUALITY_TABS} value={activeTab} onValueChange={setActiveTab} />
+      <ModuleWorkflowTabs tabs={QUALITY_TABS} value={activeTab} onValueChange={setActiveTab}>
 
-      <ModuleTabPanel value="setup" activeTab={activeTab}>
+      <ModuleTabPanel value="setup">
         <FormSection title="Review setup" description="Link a campaign or source record, then generate draft scores.">
           <FormGrid>
             {SETUP_FIELDS.map((fieldKey) => {
@@ -680,7 +682,7 @@ export function QualityReviewPage() {
         </FormSection>
       </ModuleTabPanel>
 
-      <ModuleTabPanel value="scorecard" activeTab={activeTab}>
+      <ModuleTabPanel value="scorecard">
         <div className="grid gap-4 lg:grid-cols-[minmax(0,220px)_1fr]">
           <OverallScoreDisplay score={form.overallScore} readinessLabel={form.readinessLabel} />
           <Card className="border-border/80">
@@ -722,7 +724,7 @@ export function QualityReviewPage() {
         </div>
       </ModuleTabPanel>
 
-      <ModuleTabPanel value="recommendations" activeTab={activeTab}>
+      <ModuleTabPanel value="recommendations">
         <FormSection
           title="Recommendations"
           description="Auto-generated from heuristics — edit freely before saving."
@@ -743,7 +745,7 @@ export function QualityReviewPage() {
         </FormSection>
       </ModuleTabPanel>
 
-      <ModuleTabPanel value="related" activeTab={activeTab}>
+      <ModuleTabPanel value="related">
         <Card className={RECENT_RECORDS_CARD_CLASS}>
           <CardHeader>
             <CardTitle className="text-base">Related records</CardTitle>
@@ -795,7 +797,7 @@ export function QualityReviewPage() {
         </Card>
       </ModuleTabPanel>
 
-      <ModuleTabPanel value="saved" activeTab={activeTab}>
+      <ModuleTabPanel value="saved">
         <Card className={RECENT_RECORDS_CARD_CLASS}>
           <CardHeader className="pb-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -895,6 +897,7 @@ export function QualityReviewPage() {
           </CardContent>
         </Card>
       </ModuleTabPanel>
+      </ModuleWorkflowTabs>
     </ModuleShell>
   )
 }

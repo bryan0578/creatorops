@@ -125,20 +125,39 @@ export function QualityDashboardCard() {
   )
 }
 
+function pickRecommendedAction(reviews: QualityReviewRecord[]): string | null {
+  const scored = reviews.filter((review) => review.overallScore > 0)
+  if (scored.length === 0) return null
+
+  const lowest = [...scored].sort((a, b) => a.overallScore - b.overallScore)[0]
+  if (lowest.overallScore < 70 && lowest.recommendedActions?.trim()) {
+    return lowest.recommendedActions.trim()
+  }
+
+  const latest = [...reviews].sort((a, b) => b.updatedAt - a.updatedAt)[0]
+  return latest.recommendedActions?.trim() || null
+}
+
 export function CampaignQualityReviewCard({
   campaignId,
   campaignName,
+  linkedRecords = [],
 }: {
   campaignId: string
   campaignName?: string
+  linkedRecords?: { type: string; id: string; title?: string }[]
 }) {
   const { reviews, loading, refreshing, runLoad } = useQualityRecords(campaignId, campaignName)
   const scoped = filterQualityReviewsForCampaign(reviews, campaignId, campaignName)
   const latest = [...scoped].sort((a, b) => b.updatedAt - a.updatedAt)[0]
+  const lowestScored = scoped.filter((review) => review.overallScore > 0)
   const lowest =
-    scoped.length > 0
-      ? [...scoped].sort((a, b) => a.overallScore - b.overallScore)[0]
+    lowestScored.length > 0
+      ? [...lowestScored].sort((a, b) => a.overallScore - b.overallScore)[0]
       : null
+  const recommendedAction = pickRecommendedAction(scoped)
+  const youtubePackage = linkedRecords.find((link) => link.type === "youtube-package")
+  const youtubeThumbnail = linkedRecords.find((link) => link.type === "youtube-thumbnail")
 
   return (
     <Card className={RECENT_RECORDS_CARD_CLASS}>
@@ -149,7 +168,11 @@ export function CampaignQualityReviewCard({
               <ClipboardCheck className="size-4 text-muted-foreground" />
               Quality Review
             </CardTitle>
-            <CardDescription>Latest scores and readiness for this campaign</CardDescription>
+            <CardDescription>
+              {scoped.length > 0
+                ? "Latest scores and readiness for this campaign"
+                : "No quality reviews yet."}
+            </CardDescription>
           </div>
           <Button
             type="button"
@@ -173,13 +196,66 @@ export function CampaignQualityReviewCard({
             <Loader2 className="size-4 animate-spin" />
             Loading…
           </div>
+        ) : scoped.length === 0 ? (
+          <>
+            <p className="text-sm text-muted-foreground">No quality reviews yet.</p>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href={buildQualityReviewUrl({
+                  campaignId,
+                  campaignName,
+                  reviewType: "Campaign Readiness",
+                })}
+                className={buttonVariants({ size: "sm" })}
+              >
+                Create Campaign Readiness Review
+              </Link>
+              {youtubePackage ? (
+                <Link
+                  href={buildQualityReviewUrl({
+                    campaignId,
+                    campaignName,
+                    sourceRecordType: "youtube-package",
+                    sourceRecordId: youtubePackage.id,
+                    reviewType: "YouTube Package",
+                    contextTitle: youtubePackage.title,
+                  })}
+                  className={buttonVariants({ size: "sm", variant: "outline" })}
+                >
+                  Review YouTube Package
+                </Link>
+              ) : null}
+              {youtubeThumbnail ? (
+                <Link
+                  href={buildQualityReviewUrl({
+                    campaignId,
+                    campaignName,
+                    sourceRecordType: "youtube-thumbnail",
+                    sourceRecordId: youtubeThumbnail.id,
+                    reviewType: "Thumbnail",
+                    contextTitle: youtubeThumbnail.title,
+                  })}
+                  className={buttonVariants({ size: "sm", variant: "outline" })}
+                >
+                  Review Thumbnail
+                </Link>
+              ) : null}
+            </div>
+          </>
         ) : (
           <>
             <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary">{scoped.length} review{scoped.length === 1 ? "" : "s"}</Badge>
+              <Badge variant="secondary">
+                {scoped.length} review{scoped.length === 1 ? "" : "s"}
+              </Badge>
               {latest ? (
                 <Badge variant="outline" className={scoreColorClass(latest.overallScore)}>
                   Latest: {latest.overallScore}/100
+                </Badge>
+              ) : null}
+              {lowest ? (
+                <Badge variant="outline" className={scoreColorClass(lowest.overallScore)}>
+                  Lowest: {lowest.overallScore}/100
                 </Badge>
               ) : null}
             </div>
@@ -191,24 +267,29 @@ export function CampaignQualityReviewCard({
               <p className="text-sm text-muted-foreground">
                 {latest.reviewName || latest.reviewType} — {latest.readinessLabel || latest.status}
               </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">No quality reviews for this campaign yet.</p>
-            )}
+            ) : null}
+            {recommendedAction ? (
+              <p className="text-sm text-muted-foreground text-pretty">
+                <span className="font-medium text-foreground">Recommended: </span>
+                {recommendedAction}
+              </p>
+            ) : null}
             <div className="flex flex-wrap gap-2">
+              <Link
+                href={`/quality?campaignId=${encodeURIComponent(campaignId)}`}
+                className={buttonVariants({ size: "sm" })}
+              >
+                View Reviews
+              </Link>
               <Link
                 href={buildQualityReviewUrl({
                   campaignId,
+                  campaignName,
                   reviewType: "Campaign Readiness",
                 })}
-                className={buttonVariants({ size: "sm" })}
-              >
-                New Quality Review
-              </Link>
-              <Link
-                href={`/quality?campaignId=${encodeURIComponent(campaignId)}`}
                 className={buttonVariants({ size: "sm", variant: "outline" })}
               >
-                View Reviews
+                New Quality Review
               </Link>
             </div>
           </>

@@ -3,6 +3,7 @@
  */
 
 import { buildRecordHref } from "@/lib/data/related-records"
+import { normalizeSourceRecordType } from "@/lib/quality-prefill"
 import { extractPlaybookIdFromNotes } from "@/lib/playbooks"
 import { isValidJsonString } from "@/lib/safe-json"
 import {
@@ -1239,7 +1240,9 @@ function scanJsonIssues(input: DataHealthScanInput, issues: DataHealthIssue[]): 
               ? `/prompts?promptId=${encodeURIComponent(field.sourceId)}`
               : field.sourceType === "campaign"
                 ? campaignHref(field.sourceId)
-                : "/backups",
+                : field.sourceType === "quality-review"
+                  ? `/quality?recordId=${encodeURIComponent(field.sourceId)}`
+                  : "/backups",
       suggestedAction: "Open Backup Center to export, repair JSON manually, and re-import.",
       relatedHref: "/backups",
     })
@@ -1575,97 +1578,224 @@ function safeScan(
   }
 }
 
+function hasQualityReviewForSource(
+  reviews: QualityReviewRecord[],
+  sourceType: string,
+  sourceId: string,
+): boolean {
+  const normType = normalizeSourceRecordType(sourceType)
+  return reviews.some(
+    (review) =>
+      normalizeSourceRecordType(review.sourceRecordType) === normType &&
+      review.sourceRecordId === sourceId,
+  )
+}
+
+function qualityReviewIssue(
+  review: QualityReviewRecord,
+  idParts: string[],
+  partial: Omit<DataHealthIssue, "id" | "sourceType" | "sourceId" | "sourceTitle" | "href">,
+): DataHealthIssue {
+  const title = review.reviewName || "Untitled review"
+  const href = `/quality?recordId=${encodeURIComponent(review.id)}`
+  return {
+    id: issueId(idParts),
+    sourceType: "quality-review",
+    sourceId: review.id,
+    sourceTitle: title,
+    href,
+    ...partial,
+  }
+}
+
 export function scanQualityReviewWarnings(
   input: DataHealthScanInput,
   sets: RecordIdSets,
   issues: DataHealthIssue[],
 ): DataHealthIssue[] {
   const campaignIds = sets.campaign
+  const experimentIds = new Set(input.experiments.map((experiment) => experiment.id))
 
   for (const review of input.qualityReviews) {
     const title = review.reviewName || "Untitled review"
-    const href = `/quality?recordId=${encodeURIComponent(review.id)}`
 
     if (!hasText(review.reviewName)) {
-      issues.push({
-        id: issueId(["quality-review-missing-name", review.id]),
-        severity: "warning",
-        category: "incomplete-records",
-        title: "Quality review missing name",
-        description: `Quality review ${review.id} has no review name.`,
-        sourceType: "quality-review",
-        sourceId: review.id,
-        suggestedAction: "Add a review name in Quality Review.",
-        relatedHref: href,
-      })
+      issues.push(
+        qualityReviewIssue(review, ["quality-review-missing-name", review.id], {
+          severity: "warning",
+          category: "incomplete-records",
+          title: "Quality review missing name",
+          description: `Quality review ${review.id} has no review name.`,
+          suggestedAction: "Add a review name in Quality Review.",
+        }),
+      )
     }
 
     if (!hasText(review.reviewType)) {
-      issues.push({
-        id: issueId(["quality-review-missing-type", review.id]),
-        severity: "warning",
-        category: "incomplete-records",
-        title: "Quality review missing type",
-        description: `"${title}" has no review type.`,
-        sourceType: "quality-review",
-        sourceId: review.id,
-        suggestedAction: "Select a review type.",
-        relatedHref: href,
-      })
+      issues.push(
+        qualityReviewIssue(review, ["quality-review-missing-type", review.id], {
+          severity: "warning",
+          category: "incomplete-records",
+          title: "Quality review missing type",
+          description: `"${title}" has no review type.`,
+          suggestedAction: "Select a review type.",
+        }),
+      )
     }
 
     if (review.campaignId && !campaignIds.has(review.campaignId)) {
-      issues.push({
-        id: issueId(["quality-review-missing-campaign", review.id, review.campaignId]),
-        severity: "warning",
-        category: "broken-links",
-        title: "Quality review linked to missing campaign",
-        description: `"${title}" references campaign ${review.campaignId} which was not found.`,
-        sourceType: "quality-review",
-        sourceId: review.id,
-        suggestedAction: "Link to an existing campaign or clear campaignId.",
-        relatedHref: href,
-      })
+      issues.push(
+        qualityReviewIssue(
+          review,
+          ["quality-review-missing-campaign", review.id, review.campaignId],
+          {
+            severity: "warning",
+            category: "broken-links",
+            title: "Quality review linked to missing campaign",
+            description: `"${title}" references campaign ${review.campaignId} which was not found.`,
+            suggestedAction: "Link to an existing campaign or clear campaignId.",
+          },
+        ),
+      )
+    }
+
+    if (review.sourceRecordId && review.sourceRecordType) {
+      const sourceType = normalizeSourceRecordType(review.sourceRecordType)
+      let sourceMissing = false
+      if (sourceType === "experiment") {
+        sourceMissing = !experimentIds.has(review.sourceRecordId)
+      } else if (sourceType === "prompt-run") {
+        sourceMissing = !sets["prompt-run"].has(review.sourceRecordId)
+      } else if (sourceType in sets) {
+        sourceMissing = !recordExists(
+          sets,
+          sourceType as CampaignLinkedRecordType,
+          review.sourceRecordId,
+        )
+      }
+
+      if (sourceMissing) {
+        issues.push(
+          qualityReviewIssue(
+            review,
+            ["quality-review-missing-source", review.id, review.sourceRecordId],
+            {
+              severity: "warning",
+              category: "broken-links",
+              title: "Quality review linked to missing source record",
+              description: `"${title}" references missing ${sourceType} ${review.sourceRecordId}.`,
+              suggestedAction: "Link to an existing source record or clear the source link.",
+            },
+          ),
+        )
+      }
     }
 
     if (
       review.overallScore === 0 &&
       (review.status === "Reviewed" || review.status === "Ready")
     ) {
-      issues.push({
-        id: issueId(["quality-review-zero-reviewed", review.id]),
-        severity: "warning",
-        category: "incomplete-records",
-        title: "Reviewed quality record has zero score",
-        description: `"${title}" is marked ${review.status} but overall score is 0.`,
-        sourceType: "quality-review",
-        sourceId: review.id,
-        suggestedAction: "Enter criterion scores or regenerate draft.",
-        relatedHref: href,
-      })
+      issues.push(
+        qualityReviewIssue(review, ["quality-review-zero-reviewed", review.id], {
+          severity: "warning",
+          category: "incomplete-records",
+          title: "Reviewed quality record has zero score",
+          description: `"${title}" is marked ${review.status} but overall score is 0.`,
+          suggestedAction: "Enter criterion scores or regenerate draft.",
+        }),
+      )
     }
   }
 
   for (const campaign of input.campaigns) {
-    if (campaign.status !== "Ready to Publish") continue
-    const hasReadiness = input.qualityReviews.some(
-      (review) =>
-        review.reviewType === "Campaign Readiness" &&
-        (review.campaignId === campaign.id ||
-          norm(review.campaignName) === norm(campaign.campaignName)),
-    )
-    if (!hasReadiness) {
-      issues.push({
-        id: issueId(["campaign-ready-no-readiness-review", campaign.id]),
-        severity: "warning",
-        category: "missing-assets",
-        title: "Ready campaign without readiness review",
-        description: `"${campaign.campaignName || "Campaign"}" is Ready to Publish but has no Campaign Readiness review.`,
-        sourceType: "campaign",
-        sourceId: campaign.id,
-        suggestedAction: "Create a Campaign Readiness quality review.",
-        relatedHref: `/quality?campaignId=${encodeURIComponent(campaign.id)}&reviewType=${encodeURIComponent("Campaign Readiness")}`,
-      })
+    const campaignTitle = campaign.campaignName || "Campaign"
+    const campaignQualityHref = `/quality?campaignId=${encodeURIComponent(campaign.id)}`
+
+    if (campaign.status === "Ready to Publish") {
+      const hasReadiness = input.qualityReviews.some(
+        (review) =>
+          review.reviewType === "Campaign Readiness" &&
+          (review.campaignId === campaign.id ||
+            norm(review.campaignName) === norm(campaign.campaignName)),
+      )
+      if (!hasReadiness) {
+        issues.push({
+          id: issueId(["campaign-ready-no-readiness-review", campaign.id]),
+          severity: "warning",
+          category: "missing-assets",
+          title: "Ready campaign without readiness review",
+          description: `"${campaignTitle}" is Ready to Publish but has no Campaign Readiness review.`,
+          sourceType: "campaign",
+          sourceId: campaign.id,
+          sourceTitle: campaignTitle,
+          href: campaignHref(campaign.id),
+          suggestedAction: "Create a Campaign Readiness quality review.",
+          relatedHref: `${campaignQualityHref}&reviewType=${encodeURIComponent("Campaign Readiness")}`,
+        })
+      }
+    }
+
+    if (isPublishedCampaignStatus(campaign.status)) {
+      const campaignReviews = input.qualityReviews.filter(
+        (review) =>
+          review.campaignId === campaign.id ||
+          norm(review.campaignName) === norm(campaign.campaignName),
+      )
+      for (const review of campaignReviews) {
+        if (review.overallScore > 0 && review.overallScore < 60) {
+          issues.push({
+            id: issueId(["published-campaign-low-quality", campaign.id, review.id]),
+            severity: "info",
+            category: "incomplete-records",
+            title: "Published campaign has low quality score",
+            description: `"${campaignTitle}" has review "${review.reviewName || review.reviewType}" at ${review.overallScore}/100.`,
+            sourceType: "campaign",
+            sourceId: campaign.id,
+            sourceTitle: campaignTitle,
+            href: campaignHref(campaign.id),
+            suggestedAction: "Revise the quality review before the next publish cycle.",
+            relatedHref: `/quality?recordId=${encodeURIComponent(review.id)}`,
+          })
+        }
+      }
+    }
+
+    for (const linked of campaign.linkedRecords) {
+      if (linked.type === "youtube-package") {
+        if (!hasQualityReviewForSource(input.qualityReviews, linked.type, linked.id)) {
+          issues.push({
+            id: issueId(["campaign-missing-youtube-package-review", campaign.id, linked.id]),
+            severity: "info",
+            category: "missing-assets",
+            title: "YouTube package without quality review",
+            description: `"${campaignTitle}" has a YouTube package without a linked quality review.`,
+            sourceType: "campaign",
+            sourceId: campaign.id,
+            sourceTitle: campaignTitle,
+            href: campaignHref(campaign.id),
+            suggestedAction: "Review the YouTube package before publishing.",
+            relatedHref: `/quality?campaignId=${encodeURIComponent(campaign.id)}&sourceRecordType=youtube-package&sourceRecordId=${encodeURIComponent(linked.id)}&reviewType=${encodeURIComponent("YouTube Package")}`,
+          })
+        }
+      }
+
+      if (linked.type === "youtube-thumbnail") {
+        if (!hasQualityReviewForSource(input.qualityReviews, linked.type, linked.id)) {
+          issues.push({
+            id: issueId(["campaign-missing-youtube-thumbnail-review", campaign.id, linked.id]),
+            severity: "info",
+            category: "missing-assets",
+            title: "YouTube thumbnail without quality review",
+            description: `"${campaignTitle}" has a YouTube thumbnail without a linked quality review.`,
+            sourceType: "campaign",
+            sourceId: campaign.id,
+            sourceTitle: campaignTitle,
+            href: campaignHref(campaign.id),
+            suggestedAction: "Review the thumbnail before publishing.",
+            relatedHref: `/quality?campaignId=${encodeURIComponent(campaign.id)}&sourceRecordType=youtube-thumbnail&sourceRecordId=${encodeURIComponent(linked.id)}&reviewType=${encodeURIComponent("Thumbnail")}`,
+          })
+        }
+      }
     }
   }
 

@@ -506,15 +506,15 @@ export function YouTubePackagingTool() {
                 New package
               </Button>
             ) : null}
-            {editingId ? (
-              <QualityReviewActionLink
-                recordId={editingId}
-                campaignId={campaignPrefill.campaignId}
-                sourceRecordType="youtube-package"
-                reviewType="YouTube Package"
-                label="Review YouTube Package"
-              />
-            ) : null}
+            <QualityReviewActionLink
+              recordId={editingId}
+              campaignId={campaignPrefill.campaignId}
+              campaignName={campaignPrefill.campaignName}
+              sourceRecordType="youtube-package"
+              reviewType="YouTube Package"
+              label="Review YouTube Package"
+              contextTitle={form.finalTitle || form.trackTitle}
+            />
           </div>
         }
       />

@@ -486,15 +486,15 @@ export function EmailCampaignGenerator() {
                 New campaign
               </Button>
             ) : null}
-            {editingId ? (
-              <QualityReviewActionLink
-                recordId={editingId}
-                campaignId={campaignPrefill.campaignId}
-                sourceRecordType="email-campaign"
-                reviewType="Email Campaign"
-                label="Review Email Campaign"
-              />
-            ) : null}
+            <QualityReviewActionLink
+              recordId={editingId}
+              campaignId={campaignPrefill.campaignId}
+              campaignName={campaignPrefill.campaignName}
+              sourceRecordType="email-campaign"
+              reviewType="Email Campaign"
+              label="Review Email Campaign"
+              contextTitle={form.campaignName}
+            />
           </div>
         }
       />
