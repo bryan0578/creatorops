@@ -49,6 +49,8 @@ export function analyticsRecordToPrismaCreate(record: AnalyticsRecord) {
     nextActions: normalized.nextActions,
     rating: normalized.rating,
     notes: normalized.notes,
+    experimentId: normalized.experimentId,
+    experimentName: normalized.experimentName,
     createdAt: new Date(normalized.createdAt),
     updatedAt: new Date(normalized.updatedAt),
   }
@@ -94,6 +96,8 @@ export function analyticsRecordToPrismaUpdate(record: AnalyticsRecord) {
     nextActions: normalized.nextActions,
     rating: normalized.rating,
     notes: normalized.notes,
+    experimentId: normalized.experimentId,
+    experimentName: normalized.experimentName,
     updatedAt: new Date(normalized.updatedAt),
   }
 }
@@ -140,6 +144,8 @@ export function prismaAnalyticsRecordToAnalyticsRecord(
     nextActions: row.nextActions,
     rating: row.rating,
     notes: row.notes,
+    experimentId: row.experimentId,
+    experimentName: row.experimentName,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
   })

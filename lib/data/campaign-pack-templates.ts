@@ -68,6 +68,11 @@ export type CampaignPackSectionKey =
   | "missing-social-assets"
   | "missing-commerce-assets"
   | "linked-records"
+  | "experiments-overview"
+  | "experiment-winners-learnings"
+  | "experiment-analytics-linked"
+  | "experiment-variant-results"
+  | "youtube-title-thumbnail-experiments"
 
 export interface CampaignPackTemplate {
   id: CampaignPackTemplateId
@@ -100,6 +105,8 @@ export const CAMPAIGN_PACK_TEMPLATES: CampaignPackTemplate[] = [
       "product-listing",
       "mockup-prompt",
       "analytics-checklist",
+      "experiments-overview",
+      "experiment-winners-learnings",
       "launch-tasks",
       "publishing-checklist",
       "missing-assets",
@@ -121,6 +128,7 @@ export const CAMPAIGN_PACK_TEMPLATES: CampaignPackTemplate[] = [
       "youtube-community-post",
       "youtube-pinned-comment",
       "youtube-tags-hashtags",
+      "youtube-title-thumbnail-experiments",
       "launch-tasks",
       "publishing-checklist",
       "missing-youtube-assets",
@@ -204,6 +212,8 @@ export const CAMPAIGN_PACK_TEMPLATES: CampaignPackTemplate[] = [
       "analytics-what-worked",
       "analytics-what-to-improve",
       "analytics-next-actions",
+      "experiment-analytics-linked",
+      "experiment-variant-results",
     ],
   },
   {

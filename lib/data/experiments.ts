@@ -31,6 +31,10 @@ export function experimentToPrismaCreate(record: ExperimentRecord) {
     variantAMetric: normalized.variantAMetric,
     variantBMetric: normalized.variantBMetric,
     variantCMetric: normalized.variantCMetric,
+    analyticsRecordId: normalized.analyticsRecordId,
+    analyticsRecordName: normalized.analyticsRecordName,
+    confidenceNotes: normalized.confidenceNotes,
+    learningSummary: normalized.learningSummary,
     createdAt: new Date(normalized.createdAt),
     updatedAt: new Date(normalized.updatedAt),
   }
@@ -62,6 +66,10 @@ export function experimentToPrismaUpdate(record: ExperimentRecord) {
     variantAMetric: normalized.variantAMetric,
     variantBMetric: normalized.variantBMetric,
     variantCMetric: normalized.variantCMetric,
+    analyticsRecordId: normalized.analyticsRecordId,
+    analyticsRecordName: normalized.analyticsRecordName,
+    confidenceNotes: normalized.confidenceNotes,
+    learningSummary: normalized.learningSummary,
     updatedAt: new Date(normalized.updatedAt),
   }
 }
@@ -94,6 +102,10 @@ export function prismaExperimentToExperimentRecord(
     variantAMetric: row.variantAMetric,
     variantBMetric: row.variantBMetric,
     variantCMetric: row.variantCMetric,
+    analyticsRecordId: row.analyticsRecordId,
+    analyticsRecordName: row.analyticsRecordName,
+    confidenceNotes: row.confidenceNotes,
+    learningSummary: row.learningSummary,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
   })

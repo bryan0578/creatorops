@@ -769,6 +769,10 @@ async function searchExperiments(query: string): Promise<GlobalSearchResult[]> {
       "winner",
       "resultSummary",
       "notes",
+      "learningSummary",
+      "nextTestIdea",
+      "analyticsRecordName",
+      "confidenceNotes",
     ],
     {
       experimentName: "Experiment name",
@@ -782,6 +786,10 @@ async function searchExperiments(query: string): Promise<GlobalSearchResult[]> {
       winner: "Winner",
       resultSummary: "Result summary",
       notes: "Notes",
+      learningSummary: "Learning summary",
+      nextTestIdea: "Next experiment idea",
+      analyticsRecordName: "Analytics record",
+      confidenceNotes: "Confidence notes",
     },
     (row, matchedFields) =>
       makeResult(

@@ -923,6 +923,145 @@ function scanPublishingChecklistWarnings(
   }
 }
 
+function scanExperimentAnalyticsWarnings(
+  input: DataHealthScanInput,
+  sets: RecordIdSets,
+  issues: DataHealthIssue[],
+): void {
+  const campaignsById = new Map(input.campaigns.map((c) => [c.id, c]))
+  const experimentIds = new Set(input.experiments.map((e) => e.id))
+
+  for (const experiment of input.experiments) {
+    const title = experiment.experimentName || "Experiment"
+    const href = buildRecordHref("experiment", experiment.id)
+
+    if (experiment.status === "Running" && !hasText(experiment.metricFocus)) {
+      pushIssue(issues, {
+        id: issueId(["experiment-metric-focus", experiment.id]),
+        severity: "warning",
+        category: "incomplete-records",
+        title: "Running experiment missing metric focus",
+        description: `Experiment "${title}" is running without a metric focus.`,
+        sourceType: "experiment",
+        sourceId: experiment.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Set a metric focus (e.g. CTR) in Experiment Tracker.",
+      })
+    }
+
+    if (
+      experiment.status === "Running" &&
+      !hasText(experiment.analyticsRecordId)
+    ) {
+      const campaign =
+        (experiment.campaignId && campaignsById.get(experiment.campaignId)) ||
+        input.campaigns.find((c) =>
+          c.campaignName.trim().toLowerCase() ===
+          experiment.campaignName.trim().toLowerCase(),
+        )
+      if (campaign && isPublishedCampaignStatus(campaign.status)) {
+        pushIssue(issues, {
+          id: issueId(["experiment-analytics-missing", experiment.id]),
+          severity: "warning",
+          category: "missing-assets",
+          title: "Running experiment missing analytics link",
+          description: `Experiment "${title}" is running but has no linked analytics record while campaign "${campaign.campaignName}" is published or tracking.`,
+          sourceType: "experiment",
+          sourceId: experiment.id,
+          sourceTitle: title,
+          href,
+          suggestedAction: "Link or create an analytics record for this experiment.",
+          relatedHref: campaignHref(campaign.id),
+        })
+      }
+    }
+
+    if (
+      experiment.status === "Winner Chosen" &&
+      !hasText(experiment.learningSummary)
+    ) {
+      pushIssue(issues, {
+        id: issueId(["experiment-learning", experiment.id]),
+        severity: "warning",
+        category: "incomplete-records",
+        title: "Winner chosen without learning summary",
+        description: `Experiment "${title}" has a winner chosen but no learning summary.`,
+        sourceType: "experiment",
+        sourceId: experiment.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Add a learning summary in the Results tab.",
+      })
+    }
+
+    if (
+      hasText(experiment.analyticsRecordId) &&
+      !sets.analytics.has(experiment.analyticsRecordId)
+    ) {
+      pushIssue(issues, {
+        id: issueId([
+          "experiment-analytics-broken",
+          experiment.id,
+          experiment.analyticsRecordId,
+        ]),
+        severity: "warning",
+        category: "broken-links",
+        title: "Experiment linked to missing analytics record",
+        description: `Experiment "${title}" references missing analytics record ${experiment.analyticsRecordId}.`,
+        sourceType: "experiment",
+        sourceId: experiment.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Re-link analytics or clear the broken link.",
+      })
+    }
+  }
+
+  for (const record of input.analyticsRecords) {
+    if (!hasText(record.experimentId)) continue
+    const title = record.itemName || "Analytics record"
+    const href = buildRecordHref("analytics", record.id)
+    if (!experimentIds.has(record.experimentId)) {
+      pushIssue(issues, {
+        id: issueId(["analytics-experiment-broken", record.id, record.experimentId]),
+        severity: "warning",
+        category: "broken-links",
+        title: "Analytics record linked to missing experiment",
+        description: `Analytics record "${title}" references missing experiment ${record.experimentId}.`,
+        sourceType: "analytics",
+        sourceId: record.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Re-link experiment or clear the broken link.",
+      })
+      continue
+    }
+    const linkedExperiment = input.experiments.find(
+      (item) => item.id === record.experimentId,
+    )
+    if (
+      linkedExperiment &&
+      linkedExperiment.analyticsRecordId &&
+      linkedExperiment.analyticsRecordId !== record.id
+    ) {
+      pushIssue(issues, {
+        id: issueId(["analytics-experiment-mismatch", record.id, record.experimentId]),
+        severity: "warning",
+        category: "broken-links",
+        title: "Analytics / experiment link mismatch",
+        description: `Analytics record "${title}" links to experiment "${linkedExperiment.experimentName}" but the experiment points to a different analytics record.`,
+        sourceType: "analytics",
+        sourceId: record.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Re-link from Experiment Tracker or Analytics Tracker.",
+        relatedHref: buildRecordHref("experiment", record.experimentId),
+      })
+    }
+  }
+}
+
 function scanPromptRunLinkWarnings(
   input: DataHealthScanInput,
   sets: RecordIdSets,
@@ -1121,6 +1260,9 @@ export function buildDataHealthReport(
   )
   safeScan("Publishing checklist", issues, () =>
     scanPublishingChecklistWarnings(input, issues),
+  )
+  safeScan("Experiment analytics", issues, () =>
+    scanExperimentAnalyticsWarnings(input, sets, issues),
   )
   safeScan("Prompt run links", issues, () =>
     scanPromptRunLinkWarnings(input, sets, issues),

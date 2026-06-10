@@ -481,6 +481,8 @@ model AnalyticsRecord {
   nextActions         String   @default("")
   rating              Float    @default(0)
   notes               String   @default("")
+  experimentId        String   @default("")
+  experimentName      String   @default("")
   createdAt           DateTime
   updatedAt           DateTime
 
@@ -490,6 +492,7 @@ model AnalyticsRecord {
   @@index([relatedArtist])
   @@index([relatedSong])
   @@index([relatedCampaign])
+  @@index([experimentId])
   @@index([views])
   @@index([updatedAt])
 }
@@ -660,10 +663,15 @@ model Experiment {
   variantAMetric        String   @default("")
   variantBMetric        String   @default("")
   variantCMetric        String   @default("")
+  analyticsRecordId   String   @default("")
+  analyticsRecordName   String   @default("")
+  confidenceNotes     String   @default("")
+  learningSummary     String   @default("")
   createdAt             DateTime
   updatedAt             DateTime
 
   @@index([experimentName])
+  @@index([analyticsRecordId])
   @@index([experimentType])
   @@index([status])
   @@index([campaignId])

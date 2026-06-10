@@ -46,6 +46,10 @@ export function emptyExperimentRecord(id?: string): ExperimentRecord {
     variantAMetric: "",
     variantBMetric: "",
     variantCMetric: "",
+    analyticsRecordId: "",
+    analyticsRecordName: "",
+    confidenceNotes: "",
+    learningSummary: "",
     createdAt: now,
     updatedAt: now,
   }
@@ -92,6 +96,10 @@ export function normalizeExperimentRecord(
     variantAMetric: str(record.variantAMetric),
     variantBMetric: str(record.variantBMetric),
     variantCMetric: str(record.variantCMetric),
+    analyticsRecordId: str(record.analyticsRecordId),
+    analyticsRecordName: str(record.analyticsRecordName),
+    confidenceNotes: str(record.confidenceNotes),
+    learningSummary: str(record.learningSummary),
     createdAt: Number(record.createdAt) || base.createdAt,
     updatedAt: Number(record.updatedAt) || base.updatedAt,
   }
@@ -131,15 +139,47 @@ export function filterExperimentsForCampaign(
 
 export function filterExperimentsForAnalytics(input: {
   experiments: ExperimentRecord[]
+  experimentId?: string
   relatedCampaign?: string
+  relatedArtist?: string
   relatedSong?: string
   titleUsed?: string
   itemName?: string
+  platform?: string
+  analyticsRecordId?: string
 }): ExperimentRecord[] {
-  const { experiments, relatedCampaign, relatedSong, titleUsed, itemName } = input
-  return experiments.filter((experiment) => {
+  const {
+    experiments,
+    experimentId,
+    relatedCampaign,
+    relatedArtist,
+    relatedSong,
+    titleUsed,
+    itemName,
+    platform,
+    analyticsRecordId,
+  } = input
+
+  const matched = experiments.filter((experiment) => {
+    if (experimentId && experiment.id === experimentId) return true
+    if (
+      analyticsRecordId &&
+      experiment.analyticsRecordId &&
+      experiment.analyticsRecordId === analyticsRecordId
+    ) {
+      return true
+    }
     if (relatedCampaign && matches(experiment.campaignName, relatedCampaign)) {
       return true
+    }
+    if (platform && matches(experiment.platform, platform)) {
+      const hasContext =
+        relatedCampaign ||
+        relatedSong ||
+        titleUsed ||
+        itemName ||
+        relatedArtist
+      if (hasContext) return true
     }
     const haystack = [
       experiment.experimentName,
@@ -148,21 +188,66 @@ export function filterExperimentsForAnalytics(input: {
       experiment.variantB,
       experiment.variantC,
       experiment.winner,
+      experiment.learningSummary,
     ]
       .join(" ")
       .toLowerCase()
 
+    if (relatedArtist && haystack.includes(norm(relatedArtist))) return true
     if (relatedSong && haystack.includes(norm(relatedSong))) return true
     if (titleUsed && haystack.includes(norm(titleUsed))) return true
     if (itemName && haystack.includes(norm(itemName))) return true
     return false
   })
+
+  return sortExperiments(matched)
 }
 
 export function countRunningExperiments(experiments: ExperimentRecord[]): number {
   return experiments.filter(
     (experiment) => experiment.status === "Running" || experiment.status === "Reviewing",
   ).length
+}
+
+export function countWinnerChosenExperiments(experiments: ExperimentRecord[]): number {
+  return experiments.filter((experiment) => experiment.status === "Winner Chosen").length
+}
+
+export function getExperimentsWithWinners(
+  experiments: ExperimentRecord[],
+): ExperimentRecord[] {
+  return sortExperiments(
+    experiments.filter(
+      (experiment) =>
+        experiment.status === "Winner Chosen" ||
+        (experiment.winner.trim() && experiment.winner !== "Inconclusive"),
+    ),
+  )
+}
+
+export function getLatestLearningSummary(
+  experiments: ExperimentRecord[],
+): string {
+  for (const experiment of sortExperiments(experiments)) {
+    const summary = experiment.learningSummary.trim()
+    if (summary) return summary
+  }
+  return ""
+}
+
+export function applyWinnerChoice(
+  record: ExperimentRecord,
+  winner: string,
+): ExperimentRecord {
+  const normalized = normalizeExperimentRecord({ ...record, winner })
+  if (
+    winner &&
+    winner !== "Inconclusive" &&
+    normalized.status !== "Archived"
+  ) {
+    return normalizeExperimentRecord({ ...normalized, status: "Winner Chosen" })
+  }
+  return normalized
 }
 
 export function sortExperiments(

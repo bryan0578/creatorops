@@ -31,7 +31,9 @@ import {
 
 import { ModulePageHeader } from "@/components/app-shell"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
+import { ExperimentAnalyticsLinkSection } from "@/components/experiments/experiment-analytics-link-section"
 import { RelatedPromptRunsPanel } from "@/components/experiments/related-prompt-runs-panel"
+import { VariantPerformancePanel } from "@/components/experiments/variant-performance-panel"
 import { ApplyWorkspaceDefaultsButton } from "@/components/settings/apply-workspace-defaults-button"
 import {
   EXPERIMENT_WORKFLOW_TABS,
@@ -81,6 +83,8 @@ const TEXTAREA_FIELDS = new Set([
   "whatDidNotWork",
   "nextTestIdea",
   "relatedAnalyticsNotes",
+  "confidenceNotes",
+  "learningSummary",
 ])
 
 const FIELD_LABELS: Record<keyof ExperimentFormState, string> = {
@@ -107,6 +111,10 @@ const FIELD_LABELS: Record<keyof ExperimentFormState, string> = {
   variantAMetric: "Variant A metric",
   variantBMetric: "Variant B metric",
   variantCMetric: "Variant C metric",
+  analyticsRecordId: "Analytics record ID",
+  analyticsRecordName: "Analytics record name",
+  confidenceNotes: "Confidence notes",
+  learningSummary: "Learning summary",
 }
 
 function formFromRecord(record: ExperimentRecord): ExperimentFormState {
@@ -403,16 +411,21 @@ export function ExperimentTracker() {
   ]
 
   const resultsFields: (keyof ExperimentFormState)[] = [
-    "winner",
     "resultSummary",
     "whatWorked",
     "whatDidNotWork",
-    "nextTestIdea",
     "relatedAnalyticsNotes",
-    "variantAMetric",
-    "variantBMetric",
-    "variantCMetric",
   ]
+
+  const currentExperiment = React.useMemo(() => {
+    if (!editingId) return null
+    return normalizeExperimentRecord({
+      ...form,
+      id: editingId,
+      createdAt: experiments.find((e) => e.id === editingId)?.createdAt ?? Date.now(),
+      updatedAt: Date.now(),
+    })
+  }, [editingId, form, experiments])
 
   return (
     <div className="space-y-6">
@@ -551,14 +564,22 @@ export function ExperimentTracker() {
               </div>
             </CardContent>
           </Card>
+          <ExperimentAnalyticsLinkSection
+            experiment={currentExperiment}
+            onLinked={(updated) => setForm(formFromRecord(updated))}
+          />
         </ModuleTabPanel>
 
         <ModuleTabPanel value="results">
+          <VariantPerformancePanel
+            form={form}
+            onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
+          />
           <Card className={RECENT_RECORDS_CARD_CLASS}>
             <CardHeader>
               <CardTitle className="text-base">Results & learnings</CardTitle>
               <CardDescription>
-                Capture the winner, outcome summary, and notes for the next test.
+                Capture outcome summary and qualitative notes alongside variant metrics.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -570,6 +591,10 @@ export function ExperimentTracker() {
               </Button>
             </CardContent>
           </Card>
+          <ExperimentAnalyticsLinkSection
+            experiment={currentExperiment}
+            onLinked={(updated) => setForm(formFromRecord(updated))}
+          />
           <RelatedPromptRunsPanel
             experimentId={editingId}
             campaignId={campaignPrefill.campaignId}

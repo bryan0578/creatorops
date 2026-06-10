@@ -45,6 +45,8 @@ export function emptyAnalyticsRecord(
     nextActions: "",
     rating: 0,
     notes: "",
+    experimentId: "",
+    experimentName: "",
   }
 }
 
@@ -100,6 +102,8 @@ export function normalizeAnalyticsRecord(
     nextActions: record.nextActions ?? empty.nextActions,
     rating: toNumber(record.rating),
     notes: record.notes ?? empty.notes,
+    experimentId: record.experimentId ?? empty.experimentId,
+    experimentName: record.experimentName ?? empty.experimentName,
     createdAt: record.createdAt ?? Date.now(),
     updatedAt: record.updatedAt ?? Date.now(),
   }

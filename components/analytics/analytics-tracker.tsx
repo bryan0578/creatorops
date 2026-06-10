@@ -52,6 +52,7 @@ import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-b
 import { CampaignPromptOutputSection } from "@/components/campaigns/campaign-context-prompt-controls"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
 import { RelatedExperimentsPanel } from "@/components/experiments/related-experiments-panel"
+import { buildExperimentAnalyticsLink } from "@/lib/experiment-analytics"
 import { RelationshipPanel } from "@/components/relationships/relationship-panel"
 import {
   ANALYTICS_WORKFLOW_TABS,
@@ -209,6 +210,8 @@ export function AnalyticsTracker() {
     reloadAnalyticsRecords,
     campaigns,
     updateCampaign,
+    experiments,
+    updateExperiment,
   } = useStore()
 
   const [form, setForm] = React.useState<AnalyticsFormState>(
@@ -235,6 +238,27 @@ export function AnalyticsTracker() {
   const [presetPrefill, setPresetPrefill] = React.useState<PresetPrefillContext | null>(
     null,
   )
+  const experimentPrefillId = searchParams.get("experimentId")?.trim() ?? ""
+
+  const linkedExperiment = React.useMemo(() => {
+    if (form.experimentId) {
+      return experiments.find((e) => e.id === form.experimentId) ?? null
+    }
+    if (experimentPrefillId) {
+      return experiments.find((e) => e.id === experimentPrefillId) ?? null
+    }
+    return null
+  }, [experiments, form.experimentId, experimentPrefillId])
+
+  React.useEffect(() => {
+    const recordId = searchParams.get("recordId")?.trim()
+    if (!recordId) return
+    const record = analyticsRecords.find((item) => item.id === recordId)
+    if (record) {
+      setEditingId(record.id)
+      setForm(formFromRecord(record))
+    }
+  }, [searchParams, analyticsRecords])
 
   const summary = React.useMemo(
     () => computeAnalyticsSummary(analyticsRecords),
@@ -338,6 +362,10 @@ export function AnalyticsTracker() {
     const url = searchParams.get("url")
     const niche = searchParams.get("niche")
     const publishDate = searchParams.get("publishDate")
+    const experimentId = searchParams.get("experimentId")?.trim()
+    const linkedExperimentForPrefill = experimentId
+      ? experiments.find((item) => item.id === experimentId)
+      : null
 
     if (
       !context.campaignId &&
@@ -349,7 +377,8 @@ export function AnalyticsTracker() {
       !mood &&
       !url &&
       !niche &&
-      !publishDate
+      !publishDate &&
+      !experimentId
     ) {
       return
     }
@@ -359,20 +388,31 @@ export function AnalyticsTracker() {
       ...prev,
       relatedArtist: relatedArtist ?? prev.relatedArtist,
       relatedSong: relatedSong ?? prev.relatedSong,
-      relatedCampaign: relatedCampaign ?? prev.relatedCampaign,
-      itemName: itemName ?? prev.itemName,
+      relatedCampaign:
+        relatedCampaign ??
+        linkedExperimentForPrefill?.campaignName ??
+        prev.relatedCampaign,
+      itemName: itemName ?? linkedExperimentForPrefill?.experimentName ?? prev.itemName,
+      platform: linkedExperimentForPrefill?.platform || prev.platform,
       genre: genre ?? prev.genre,
       mood: mood ?? prev.mood,
       url: url ?? prev.url,
       niche: niche ?? prev.niche,
       publishDate: publishDate ?? prev.publishDate,
+      experimentId: experimentId ?? prev.experimentId,
+      experimentName:
+        linkedExperimentForPrefill?.experimentName ?? prev.experimentName,
+      thumbnailText:
+        linkedExperimentForPrefill?.variantA || prev.thumbnailText,
     }))
     toast.success(
-      context.campaignId
-        ? campaignPrefillToastMessage(context.campaignName)
-        : "Prefilled from artist CRM",
+      linkedExperimentForPrefill
+        ? `Prefilled from experiment: ${linkedExperimentForPrefill.experimentName}`
+        : context.campaignId
+          ? campaignPrefillToastMessage(context.campaignName)
+          : "Prefilled from artist CRM",
     )
-  }, [searchParams, editingId])
+  }, [searchParams, editingId, experiments])
 
   async function handleSave() {
     const now = Date.now()
@@ -405,6 +445,28 @@ export function AnalyticsTracker() {
         "/analytics",
       )
       if (linked) toast.message("Linked to campaign")
+
+      const experimentId = record.experimentId || experimentPrefillId
+      if (experimentId) {
+        const experiment = experiments.find((item) => item.id === experimentId)
+        if (
+          experiment &&
+          (!experiment.analyticsRecordId ||
+            experiment.analyticsRecordId === record.id)
+        ) {
+          const { experiment: linkedExperimentRecord, analytics: linkedAnalytics } =
+            buildExperimentAnalyticsLink(experiment, record)
+          await updateExperiment(linkedExperimentRecord)
+          if (
+            linkedAnalytics.experimentId !== record.experimentId ||
+            linkedAnalytics.experimentName !== record.experimentName
+          ) {
+            await updateAnalyticsRecord(linkedAnalytics)
+          }
+          setForm(formFromRecord(linkedAnalytics))
+          toast.message("Linked to experiment")
+        }
+      }
     } catch {
       toast.error("Could not save analytics record to database")
     }
@@ -550,6 +612,12 @@ export function AnalyticsTracker() {
         campaignId={campaignPrefill.campaignId}
         campaignName={campaignPrefill.campaignName}
       />
+
+      {linkedExperiment ? (
+        <Badge variant="secondary" className="w-fit">
+          Linked to experiment: {linkedExperiment.experimentName}
+        </Badge>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard label="Total tracked items" value={summary.totalItems} />
@@ -790,10 +858,14 @@ export function AnalyticsTracker() {
 
         <ModuleTabPanel value="related">
           <RelatedExperimentsPanel
+            experimentId={form.experimentId || experimentPrefillId || undefined}
             relatedCampaign={form.relatedCampaign}
+            relatedArtist={form.relatedArtist}
             relatedSong={form.relatedSong}
             titleUsed={form.titleUsed}
             itemName={form.itemName}
+            platform={form.platform}
+            analyticsRecordId={editingId ?? undefined}
           />
           <RelationshipPanel
             input={{

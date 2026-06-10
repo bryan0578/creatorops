@@ -11,6 +11,7 @@ import {
   type CampaignPackTemplateId,
 } from "@/lib/data/campaign-pack-templates"
 import { formatPublishingChecklistMarkdown } from "@/lib/data/publishing-checklist"
+import { filterExperimentsForCampaign } from "@/lib/experiments"
 import type {
   AnalyticsRecord,
   ArtistRecord,
@@ -19,6 +20,7 @@ import type {
   CampaignRecord,
   CampaignTask,
   EmailCampaignRecord,
+  ExperimentRecord,
   MerchIdea,
   MockupPromptRecord,
   ProductListing,
@@ -39,6 +41,7 @@ export interface CampaignExportMissingAsset {
 export interface CampaignExportSectionContext {
   campaign: CampaignRecord
   relatedRecords: CampaignRelatedRecordsBundle
+  experiments: ExperimentRecord[]
   missingAssets: CampaignExportMissingAsset[]
   readinessLabel: string
   taskProgress: string
@@ -485,6 +488,146 @@ function sectionAnalytics(analytics: AnalyticsRecord | null): string {
   }
   lines.push("")
 
+  return lines.join("\n")
+}
+
+function sectionExperimentsOverview(experiments: ExperimentRecord[]): string {
+  const lines = ["## Experiments", ""]
+  if (experiments.length === 0) {
+    lines.push("No experiments linked to this campaign yet.", "")
+    return lines.join("\n")
+  }
+  for (const experiment of experiments) {
+    lines.push(
+      `### ${experiment.experimentName || "Untitled experiment"}`,
+      "",
+      mdBullet("Type", experiment.experimentType),
+      mdBullet("Status", experiment.status),
+      mdBullet("Platform", experiment.platform),
+      mdBullet("Metric focus", experiment.metricFocus),
+      mdBullet("Hypothesis", experiment.hypothesis),
+      mdBullet("Variant A", experiment.variantA),
+      mdBullet("Variant B", experiment.variantB),
+      mdBullet("Variant C", experiment.variantC),
+      mdBullet("Linked analytics", experiment.analyticsRecordName),
+      "",
+    )
+  }
+  return lines.join("\n")
+}
+
+function sectionExperimentWinnersLearnings(experiments: ExperimentRecord[]): string {
+  const winners = experiments.filter(
+    (experiment) =>
+      experiment.status === "Winner Chosen" ||
+      (experiment.winner && experiment.winner !== "Inconclusive"),
+  )
+  const lines = ["## Experiment Winners & Learnings", ""]
+  if (winners.length === 0) {
+    lines.push("No winners chosen yet.", "")
+    return lines.join("\n")
+  }
+  for (const experiment of winners) {
+    lines.push(
+      `### ${experiment.experimentName}`,
+      "",
+      mdBullet("Winner", experiment.winner),
+      mdMultiline("Learning summary", experiment.learningSummary),
+      mdMultiline("Confidence notes", experiment.confidenceNotes),
+      mdMultiline("Next experiment idea", experiment.nextTestIdea),
+      "",
+    )
+  }
+  return lines.join("\n")
+}
+
+function sectionExperimentAnalyticsLinked(
+  experiments: ExperimentRecord[],
+  analytics: AnalyticsRecord | null,
+): string {
+  const linked = experiments.filter((experiment) => experiment.analyticsRecordId)
+  const lines = ["## Linked Experiments", ""]
+  if (linked.length === 0) {
+    lines.push("No experiments linked to analytics records.", "")
+    return lines.join("\n")
+  }
+  for (const experiment of linked) {
+    const matchesAnalytics =
+      analytics && experiment.analyticsRecordId === analytics.id
+    lines.push(
+      `### ${experiment.experimentName}`,
+      "",
+      mdBullet("Status", experiment.status),
+      mdBullet("Metric focus", experiment.metricFocus),
+      mdBullet("Analytics record", experiment.analyticsRecordName),
+      matchesAnalytics ? mdBullet("Link", "Matches campaign analytics record") : "",
+      "",
+    )
+  }
+  return lines.join("\n")
+}
+
+function sectionExperimentVariantResults(experiments: ExperimentRecord[]): string {
+  const lines = ["## Experiment Variant Performance", ""]
+  const withResults = experiments.filter(
+    (experiment) =>
+      experiment.variantAMetric ||
+      experiment.variantBMetric ||
+      experiment.variantCMetric ||
+      experiment.winner ||
+      experiment.learningSummary,
+  )
+  if (withResults.length === 0) {
+    lines.push("No variant performance data recorded yet.", "")
+    return lines.join("\n")
+  }
+  for (const experiment of withResults) {
+    lines.push(
+      `### ${experiment.experimentName}`,
+      "",
+      mdBullet("Variant A metric", experiment.variantAMetric),
+      mdBullet("Variant B metric", experiment.variantBMetric),
+      mdBullet("Variant C metric", experiment.variantCMetric),
+      mdBullet("Winning variant", experiment.winner),
+      mdMultiline("Learning summary", experiment.learningSummary),
+      mdMultiline("Next experiment idea", experiment.nextTestIdea),
+      mdMultiline("Confidence notes", experiment.confidenceNotes),
+      "",
+    )
+  }
+  return lines.join("\n")
+}
+
+function sectionYouTubeTitleThumbnailExperiments(
+  experiments: ExperimentRecord[],
+): string {
+  const active = experiments.filter(
+    (experiment) =>
+      experiment.platform === "YouTube" &&
+      ["YouTube Title", "Thumbnail", "Thumbnail Text"].includes(
+        experiment.experimentType,
+      ) &&
+      experiment.status !== "Archived" &&
+      experiment.status !== "Winner Chosen",
+  )
+  const lines = ["## Active YouTube Title / Thumbnail Experiments", ""]
+  if (active.length === 0) {
+    lines.push("No active YouTube title or thumbnail experiments.", "")
+    return lines.join("\n")
+  }
+  for (const experiment of active) {
+    lines.push(
+      `### ${experiment.experimentName}`,
+      "",
+      mdBullet("Type", experiment.experimentType),
+      mdBullet("Status", experiment.status),
+      mdBullet("Variant A", experiment.variantA),
+      mdBullet("Variant B", experiment.variantB),
+      mdBullet("Variant C", experiment.variantC),
+      mdBullet("Metric focus", experiment.metricFocus),
+      "",
+    )
+  }
   return lines.join("\n")
 }
 
@@ -1045,6 +1188,19 @@ function renderPackSection(
       ].join("\n")
     case "linked-records":
       return renderLinkedRecords(ctx)
+    case "experiments-overview":
+      return sectionExperimentsOverview(ctx.experiments)
+    case "experiment-winners-learnings":
+      return sectionExperimentWinnersLearnings(ctx.experiments)
+    case "experiment-analytics-linked":
+      return sectionExperimentAnalyticsLinked(
+        ctx.experiments,
+        relatedRecords.analytics,
+      )
+    case "experiment-variant-results":
+      return sectionExperimentVariantResults(ctx.experiments)
+    case "youtube-title-thumbnail-experiments":
+      return sectionYouTubeTitleThumbnailExperiments(ctx.experiments)
     default:
       return ""
   }
@@ -1085,6 +1241,7 @@ export function generateCampaignExportMarkdownLegacy(input: {
   return generateCampaignExportMarkdown({
     campaign: input.campaign,
     relatedRecords: input.relatedRecords,
+    experiments: [],
     missingAssets: input.missingAssets,
     readinessLabel: input.readinessLabel,
     taskProgress: input.taskProgress,
@@ -1125,11 +1282,17 @@ export function buildCampaignExportPack(
   options?: {
     templateId?: CampaignPackTemplateId | string
     generatedAt?: Date
+    experiments?: ExperimentRecord[]
   },
 ): CampaignExportPackResult {
   const template = getCampaignPackTemplate(options?.templateId)
   const generatedAt = options?.generatedAt ?? new Date()
   const relatedRecords = resolveCampaignRelatedRecords(campaign, store)
+  const campaignExperiments = filterExperimentsForCampaign(
+    options?.experiments ?? [],
+    campaign.id,
+    campaign.campaignName,
+  )
   const dashboard = buildLaunchDashboardData(campaign, store)
 
   const missingAssets: CampaignExportMissingAsset[] = dashboard.readiness.assets
@@ -1153,6 +1316,7 @@ export function buildCampaignExportPack(
   const sectionContext: CampaignExportSectionContext = {
     campaign,
     relatedRecords,
+    experiments: campaignExperiments,
     missingAssets,
     readinessLabel: assetScore,
     taskProgress,

@@ -668,9 +668,18 @@ export interface AnalyticsRecord {
   nextActions: string
   rating: number
   notes: string
+  experimentId: string
+  experimentName: string
   createdAt: number
   updatedAt: number
 }
+
+export const EXPERIMENT_WINNER_OPTIONS = [
+  "Variant A",
+  "Variant B",
+  "Variant C",
+  "Inconclusive",
+] as const
 
 export const EXPERIMENT_TYPES = [
   "YouTube Title",
@@ -733,6 +742,10 @@ export interface ExperimentRecord {
   variantAMetric: string
   variantBMetric: string
   variantCMetric: string
+  analyticsRecordId: string
+  analyticsRecordName: string
+  confidenceNotes: string
+  learningSummary: string
   createdAt: number
   updatedAt: number
 }
