@@ -4,6 +4,7 @@ import * as React from "react"
 import { Download, Loader2, RotateCcw, Save, Upload } from "lucide-react"
 import { toast } from "sonner"
 
+import { parseImportJsonText } from "@/lib/safe-json"
 import {
   getWorkspaceSettings,
   resetWorkspaceSettings,
@@ -167,7 +168,12 @@ export function WorkspaceSettingsPage() {
     const reader = new FileReader()
     reader.onload = () => {
       try {
-        const parsed = JSON.parse(String(reader.result)) as unknown
+        const importResult = parseImportJsonText(String(reader.result))
+        if (!importResult.ok) {
+          toast.error(importResult.message)
+          return
+        }
+        const parsed = importResult.value as unknown
         const items = Array.isArray(parsed) ? parsed : [parsed]
         const first = items[0] as WorkspaceSettingsRecord
         if (!first || typeof first !== "object") {

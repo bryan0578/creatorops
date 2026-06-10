@@ -152,6 +152,7 @@ export function GlobalSearchPage() {
   const [totalResults, setTotalResults] = React.useState(0)
   const [loading, setLoading] = React.useState(false)
   const [searched, setSearched] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
 
   const runSearch = React.useCallback(async (nextQuery: string, nextFilter: GlobalSearchFilter) => {
     const trimmed = nextQuery.trim()
@@ -163,13 +164,17 @@ export function GlobalSearchPage() {
     }
 
     setLoading(true)
+    setError(null)
     try {
       const response = await searchGlobal(trimmed, nextFilter)
       setGroups(response.groups)
       setTotalResults(response.totalResults)
       setSearched(true)
-    } catch (error) {
-      console.error("[CreatorOps] Global search failed", error)
+    } catch (err) {
+      console.error("[CreatorOps] Global search failed", err)
+      const message =
+        err instanceof Error ? err.message : "Search failed. Try again."
+      setError(message)
       setGroups([])
       setTotalResults(0)
       setSearched(true)
@@ -244,7 +249,18 @@ export function GlobalSearchPage() {
         />
       ) : null}
 
-      {searched && !loading && totalResults === 0 ? (
+      {error && !loading ? (
+        <Card className="border-destructive/40 bg-destructive/5">
+          <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-destructive">{error}</p>
+            <Button type="button" size="sm" variant="outline" onClick={() => void runSearch(query, filter)}>
+              Retry search
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {searched && !loading && !error && totalResults === 0 ? (
         <EmptyState
           title="No matching records found"
           description="Try a different keyword or broaden your filter."

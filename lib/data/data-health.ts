@@ -3,6 +3,7 @@
  */
 
 import { buildRecordHref } from "@/lib/data/related-records"
+import { isValidJsonString } from "@/lib/safe-json"
 import {
   buildMissingAssetRepair,
   buildRemoveBrokenLinkRepair,
@@ -847,15 +848,7 @@ function scanIncompleteRecords(
 }
 
 function isValidJson(raw: string, expected: "array" | "object"): boolean {
-  const trimmed = raw.trim()
-  if (!trimmed) return true
-  try {
-    const parsed = JSON.parse(trimmed) as unknown
-    if (expected === "array") return Array.isArray(parsed)
-    return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
-  } catch {
-    return false
-  }
+  return isValidJsonString(raw, expected)
 }
 
 function scanJsonIssues(input: DataHealthScanInput, issues: DataHealthIssue[]): void {

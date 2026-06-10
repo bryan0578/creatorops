@@ -24,6 +24,7 @@ import {
   CAMPAIGN_PRIORITIES,
   CAMPAIGN_TASK_STATUSES,
 } from "@/lib/types"
+import { parseJsonArray as parseJsonArraySafe } from "@/lib/safe-json"
 
 export {
   CAMPAIGN_BUILDER_STATUSES,
@@ -89,12 +90,8 @@ export interface CampaignLinkableStoreSlice {
 }
 
 function parseJsonArray<T>(raw: string, fallback: T[]): T[] {
-  try {
-    const parsed = JSON.parse(raw) as unknown
-    return Array.isArray(parsed) ? (parsed as T[]) : fallback
-  } catch {
-    return fallback
-  }
+  const parsed = parseJsonArraySafe(raw, fallback)
+  return parsed as T[]
 }
 
 export function stringifyJsonArray<T>(items: T[]): string {

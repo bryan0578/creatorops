@@ -13,6 +13,7 @@ import { migrateLocalPromptsToDatabase } from "@/lib/actions/prompts"
 import { PageHeader } from "@/components/app-shell"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { parseImportJsonText } from "@/lib/safe-json"
 import {
   Select,
   SelectContent,
@@ -128,7 +129,12 @@ export function PromptLibrary() {
     const reader = new FileReader()
     reader.onload = async () => {
       try {
-        const parsed = JSON.parse(String(reader.result))
+        const importResult = parseImportJsonText(String(reader.result))
+        if (!importResult.ok) {
+          toast.error(importResult.message)
+          return
+        }
+        const parsed = importResult.value
         const items = Array.isArray(parsed) ? parsed : [parsed]
         await importPrompts(items as Prompt[])
         toast.success(`Imported ${items.length} prompt(s) to database`)

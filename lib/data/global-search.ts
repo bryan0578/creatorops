@@ -2,6 +2,8 @@
  * Global search — normalized result shape and search helpers.
  */
 
+import { parseJsonStringArray } from "@/lib/safe-json"
+
 export type GlobalSearchCategory =
   | "core"
   | "youtube"
@@ -179,18 +181,27 @@ export function previewText(
   return `${text.slice(0, maxLength)}…`
 }
 
+const GLOBAL_SEARCH_RECORD_ID_TYPES = new Set<GlobalSearchResultType>([
+  "youtube-package",
+  "youtube-thumbnail",
+  "release-plan",
+  "social-repurposing",
+  "merch-idea",
+  "product-listing",
+  "mockup-prompt",
+  "email-campaign",
+  "analytics",
+  "experiment",
+  "artist",
+  "prompt-run",
+  "workflow-run",
+])
+
 export function buildResultHref(
   type: GlobalSearchResultType,
   id: string,
 ): { href: string; directOpen: boolean; openNote?: string } {
   const base = GLOBAL_SEARCH_TYPE_META[type].href
-
-  if (type === "youtube-thumbnail") {
-    return {
-      href: `${base}?recordId=${encodeURIComponent(id)}`,
-      directOpen: true,
-    }
-  }
 
   if (type === "prompt") {
     return {
@@ -207,7 +218,21 @@ export function buildResultHref(
     }
   }
 
-  if (type === "experiment") {
+  if (type === "preset") {
+    return {
+      href: `${base}?presetId=${encodeURIComponent(id)}`,
+      directOpen: true,
+    }
+  }
+
+  if (type === "workflow") {
+    return {
+      href: `${base}?recordId=${encodeURIComponent(id)}`,
+      directOpen: true,
+    }
+  }
+
+  if (GLOBAL_SEARCH_RECORD_ID_TYPES.has(type)) {
     return {
       href: `${base}?recordId=${encodeURIComponent(id)}`,
       directOpen: true,
@@ -229,36 +254,12 @@ export function parseTagsArray(value: unknown): string[] {
   }
 
   if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value) as unknown
-
-      if (Array.isArray(parsed)) {
-        return parsed.map(String).filter(Boolean)
-      }
-
-      if (typeof parsed === "string") {
-        return parsed
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean)
-      }
-
-      if (parsed && typeof parsed === "object") {
-        return Object.values(parsed as Record<string, unknown>)
-          .map(String)
-          .filter(Boolean)
-      }
-
-      return value
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter(Boolean)
-    } catch {
-      return value
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter(Boolean)
-    }
+    const fromJson = parseJsonStringArray(value, [])
+    if (fromJson.length > 0) return fromJson
+    return value
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean)
   }
 
   if (typeof value === "object") {

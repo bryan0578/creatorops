@@ -13,6 +13,7 @@ import { downloadJson, loadWorkflows } from "@/lib/storage"
 import { PageHeader } from "@/components/app-shell"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { parseImportJsonText } from "@/lib/safe-json"
 import {
   Select,
   SelectContent,
@@ -128,7 +129,12 @@ export function WorkflowHub() {
     const reader = new FileReader()
     reader.onload = async () => {
       try {
-        const parsed = JSON.parse(String(reader.result))
+        const importResult = parseImportJsonText(String(reader.result))
+        if (!importResult.ok) {
+          toast.error(importResult.message)
+          return
+        }
+        const parsed = importResult.value
         const items = Array.isArray(parsed) ? parsed : [parsed]
         await importWorkflows(items as Workflow[])
         toast.success(`Imported ${items.length} workflow(s) to database`)

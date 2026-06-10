@@ -23,6 +23,7 @@ import {
   type ImportBackupResult,
 } from "@/lib/actions/backups"
 import type { BackupDataKey, BackupImportMode } from "@/lib/data/backups"
+import { parseImportJsonText } from "@/lib/safe-json"
 import { downloadJson } from "@/lib/storage"
 import { useStore } from "@/lib/store"
 import { ModulePageHeader } from "@/components/app-shell"
@@ -189,8 +190,12 @@ export function BackupCenter() {
     const reader = new FileReader()
     reader.onload = () => {
       try {
-        const parsed = JSON.parse(String(reader.result))
-        setPendingImport(parsed)
+        const result = parseImportJsonText(String(reader.result))
+        if (!result.ok) {
+          toast.error(result.message)
+          return
+        }
+        setPendingImport(result.value)
       } catch {
         toast.error("Invalid JSON file")
       }

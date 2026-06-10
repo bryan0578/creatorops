@@ -12,7 +12,7 @@ export function ModuleShell({
   return (
     <div
       className={cn(
-        "mx-auto flex w-full min-w-0 max-w-full flex-col gap-6 md:max-w-[1600px]",
+        "mx-auto flex w-full min-w-0 max-w-full flex-col gap-6 overflow-x-hidden md:max-w-[1600px]",
         className,
       )}
     >

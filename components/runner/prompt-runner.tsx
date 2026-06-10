@@ -3,6 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
+import { parseImportJsonText } from "@/lib/safe-json"
 import {
   AlertCircle,
   Copy,
@@ -271,7 +272,12 @@ export function PromptRunner() {
     const reader = new FileReader()
     reader.onload = async () => {
       try {
-        const parsed = JSON.parse(String(reader.result))
+        const importResult = parseImportJsonText(String(reader.result))
+        if (!importResult.ok) {
+          toast.error(importResult.message)
+          return
+        }
+        const parsed = importResult.value
         const items = Array.isArray(parsed) ? parsed : [parsed]
         await importRuns(items as PromptRun[])
         toast.success(`Imported ${items.length} run(s) to database`)

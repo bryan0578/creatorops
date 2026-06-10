@@ -855,15 +855,26 @@ export async function searchGlobal(
 
   const groupResults = await Promise.all(
     SEARCHERS.map(async ({ type, search }) => {
-      const results = await search(query)
       const meta = GLOBAL_SEARCH_TYPE_META[type]
-      return {
-        type,
-        typeLabel: meta.typeLabel,
-        category: meta.category,
-        results,
-        total: results.length,
-      } satisfies GlobalSearchGroup
+      try {
+        const results = await search(query)
+        return {
+          type,
+          typeLabel: meta.typeLabel,
+          category: meta.category,
+          results,
+          total: results.length,
+        } satisfies GlobalSearchGroup
+      } catch (error) {
+        console.error(`[CreatorOps] Global search failed for ${type}`, error)
+        return {
+          type,
+          typeLabel: meta.typeLabel,
+          category: meta.category,
+          results: [],
+          total: 0,
+        } satisfies GlobalSearchGroup
+      }
     }),
   )
 

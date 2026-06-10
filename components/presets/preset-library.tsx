@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
+import { parseImportJsonText } from "@/lib/safe-json"
 import {
   Copy,
   Download,
@@ -205,7 +206,12 @@ export function PresetLibrary() {
     if (!file) return
     try {
       const text = await file.text()
-      const parsed = JSON.parse(text) as unknown
+      const importResult = parseImportJsonText(text)
+      if (!importResult.ok) {
+        toast.error(importResult.message)
+        return
+      }
+      const parsed = importResult.value
       if (!Array.isArray(parsed)) throw new Error("Expected JSON array")
       await store.importPresets(parsed as PresetRecord[])
       toast.success("Presets imported")

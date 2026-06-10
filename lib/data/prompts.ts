@@ -1,5 +1,6 @@
 import type { Prompt, PromptCategory } from "@/lib/types"
 import type { Prompt as PrismaPrompt } from "@/lib/generated/prisma/client"
+import { parseJsonStringArray as parseJsonStringArraySafe } from "@/lib/safe-json"
 
 /**
  * Shared prompt data layer — maps between app `Prompt` types and Prisma rows.
@@ -8,14 +9,7 @@ import type { Prompt as PrismaPrompt } from "@/lib/generated/prisma/client"
 
 export function parseJsonStringArray(value: string | null | undefined): string[] {
   if (!value) return []
-  try {
-    const parsed = JSON.parse(value) as unknown
-    return Array.isArray(parsed)
-      ? parsed.filter((item): item is string => typeof item === "string")
-      : []
-  } catch {
-    return []
-  }
+  return parseJsonStringArraySafe(value, [])
 }
 
 export function stringifyJsonArray(values: string[]): string {

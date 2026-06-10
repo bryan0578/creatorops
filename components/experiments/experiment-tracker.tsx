@@ -19,6 +19,7 @@ import {
   normalizeExperimentRecord,
   sortExperiments,
 } from "@/lib/experiments"
+import { parseImportJsonText } from "@/lib/safe-json"
 import { downloadJson } from "@/lib/storage"
 import { useStore, createId } from "@/lib/store"
 import type { ExperimentRecord } from "@/lib/types"
@@ -452,10 +453,17 @@ export function ExperimentTracker() {
                 if (!file) return
                 try {
                   const text = await file.text()
-                  const parsed = JSON.parse(text) as ExperimentRecord[]
+                  const result = parseImportJsonText(text)
+                  if (!result.ok) {
+                    toast.error(result.message)
+                    return
+                  }
+                  const parsed = result.value
                   await importExperiments(
                     Array.isArray(parsed)
-                      ? parsed.map((item) => normalizeExperimentRecord(item))
+                      ? parsed.map((item) =>
+                          normalizeExperimentRecord(item as ExperimentRecord),
+                        )
                       : [normalizeExperimentRecord(parsed as ExperimentRecord)],
                   )
                   toast.success("Experiments imported.")

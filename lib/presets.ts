@@ -1,30 +1,12 @@
 import type { PresetFormValues, PresetRecord, PresetType } from "@/lib/types"
 import { PRESET_TYPES } from "@/lib/types"
-
-function parseJsonArray(raw: string, fallback: string[]): string[] {
-  try {
-    const parsed = JSON.parse(raw) as unknown
-    return Array.isArray(parsed)
-      ? parsed.filter((item): item is string => typeof item === "string")
-      : fallback
-  } catch {
-    return fallback
-  }
-}
-
-function parseJsonObject(raw: string, fallback: Record<string, unknown>): Record<string, unknown> {
-  try {
-    const parsed = JSON.parse(raw) as unknown
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
-      : fallback
-  } catch {
-    return fallback
-  }
-}
+import {
+  parseJsonObject as parseJsonObjectSafe,
+  parseJsonStringArray,
+} from "@/lib/safe-json"
 
 export function parsePresetTags(raw: string): string[] {
-  return parseJsonArray(raw, [])
+  return parseJsonStringArray(raw, [])
 }
 
 export function stringifyPresetTags(tags: string[]): string {
@@ -32,7 +14,7 @@ export function stringifyPresetTags(tags: string[]): string {
 }
 
 export function parsePresetValues(raw: string): Record<string, unknown> {
-  return parseJsonObject(raw, {})
+  return parseJsonObjectSafe(raw, {})
 }
 
 export function stringifyPresetValues(values: Record<string, unknown>): string {

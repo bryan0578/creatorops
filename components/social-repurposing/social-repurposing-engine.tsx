@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useSearchParams } from "next/navigation"
+import { parseImportJsonText } from "@/lib/safe-json"
 import {
   Copy,
   Database,
@@ -444,7 +445,12 @@ export function SocialRepurposingEngine() {
     const reader = new FileReader()
     reader.onload = async () => {
       try {
-        const parsed = JSON.parse(String(reader.result))
+        const importResult = parseImportJsonText(String(reader.result))
+        if (!importResult.ok) {
+          toast.error(importResult.message)
+          return
+        }
+        const parsed = importResult.value
         const items = (Array.isArray(parsed) ? parsed : [parsed]).map(
           (item) =>
             normalizeSocialRepurposingRecord(item as SocialRepurposingRecord),

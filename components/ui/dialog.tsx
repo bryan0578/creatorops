@@ -123,9 +123,14 @@ function DialogFooter({
     >
       {children}
       {showCloseButton ? (
-        <Button type="button" variant="outline">
+        <DialogPrimitive.Close
+          data-slot="dialog-close"
+          render={
+            <Button type="button" variant="outline" />
+          }
+        >
           Close
-        </Button>
+        </DialogPrimitive.Close>
       ) : null}
     </div>
   )
