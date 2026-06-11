@@ -33,6 +33,7 @@ import {
 import { PromptCard } from "@/components/prompts/prompt-card"
 import { PromptFormDialog } from "@/components/prompts/prompt-form-dialog"
 import { PromptDetailPanel } from "@/components/prompts/prompt-detail-panel"
+import { SeedAIGenerationTemplatesButton } from "@/components/ai/seed-ai-templates-button"
 
 export function PromptLibrary() {
   const searchParams = useSearchParams()
@@ -207,6 +208,7 @@ export function PromptLibrary() {
               <Download className="size-4" />
               Export JSON
             </Button>
+            <SeedAIGenerationTemplatesButton />
             <Button onClick={openCreate}>
               <Plus className="size-4" />
               New Prompt

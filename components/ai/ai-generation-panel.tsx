@@ -8,7 +8,8 @@ import { toast } from "sonner"
 import { generateAIText, getAIProviderStatus } from "@/lib/actions/ai-generation"
 import { copyToClipboard } from "@/lib/copy-to-clipboard"
 import type { AIProviderStatus } from "@/lib/ai/types"
-import type { CampaignLinkedRecordType, PromptRunModuleType } from "@/lib/types"
+import type { CampaignLinkedRecordType, Prompt, PromptRunModuleType } from "@/lib/types"
+import { AITemplateSelector } from "@/components/ai/ai-template-selector"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { PromptPreviewBlock } from "@/components/module/form-layout"
@@ -35,6 +36,17 @@ export type AIGenerationPanelProps = {
   onInsertResponse?: (text: string) => void
   className?: string
   compact?: boolean
+  /** When set, shows AI template selector filtered by module slug. */
+  templateModuleSlug?: string
+  selectedTemplate?: Prompt | null
+  onTemplateChange?: (template: Prompt | null) => void
+  /** When set (e.g. Prompt Runner), uses this template without showing the selector. */
+  generationTemplate?: Prompt | null
+  /**
+   * augment — template instructions prepended to module task (default).
+   * primary — prompt text already contains the template (Prompt Runner).
+   */
+  generationTemplateMode?: "augment" | "primary"
 }
 
 export function AIGenerationPanel({
@@ -52,7 +64,17 @@ export function AIGenerationPanel({
   onInsertResponse,
   className,
   compact = false,
+  templateModuleSlug,
+  selectedTemplate: selectedTemplateProp,
+  onTemplateChange,
+  generationTemplate,
+  generationTemplateMode = "augment",
 }: AIGenerationPanelProps) {
+  const [internalTemplate, setInternalTemplate] = React.useState<Prompt | null>(null)
+  const selectedTemplate =
+    selectedTemplateProp !== undefined ? selectedTemplateProp : internalTemplate
+  const setSelectedTemplate = onTemplateChange ?? setInternalTemplate
+  const activeTemplate = generationTemplate ?? selectedTemplate
   const [status, setStatus] = React.useState<AIProviderStatus | null>(null)
   const [loadingStatus, setLoadingStatus] = React.useState(true)
   const [generating, setGenerating] = React.useState(false)
@@ -114,6 +136,13 @@ export function AIGenerationPanel({
         campaignName,
         promptId,
         promptName: promptName ?? `${moduleType} generation`,
+        templateInstructions:
+          generationTemplateMode === "primary"
+            ? undefined
+            : activeTemplate?.promptText,
+        templateOutputFormat: activeTemplate?.outputFormat,
+        templatePromptId: activeTemplate?.id,
+        templatePromptName: activeTemplate?.name,
         includeCampaignContext: includeCampaignContext && Boolean(campaignId),
         includeLearnings,
         includeQualityNotes,
@@ -160,7 +189,16 @@ export function AIGenerationPanel({
     "AI provider not configured. Add OPENAI_API_KEY to .env.local and restart the dev server."
 
   return (
-    <Card className={className ?? "border-border/80"}>
+    <div className={className ? `space-y-4 ${className}` : "space-y-4"}>
+      {templateModuleSlug ? (
+        <AITemplateSelector
+          moduleSlug={templateModuleSlug}
+          selectedTemplate={selectedTemplate}
+          onSelect={setSelectedTemplate}
+          compact={compact}
+        />
+      ) : null}
+    <Card className="border-border/80">
       <CardHeader className={compact ? "pb-2" : undefined}>
         <CardTitle className="text-base flex items-center gap-2">
           <Sparkles className="size-4 text-primary" />
@@ -314,5 +352,6 @@ export function AIGenerationPanel({
         </p>
       </CardContent>
     </Card>
+    </div>
   )
 }

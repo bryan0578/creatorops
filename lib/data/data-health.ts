@@ -21,6 +21,12 @@ import {
   buildRemoveBrokenLinkRepair,
 } from "@/lib/data/data-health-repairs"
 import { getModuleFieldKeys } from "@/lib/ai-output/field-mapping"
+import {
+  getTemplateModuleSlug,
+  isAIGenerationTemplate,
+  templateHasOutputFormatInstructions,
+} from "@/lib/ai-templates/utils"
+import { AI_GENERATION_TEMPLATE_CATEGORY } from "@/lib/ai-templates/constants"
 import type { AIOutputModuleType } from "@/lib/ai-output/types"
 import type {
   AnalyticsRecord,
@@ -1262,6 +1268,68 @@ function scanAIConfigurationWarnings(
   }
 }
 
+function scanAIGenerationTemplateWarnings(
+  input: DataHealthScanInput,
+  issues: DataHealthIssue[],
+): void {
+  const templates = input.prompts.filter(isAIGenerationTemplate)
+  if (templates.length === 0) return
+
+  const nameCounts = new Map<string, number>()
+  for (const template of templates) {
+    if (!getTemplateModuleSlug(template)) {
+      pushIssue(issues, {
+        id: issueId(["ai-template-missing-module", template.id]),
+        severity: "info",
+        category: "data-issues",
+        title: "AI template missing module tag",
+        description: `"${template.name}" is an AI Generation Template without a module:youtube-packaging-style tag.`,
+        sourceType: "prompt",
+        sourceId: template.id,
+        sourceTitle: template.name,
+        href: `/prompts?recordId=${encodeURIComponent(template.id)}`,
+        suggestedAction: "Add a module tag (e.g. module:youtube-packaging) in Prompt Library.",
+      })
+    }
+
+    if (!templateHasOutputFormatInstructions(template)) {
+      pushIssue(issues, {
+        id: issueId(["ai-template-missing-output", template.id]),
+        severity: "info",
+        category: "data-issues",
+        title: "AI template missing output format instructions",
+        description: `"${template.name}" has little or no parser-friendly output format guidance.`,
+        sourceType: "prompt",
+        sourceId: template.id,
+        sourceTitle: template.name,
+        href: `/prompts?recordId=${encodeURIComponent(template.id)}`,
+        suggestedAction: "Add output format labels in the template outputFormat field.",
+      })
+    }
+
+    nameCounts.set(template.name, (nameCounts.get(template.name) ?? 0) + 1)
+  }
+
+  for (const [name, count] of nameCounts) {
+    if (count < 2) continue
+    const matches = templates.filter((template) => template.name === name)
+    for (const template of matches) {
+      pushIssue(issues, {
+        id: issueId(["ai-template-duplicate-name", template.id, name]),
+        severity: "info",
+        category: "duplicates",
+        title: "Duplicate AI generation template name",
+        description: `"${name}" appears ${count} times under ${AI_GENERATION_TEMPLATE_CATEGORY}.`,
+        sourceType: "prompt",
+        sourceId: template.id,
+        sourceTitle: template.name,
+        href: `/prompts?recordId=${encodeURIComponent(template.id)}`,
+        suggestedAction: "Rename or merge duplicate AI templates in Prompt Library.",
+      })
+    }
+  }
+}
+
 function recordFinalFieldsEmpty(
   record: Record<string, unknown>,
   keys: string[],
@@ -2100,6 +2168,9 @@ export function buildDataHealthReport(
   )
   safeScan("AI configuration", issues, () =>
     scanAIConfigurationWarnings(input, issues),
+  )
+  safeScan("AI generation templates", issues, () =>
+    scanAIGenerationTemplateWarnings(input, issues),
   )
   safeScan("AI response final fields", issues, () =>
     scanAiResponseWithoutFinalFields(input, issues),

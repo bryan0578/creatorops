@@ -635,6 +635,7 @@ export function EmailCampaignGenerator() {
               outputRecordType="email-campaign"
               onInsertResponse={setAiResponse}
               compact
+              templateModuleSlug="email-campaigns"
             />
             <ApplyAIOutputPanel
               moduleType="Email Campaign"

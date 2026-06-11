@@ -721,6 +721,7 @@ export function MockupPromptGenerator() {
               outputRecordType="mockup-prompt"
               onInsertResponse={setAiResponse}
               compact
+              templateModuleSlug="mockup-prompts"
             />
             <ApplyAIOutputPanel
               moduleType="Mockup Prompt"

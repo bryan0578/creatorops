@@ -20,6 +20,7 @@ import {
 import { useStore } from "@/lib/store"
 import { AI_PROVIDER_LABELS, AI_PROVIDER_IDS } from "@/lib/ai/types"
 import { getAIProviderStatus } from "@/lib/actions/ai-generation"
+import { SeedAIGenerationTemplatesButton } from "@/components/ai/seed-ai-templates-button"
 import { ModulePageHeader } from "@/components/app-shell"
 import {
   FormGrid,
@@ -582,6 +583,13 @@ export function WorkspaceSettingsPage() {
                   Include quality review notes by default
                 </label>
               </FormGrid>
+              <div className="border-t border-border/80 pt-4">
+                <p className="mb-2 text-sm text-muted-foreground">
+                  Seed reusable AI generation templates into Prompt Library. Safe to run
+                  multiple times — existing templates are skipped.
+                </p>
+                <SeedAIGenerationTemplatesButton />
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

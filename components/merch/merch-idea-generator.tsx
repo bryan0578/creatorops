@@ -609,6 +609,7 @@ export function MerchIdeaGenerator() {
               outputRecordType="merch-idea"
               onInsertResponse={setAiResponse}
               compact
+              templateModuleSlug="merch-ideas"
             />
             <ApplyAIOutputPanel
               moduleType="Merch Idea"

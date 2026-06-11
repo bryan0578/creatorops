@@ -624,6 +624,7 @@ export function ProductListingGenerator() {
               outputRecordType="product-listing"
               onInsertResponse={setAiResponse}
               compact
+              templateModuleSlug="product-listings"
             />
             <ApplyAIOutputPanel
               moduleType="Product Listing"

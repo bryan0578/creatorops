@@ -774,6 +774,7 @@ export function YouTubeThumbnailGenerator() {
               outputRecordType="youtube-thumbnail"
               onInsertResponse={setAiResponse}
               compact
+              templateModuleSlug="youtube-thumbnails"
             />
             <ApplyAIOutputPanel
               moduleType="YouTube Thumbnail"

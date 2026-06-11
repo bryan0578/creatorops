@@ -8,6 +8,7 @@ import { MODULE_TASK_SEPARATOR } from "@/lib/prompt-context-builder"
 import { filterLearningsForCampaign, filterReusableLearnings } from "@/lib/learnings"
 import { filterQualityReviewsForCampaign } from "@/lib/quality-reviews"
 import { buildParserFriendlyOutputHint, isParserFriendlyModule } from "@/lib/ai-output/output-format-hints"
+import type { GenerateAITextInput } from "@/lib/ai/types"
 import type { WorkspaceSettingsRecord } from "@/lib/types"
 
 const CREATOROPS_SYSTEM_BASE = `You are CreatorOps AI assistant for creator campaign production.
@@ -164,13 +165,18 @@ export async function assembleAIPrompt(
   }
 
   const moduleFocus = MODULE_CONTEXT_TYPE[input.moduleType]
-  const outputHint = isParserFriendlyModule(input.moduleType)
-    ? buildParserFriendlyOutputHint(input.moduleType)
-    : MODULE_OUTPUT_HINTS[input.moduleType] ?? "Return clear structured markdown."
+  const outputHint = input.templateOutputFormat?.trim()
+    ? input.templateOutputFormat.trim()
+    : isParserFriendlyModule(input.moduleType)
+      ? buildParserFriendlyOutputHint(input.moduleType)
+      : MODULE_OUTPUT_HINTS[input.moduleType] ?? "Return clear structured markdown."
 
   const userParts: string[] = []
   if (contextBlocks.length > 0) {
     userParts.push("CONTEXT", contextBlocks.join("\n\n"), "")
+  }
+  if (input.templateInstructions?.trim()) {
+    userParts.push("GENERATION MODE", input.templateInstructions.trim(), "")
   }
   userParts.push(
     "TASK",

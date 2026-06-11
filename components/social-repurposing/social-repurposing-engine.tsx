@@ -672,6 +672,7 @@ export function SocialRepurposingEngine() {
               outputRecordType="social-repurposing"
               onInsertResponse={setAiResponse}
               compact
+              templateModuleSlug="social-repurposing"
             />
             <ApplyAIOutputPanel
               moduleType="Social Repurposing"

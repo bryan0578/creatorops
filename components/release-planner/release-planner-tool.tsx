@@ -673,6 +673,7 @@ export function ReleasePlannerTool() {
               outputRecordType="release-plan"
               onInsertResponse={setAiResponse}
               compact
+              templateModuleSlug="release-planner"
             />
             <ApplyAIOutputPanel
               moduleType="Release Plan"

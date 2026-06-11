@@ -69,6 +69,10 @@ export interface GenerateAITextInput {
   inputValues?: Record<string, string>
   experimentId?: string
   notes?: string
+  templateInstructions?: string
+  templateOutputFormat?: string
+  templatePromptId?: string
+  templatePromptName?: string
 }
 
 export interface GenerateAITextResult {

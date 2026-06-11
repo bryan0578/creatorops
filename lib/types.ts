@@ -6,6 +6,7 @@ export type PromptCategory =
   | "Marketing"
   | "Label Ops"
   | "Digital Products"
+  | "AI Generation Template"
   | "General"
 
 export type WorkflowStatus = "Active" | "Draft" | "Paused" | "Archived"
@@ -142,6 +143,7 @@ export const PROMPT_CATEGORIES: PromptCategory[] = [
   "Marketing",
   "Label Ops",
   "Digital Products",
+  "AI Generation Template",
   "General",
 ]
 

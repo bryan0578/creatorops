@@ -663,6 +663,7 @@ export function YouTubePackagingTool() {
               outputRecordType="youtube-package"
               onInsertResponse={setAiResponse}
               compact
+              templateModuleSlug="youtube-packaging"
             />
             <ApplyAIOutputPanel
               moduleType="YouTube Packaging"

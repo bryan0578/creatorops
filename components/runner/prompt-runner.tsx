@@ -19,7 +19,12 @@ import { toast } from "sonner"
 
 import { migrateLocalPromptRunsToDatabase } from "@/lib/actions/prompt-runs"
 import { useStore, createId } from "@/lib/store"
-import type { Prompt, PromptRun } from "@/lib/types"
+import type { Prompt, PromptCategory, PromptRun } from "@/lib/types"
+import { PROMPT_CATEGORIES } from "@/lib/types"
+import {
+  getTemplateModuleType,
+  isAIGenerationTemplate,
+} from "@/lib/ai-templates/utils"
 import {
   getOutputRecordHref,
   promptRunsForCampaignHref,
@@ -69,6 +74,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 function formatDate(ts: number) {
   return new Date(ts).toLocaleString(undefined, {
@@ -96,6 +108,9 @@ export function PromptRunner() {
   } = useStore()
 
   const [promptSearch, setPromptSearch] = React.useState("")
+  const [promptCategoryFilter, setPromptCategoryFilter] = React.useState<
+    "all" | PromptCategory
+  >("all")
   const [selectedPromptId, setSelectedPromptId] = React.useState<string | null>(
     null,
   )
@@ -124,6 +139,13 @@ export function PromptRunner() {
 
   const selectedPrompt = prompts.find((p) => p.id === selectedPromptId) ?? null
 
+  const aiGenerationModuleType = React.useMemo(() => {
+    if (selectedPrompt && isAIGenerationTemplate(selectedPrompt)) {
+      return getTemplateModuleType(selectedPrompt) ?? "Other"
+    }
+    return "Other" as const
+  }, [selectedPrompt])
+
   const variables = React.useMemo(() => {
     if (!selectedPrompt) return []
     return mergePromptVariables(
@@ -148,15 +170,19 @@ export function PromptRunner() {
 
   const filteredPrompts = React.useMemo(() => {
     const q = promptSearch.trim().toLowerCase()
-    if (!q) return prompts
-    return prompts.filter(
-      (p) =>
+    return prompts.filter((p) => {
+      if (promptCategoryFilter !== "all" && p.category !== promptCategoryFilter) {
+        return false
+      }
+      if (!q) return true
+      return (
         p.name.toLowerCase().includes(q) ||
         p.category.toLowerCase().includes(q) ||
         p.description.toLowerCase().includes(q) ||
-        p.tags.some((t) => t.toLowerCase().includes(q)),
-    )
-  }, [prompts, promptSearch])
+        p.tags.some((t) => t.toLowerCase().includes(q))
+      )
+    })
+  }, [prompts, promptSearch, promptCategoryFilter])
 
   const filteredRuns = React.useMemo(() => {
     const q = runSearch.trim().toLowerCase()
@@ -450,14 +476,34 @@ export function PromptRunner() {
                 title="Select prompt"
                 description="Choose a saved prompt from your library"
               >
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={promptSearch}
-                  onChange={(e) => setPromptSearch(e.target.value)}
-                  placeholder="Search prompts..."
-                  className="pl-9"
-                />
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={promptSearch}
+                    onChange={(e) => setPromptSearch(e.target.value)}
+                    placeholder="Search prompts..."
+                    className="pl-9"
+                  />
+                </div>
+                <Select
+                  value={promptCategoryFilter}
+                  onValueChange={(value) =>
+                    setPromptCategoryFilter(value as typeof promptCategoryFilter)
+                  }
+                >
+                  <SelectTrigger className="sm:w-52">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All categories</SelectItem>
+                    {PROMPT_CATEGORIES.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="max-h-48 space-y-1 overflow-y-auto rounded-md border p-1">
@@ -615,7 +661,7 @@ export function PromptRunner() {
           </OutputSection>
 
           <AIGenerationPanel
-            moduleType="Other"
+            moduleType={aiGenerationModuleType}
             promptText={displayCompletedPrompt}
             promptId={selectedPrompt?.id ?? editingRun?.promptId ?? undefined}
             promptName={selectedPrompt?.name ?? editingRun?.promptName}
@@ -624,6 +670,12 @@ export function PromptRunner() {
             inputValues={inputValues}
             onInsertResponse={setAiResponse}
             compact
+            generationTemplate={
+              selectedPrompt && isAIGenerationTemplate(selectedPrompt)
+                ? selectedPrompt
+                : null
+            }
+            generationTemplateMode="primary"
           />
 
           <OutputSection

@@ -11,6 +11,7 @@ import {
   type DemoDataStatus,
 } from "@/lib/actions/demo-data"
 import { EmptyState } from "@/components/empty-state"
+import { SeedAIGenerationTemplatesButton } from "@/components/ai/seed-ai-templates-button"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -190,7 +191,12 @@ export function DemoTestingSection({
             )}
             Delete demo data
           </Button>
+          <SeedAIGenerationTemplatesButton variant="outline" />
         </div>
+        <p className="text-xs text-muted-foreground">
+          AI generation templates are starter library content — not removed when demo data
+          is deleted.
+        </p>
       </CardContent>
     </Card>
   )
