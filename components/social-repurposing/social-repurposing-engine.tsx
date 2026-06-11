@@ -49,6 +49,7 @@ import { ModulePageHeader } from "@/components/app-shell"
 import { QualityReviewActionLink } from "@/components/quality/quality-review-action"
 import { SaveLinkedPromptRunButton } from "@/components/module/save-linked-prompt-run-button"
 import { AIGenerationPanel } from "@/components/ai/ai-generation-panel"
+import { ApplyAIOutputPanel } from "@/components/ai-output/apply-ai-output-panel"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { CampaignPromptOutputSection } from "@/components/campaigns/campaign-context-prompt-controls"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
@@ -671,6 +672,22 @@ export function SocialRepurposingEngine() {
               outputRecordType="social-repurposing"
               onInsertResponse={setAiResponse}
               compact
+            />
+            <ApplyAIOutputPanel
+              moduleType="Social Repurposing"
+              aiResponse={aiResponse}
+              existingValues={finalContent}
+              onApply={(fields) => setFinalContent((prev) => ({ ...prev, ...fields }))}
+              onApplied={() => setActiveTab("final")}
+              finalTabLabel="Final Content"
+              compact
+              qualityReview={{
+                reviewType: "Social Caption",
+                campaignId: campaignPrefill.campaignId,
+                campaignName: campaignPrefill.campaignName,
+                sourceRecordType: "social-repurposing",
+                recordId: editingId,
+              }}
             />
           <OutputSection
             title="AI response"

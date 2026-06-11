@@ -58,6 +58,7 @@ import { ModulePageHeader } from "@/components/app-shell"
 import { QualityReviewActionLink } from "@/components/quality/quality-review-action"
 import { SaveLinkedPromptRunButton } from "@/components/module/save-linked-prompt-run-button"
 import { AIGenerationPanel } from "@/components/ai/ai-generation-panel"
+import { ApplyAIOutputPanel } from "@/components/ai-output/apply-ai-output-panel"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { CampaignPromptOutputSection } from "@/components/campaigns/campaign-context-prompt-controls"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
@@ -773,6 +774,22 @@ export function YouTubeThumbnailGenerator() {
               outputRecordType="youtube-thumbnail"
               onInsertResponse={setAiResponse}
               compact
+            />
+            <ApplyAIOutputPanel
+              moduleType="YouTube Thumbnail"
+              aiResponse={aiResponse}
+              existingValues={finalThumbnail}
+              onApply={(fields) => setFinalThumbnail((prev) => ({ ...prev, ...fields }))}
+              onApplied={() => setActiveTab("final")}
+              finalTabLabel="Final Thumbnail"
+              compact
+              qualityReview={{
+                reviewType: "Thumbnail",
+                campaignId: campaignPrefill.campaignId,
+                campaignName: campaignPrefill.campaignName,
+                sourceRecordType: "youtube-thumbnail",
+                recordId: editingId,
+              }}
             />
           <OutputSection
             title="AI response"

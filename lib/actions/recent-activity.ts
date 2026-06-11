@@ -266,6 +266,108 @@ async function fetchEmailCampaignActivities() {
   )
 }
 
+async function fetchExperimentActivities() {
+  const rows = await prisma.experiment.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: RECENT_ACTIVITY_PER_MODULE,
+  })
+  return rows.map((row) =>
+    buildActivityItem({
+      id: row.id,
+      type: "experiment",
+      title: row.experimentName || "Experiment",
+      subtitle: [row.experimentType, row.status].filter(Boolean).join(" · "),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }),
+  )
+}
+
+async function fetchPresetActivities() {
+  const rows = await prisma.preset.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: RECENT_ACTIVITY_PER_MODULE,
+  })
+  return rows.map((row) =>
+    buildActivityItem({
+      id: row.id,
+      type: "preset",
+      title: row.name || "Preset",
+      subtitle: row.category,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }),
+  )
+}
+
+async function fetchPlaybookActivities() {
+  const rows = await prisma.playbook.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: RECENT_ACTIVITY_PER_MODULE,
+  })
+  return rows.map((row) =>
+    buildActivityItem({
+      id: row.id,
+      type: "playbook",
+      title: row.name || "Playbook",
+      subtitle: [row.playbookType, row.status].filter(Boolean).join(" · "),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }),
+  )
+}
+
+async function fetchAssetActivities() {
+  const rows = await prisma.asset.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: RECENT_ACTIVITY_PER_MODULE,
+  })
+  return rows.map((row) =>
+    buildActivityItem({
+      id: row.id,
+      type: "asset",
+      title: row.assetName || "Asset",
+      subtitle: [row.assetType, row.status].filter(Boolean).join(" · "),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }),
+  )
+}
+
+async function fetchQualityReviewActivities() {
+  const rows = await prisma.qualityReview.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: RECENT_ACTIVITY_PER_MODULE,
+  })
+  return rows.map((row) =>
+    buildActivityItem({
+      id: row.id,
+      type: "quality-review",
+      title: row.reviewName || "Quality review",
+      subtitle: [row.reviewType, row.status].filter(Boolean).join(" · "),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }),
+  )
+}
+
+async function fetchLearningActivities() {
+  const rows = await prisma.learning.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: RECENT_ACTIVITY_PER_MODULE,
+  })
+  return rows.map((row) =>
+    buildActivityItem({
+      id: row.id,
+      type: "learning",
+      title: row.title || "Learning",
+      subtitle: [row.learningType, row.status].filter(Boolean).join(" · "),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }),
+  )
+}
+
 /** Load recent activity across all major CreatorOps modules. */
 export async function getRecentActivity(
   limit = RECENT_ACTIVITY_LIMIT,
@@ -286,6 +388,12 @@ export async function getRecentActivity(
     fetchAnalyticsActivities(),
     fetchMockupPromptActivities(),
     fetchEmailCampaignActivities(),
+    fetchExperimentActivities(),
+    fetchPresetActivities(),
+    fetchPlaybookActivities(),
+    fetchAssetActivities(),
+    fetchQualityReviewActivities(),
+    fetchLearningActivities(),
   ])
 
   return mergeAndLimitActivities(batches.flat(), limit)

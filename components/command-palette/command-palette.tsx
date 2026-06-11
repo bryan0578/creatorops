@@ -16,7 +16,7 @@ import {
   type CommandPaletteStaticItem,
 } from "@/lib/data/command-palette"
 import type { GlobalSearchResult, GlobalSearchResultType } from "@/lib/data/global-search"
-import { buildActivityHref } from "@/lib/data/recent-activity"
+import { buildResultHref } from "@/lib/data/global-search"
 import type { RecentActivityItem } from "@/lib/data/recent-activity"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -41,10 +41,8 @@ export type CommandPaletteItem =
     }
 
 function resolveSearchHref(result: GlobalSearchResult): string {
-  if (result.type === "preset") {
-    return `/presets?presetId=${encodeURIComponent(result.id)}`
-  }
-  return buildActivityHref(result.type, result.id).href || result.href
+  const link = buildResultHref(result.type, result.id)
+  return link.directOpen ? link.href : result.href
 }
 
 function searchResultGroup(type: GlobalSearchResultType): CommandPaletteGroupId {

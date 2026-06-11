@@ -46,6 +46,7 @@ import { ModulePageHeader } from "@/components/app-shell"
 import { QualityReviewActionLink } from "@/components/quality/quality-review-action"
 import { SaveLinkedPromptRunButton } from "@/components/module/save-linked-prompt-run-button"
 import { AIGenerationPanel } from "@/components/ai/ai-generation-panel"
+import { ApplyAIOutputPanel } from "@/components/ai-output/apply-ai-output-panel"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { CampaignPromptOutputSection } from "@/components/campaigns/campaign-context-prompt-controls"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
@@ -608,6 +609,22 @@ export function MerchIdeaGenerator() {
               outputRecordType="merch-idea"
               onInsertResponse={setAiResponse}
               compact
+            />
+            <ApplyAIOutputPanel
+              moduleType="Merch Idea"
+              aiResponse={aiResponse}
+              existingValues={selectedConcept}
+              onApply={(fields) => setSelectedConcept((prev) => ({ ...prev, ...fields }))}
+              onApplied={() => setActiveTab("final")}
+              finalTabLabel="Selected Concept"
+              compact
+              qualityReview={{
+                reviewType: "Merch Concept",
+                campaignId: campaignPrefill.campaignId,
+                campaignName: campaignPrefill.campaignName,
+                sourceRecordType: "merch-idea",
+                recordId: editingId,
+              }}
             />
           <OutputSection
             title="AI response"

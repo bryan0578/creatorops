@@ -58,11 +58,13 @@ export async function generateOpenAIText(
     }
 
     if (!response.ok) {
-      const message = payload.error?.message ?? `OpenAI request failed (${response.status})`
       if (response.status === 429) {
-        throw new Error(`Rate limited: ${message}`)
+        throw new Error("Rate limit reached. Wait a moment and try again.")
       }
-      throw new Error(message)
+      if (response.status === 401 || response.status === 403) {
+        throw new Error("Invalid API key. Check OPENAI_API_KEY in .env.local.")
+      }
+      throw new Error(`AI request failed (${response.status}). Try again later.`)
     }
 
     const text = payload.choices?.[0]?.message?.content?.trim() ?? ""

@@ -1,5 +1,5 @@
 import type { GlobalSearchCategory, GlobalSearchResultType } from "@/lib/data/global-search"
-import { GLOBAL_SEARCH_TYPE_META } from "@/lib/data/global-search"
+import { GLOBAL_SEARCH_TYPE_META, buildResultHref } from "@/lib/data/global-search"
 
 export type ActivityAction = "Created" | "Updated"
 
@@ -26,22 +26,6 @@ export const RECENT_ACTIVITY_LIMIT = 20
 /** If updatedAt is more than this many ms after createdAt, treat as Updated. */
 export const ACTIVITY_UPDATED_THRESHOLD_MS = 60_000
 
-const RECORD_ID_MODULES: ActivityType[] = [
-  "youtube-package",
-  "youtube-thumbnail",
-  "release-plan",
-  "social-repurposing",
-  "merch-idea",
-  "product-listing",
-  "mockup-prompt",
-  "email-campaign",
-  "analytics",
-  "experiment",
-  "artist",
-  "prompt-run",
-  "workflow-run",
-]
-
 export function deriveActivityAction(
   createdAt: number,
   updatedAt: number,
@@ -56,44 +40,8 @@ export function buildActivityHref(
   type: ActivityType,
   id: string,
 ): { href: string; directOpen: boolean } {
-  const base = GLOBAL_SEARCH_TYPE_META[type].href
-
-  if (type === "campaign") {
-    return {
-      href: `${base}?campaignId=${encodeURIComponent(id)}`,
-      directOpen: true,
-    }
-  }
-
-  if (type === "prompt") {
-    return {
-      href: `/runner?promptId=${encodeURIComponent(id)}`,
-      directOpen: true,
-    }
-  }
-
-  if (type === "youtube-thumbnail") {
-    return {
-      href: `${base}?recordId=${encodeURIComponent(id)}`,
-      directOpen: true,
-    }
-  }
-
-  if (RECORD_ID_MODULES.includes(type)) {
-    return {
-      href: `${base}?recordId=${encodeURIComponent(id)}`,
-      directOpen: true,
-    }
-  }
-
-  if (type === "workflow") {
-    return {
-      href: `${base}?recordId=${encodeURIComponent(id)}`,
-      directOpen: true,
-    }
-  }
-
-  return { href: base, directOpen: false }
+  const link = buildResultHref(type, id)
+  return { href: link.href, directOpen: link.directOpen }
 }
 
 export function buildActivityItem(input: {

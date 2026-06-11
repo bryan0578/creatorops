@@ -52,6 +52,7 @@ export interface GenerateAITextInput {
   model?: string
   moduleType: string
   campaignId?: string
+  campaignName?: string
   promptId?: string
   promptName?: string
   promptText: string

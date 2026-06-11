@@ -46,6 +46,7 @@ import { ModulePageHeader } from "@/components/app-shell"
 import { QualityReviewActionLink } from "@/components/quality/quality-review-action"
 import { SaveLinkedPromptRunButton } from "@/components/module/save-linked-prompt-run-button"
 import { AIGenerationPanel } from "@/components/ai/ai-generation-panel"
+import { ApplyAIOutputPanel } from "@/components/ai-output/apply-ai-output-panel"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { CampaignPromptOutputSection } from "@/components/campaigns/campaign-context-prompt-controls"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
@@ -623,6 +624,22 @@ export function ProductListingGenerator() {
               outputRecordType="product-listing"
               onInsertResponse={setAiResponse}
               compact
+            />
+            <ApplyAIOutputPanel
+              moduleType="Product Listing"
+              aiResponse={aiResponse}
+              existingValues={finalListing}
+              onApply={(fields) => setFinalListing((prev) => ({ ...prev, ...fields }))}
+              onApplied={() => setActiveTab("final")}
+              finalTabLabel="Final Listing"
+              compact
+              qualityReview={{
+                reviewType: "Product Listing",
+                campaignId: campaignPrefill.campaignId,
+                campaignName: campaignPrefill.campaignName,
+                sourceRecordType: "product-listing",
+                recordId: editingId,
+              }}
             />
           <OutputSection
             title="AI response"

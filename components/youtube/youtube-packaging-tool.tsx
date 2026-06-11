@@ -48,6 +48,7 @@ import { ModulePageHeader } from "@/components/app-shell"
 import { QualityReviewActionLink } from "@/components/quality/quality-review-action"
 import { SaveLinkedPromptRunButton } from "@/components/module/save-linked-prompt-run-button"
 import { AIGenerationPanel } from "@/components/ai/ai-generation-panel"
+import { ApplyAIOutputPanel } from "@/components/ai-output/apply-ai-output-panel"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { CampaignPromptOutputSection } from "@/components/campaigns/campaign-context-prompt-controls"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
@@ -662,6 +663,22 @@ export function YouTubePackagingTool() {
               outputRecordType="youtube-package"
               onInsertResponse={setAiResponse}
               compact
+            />
+            <ApplyAIOutputPanel
+              moduleType="YouTube Packaging"
+              aiResponse={aiResponse}
+              existingValues={finalPackage}
+              onApply={(fields) => setFinalPackage((prev) => ({ ...prev, ...fields }))}
+              onApplied={() => setActiveTab("final")}
+              finalTabLabel="Final Package"
+              compact
+              qualityReview={{
+                reviewType: "YouTube Package",
+                campaignId: campaignPrefill.campaignId,
+                campaignName: campaignPrefill.campaignName,
+                sourceRecordType: "youtube-package",
+                recordId: editingId,
+              }}
             />
           <OutputSection
             title="AI response"

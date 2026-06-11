@@ -45,6 +45,7 @@ import {
 import { ModulePageHeader } from "@/components/app-shell"
 import { SaveLinkedPromptRunButton } from "@/components/module/save-linked-prompt-run-button"
 import { AIGenerationPanel } from "@/components/ai/ai-generation-panel"
+import { ApplyAIOutputPanel } from "@/components/ai-output/apply-ai-output-panel"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { CampaignPromptOutputSection } from "@/components/campaigns/campaign-context-prompt-controls"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
@@ -672,6 +673,22 @@ export function ReleasePlannerTool() {
               outputRecordType="release-plan"
               onInsertResponse={setAiResponse}
               compact
+            />
+            <ApplyAIOutputPanel
+              moduleType="Release Plan"
+              aiResponse={aiResponse}
+              existingValues={finalPlan}
+              onApply={(fields) => setFinalPlan((prev) => ({ ...prev, ...fields }))}
+              onApplied={() => setActiveTab("final")}
+              finalTabLabel="Final Plan"
+              compact
+              qualityReview={{
+                reviewType: "Campaign Readiness",
+                campaignId: campaignPrefill.campaignId,
+                campaignName: campaignPrefill.campaignName,
+                sourceRecordType: "release-plan",
+                recordId: editingId,
+              }}
             />
           <OutputSection
             title="AI response"

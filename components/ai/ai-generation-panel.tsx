@@ -111,6 +111,7 @@ export function AIGenerationPanel({
         moduleType,
         promptText,
         campaignId,
+        campaignName,
         promptId,
         promptName: promptName ?? `${moduleType} generation`,
         includeCampaignContext: includeCampaignContext && Boolean(campaignId),

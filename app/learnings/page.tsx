@@ -5,7 +5,7 @@ import { LearningLibraryPage } from "@/components/learnings/learning-library-pag
 
 export default function LearningsRoutePage() {
   return (
-    <AppShell>
+    <AppShell breadcrumb="Learnings">
       <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading learnings…</div>}>
         <LearningLibraryPage />
       </Suspense>

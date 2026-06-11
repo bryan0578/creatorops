@@ -8,6 +8,7 @@ import {
   DEMO_SONG_TITLE,
   demoDates,
 } from "@/lib/demo-data/constants"
+import { getRubricForReviewType } from "@/lib/quality/rubrics"
 import { buildDemoPublishingChecklist } from "@/lib/data/publishing-checklist"
 import type {
   AnalyticsRecord,
@@ -29,6 +30,31 @@ import type {
   LearningRecord,
   QualityReviewRecord,
 } from "@/lib/types"
+import type { QualityScoreBreakdown } from "@/lib/types"
+
+function demoQualityScoreBreakdown(
+  reviewType: string,
+  overallScore: number,
+): QualityScoreBreakdown {
+  const rubric = getRubricForReviewType(reviewType)
+  const totalMax = rubric.criteria.reduce((sum, criterion) => sum + criterion.maxScore, 0)
+  const targetTotal = Math.round((overallScore / 100) * totalMax)
+  const count = rubric.criteria.length
+  const base = count > 0 ? Math.floor(targetTotal / count) : 0
+  const remainder = count > 0 ? targetTotal - base * count : 0
+
+  return {
+    rubricVersion: rubric.version,
+    criteria: rubric.criteria.map((criterion, index) => ({
+      key: criterion.key,
+      label: criterion.label,
+      maxScore: criterion.maxScore,
+      score: base + (index < remainder ? 1 : 0),
+      notes: "",
+      whyNotes: "",
+    })),
+  }
+}
 
 export function buildPrettyWiseDemoRecords(now = new Date()) {
   const dates = demoDates(now)
@@ -762,10 +788,7 @@ export function buildPrettyWiseDemoRecords(now = new Date()) {
       platform: "YouTube",
       rubricVersion: "1",
       overallScore: 84,
-      scoreBreakdown: {
-        rubricVersion: "1",
-        criteria: [],
-      },
+      scoreBreakdown: demoQualityScoreBreakdown("YouTube Package", 84),
       strengths:
         "Strong dark K-pop positioning, clear title, good CTA, strong hashtags.",
       weaknesses: "Description could include more story context.",
@@ -795,10 +818,7 @@ export function buildPrettyWiseDemoRecords(now = new Date()) {
       platform: "YouTube",
       rubricVersion: "1",
       overallScore: 88,
-      scoreBreakdown: {
-        rubricVersion: "1",
-        criteria: [],
-      },
+      scoreBreakdown: demoQualityScoreBreakdown("Thumbnail", 88),
       strengths:
         "Strong visual contrast, clear text overlay, high curiosity.",
       weaknesses: "Could test a shorter alternate text overlay.",
@@ -825,7 +845,16 @@ export function buildPrettyWiseDemoRecords(now = new Date()) {
       campaignName: DEMO_CAMPAIGN_NAME,
       artistName: DEMO_ARTIST_NAME,
       songTitle: DEMO_SONG_TITLE,
+      productName: "",
       platform: "YouTube",
+      sourceType: "experiment",
+      sourceId: DEMO_IDS.experiment,
+      analyticsRecordId: DEMO_IDS.analytics,
+      experimentId: DEMO_IDS.experiment,
+      qualityReviewId: DEMO_IDS.qualityReviewThumbnail,
+      assetId: DEMO_IDS.assetThumbnail,
+      promptRunId: DEMO_IDS.promptRunThumbnail,
+      playbookId: "",
       insight:
         "Mystery-driven thumbnail text performed better than literal song-title text for this dark pop concept.",
       evidence:
@@ -853,7 +882,16 @@ export function buildPrettyWiseDemoRecords(now = new Date()) {
       campaignName: DEMO_CAMPAIGN_NAME,
       artistName: DEMO_ARTIST_NAME,
       songTitle: DEMO_SONG_TITLE,
+      productName: "",
       platform: "YouTube",
+      sourceType: "quality-review",
+      sourceId: DEMO_IDS.qualityReviewYoutube,
+      analyticsRecordId: DEMO_IDS.analytics,
+      experimentId: "",
+      qualityReviewId: DEMO_IDS.qualityReviewYoutube,
+      assetId: "",
+      promptRunId: "",
+      playbookId: "",
       insight:
         "Candy-colored visuals paired with dark horror elements create a stronger PrettyWise identity than generic dark visuals alone.",
       evidence:

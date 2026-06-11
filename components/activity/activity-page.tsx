@@ -51,6 +51,12 @@ const TYPE_OPTIONS: { value: ActivityType | "all"; label: string }[] = [
   { value: "analytics", label: "Analytics" },
   { value: "mockup-prompt", label: "Mockup Prompts" },
   { value: "email-campaign", label: "Email Campaigns" },
+  { value: "experiment", label: "Experiments" },
+  { value: "preset", label: "Presets" },
+  { value: "playbook", label: "Playbooks" },
+  { value: "asset", label: "Assets" },
+  { value: "quality-review", label: "Quality Reviews" },
+  { value: "learning", label: "Learnings" },
 ]
 
 export function ActivityPage() {

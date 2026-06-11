@@ -26,7 +26,25 @@ function revalidateAIRoutes() {
 }
 
 function safeErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message
+  if (error instanceof Error) {
+    const msg = error.message
+    if (/rate limit|429/i.test(msg)) {
+      return "Rate limit reached. Wait a moment and try again."
+    }
+    if (/timed out|abort/i.test(msg)) {
+      return "AI generation timed out. Try a shorter prompt."
+    }
+    if (/not configured|api key|invalid api key/i.test(msg)) {
+      return msg
+    }
+    if (/no output returned/i.test(msg)) {
+      return msg
+    }
+    if (/ai request failed|generation failed/i.test(msg)) {
+      return msg
+    }
+    return "AI generation failed. Check your provider settings and try again."
+  }
   return "AI generation failed."
 }
 
@@ -104,6 +122,7 @@ export async function generateAIText(
         promptName: input.promptName ?? `${input.moduleType} AI generation`,
         moduleType: input.moduleType as PromptRunModuleType,
         campaignId: input.campaignId,
+        campaignName: input.campaignName,
         outputRecordId: input.outputRecordId,
         outputRecordType: input.outputRecordType as CampaignLinkedRecordType | undefined,
         experimentId: input.experimentId,

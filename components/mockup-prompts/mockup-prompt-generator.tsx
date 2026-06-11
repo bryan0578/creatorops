@@ -53,6 +53,7 @@ import { ModulePageHeader } from "@/components/app-shell"
 import { QualityReviewActionLink } from "@/components/quality/quality-review-action"
 import { SaveLinkedPromptRunButton } from "@/components/module/save-linked-prompt-run-button"
 import { AIGenerationPanel } from "@/components/ai/ai-generation-panel"
+import { ApplyAIOutputPanel } from "@/components/ai-output/apply-ai-output-panel"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { CampaignPromptOutputSection } from "@/components/campaigns/campaign-context-prompt-controls"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
@@ -720,6 +721,22 @@ export function MockupPromptGenerator() {
               outputRecordType="mockup-prompt"
               onInsertResponse={setAiResponse}
               compact
+            />
+            <ApplyAIOutputPanel
+              moduleType="Mockup Prompt"
+              aiResponse={aiResponse}
+              existingValues={finalMockup}
+              onApply={(fields) => setFinalMockup((prev) => ({ ...prev, ...fields }))}
+              onApplied={() => setActiveTab("final")}
+              finalTabLabel="Final Mockup Prompt"
+              compact
+              qualityReview={{
+                reviewType: "Mockup Prompt",
+                campaignId: campaignPrefill.campaignId,
+                campaignName: campaignPrefill.campaignName,
+                sourceRecordType: "mockup-prompt",
+                recordId: editingId,
+              }}
             />
           <OutputSection
             title="AI response"

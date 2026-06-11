@@ -24,6 +24,7 @@ import {
   type ImportBackupResult,
 } from "@/lib/actions/backups"
 import type { BackupDataKey, BackupImportMode } from "@/lib/data/backups"
+import { BACKUP_DATA_KEYS } from "@/lib/data/backups"
 import { parseImportJsonText } from "@/lib/safe-json"
 import { downloadJson } from "@/lib/storage"
 import { useStore } from "@/lib/store"
@@ -276,7 +277,7 @@ export function BackupCenter() {
         />
         <SummaryCard
           label="Modules included"
-          value={summary?.modulesIncluded ?? 20}
+          value={summary?.modulesIncluded ?? BACKUP_DATA_KEYS.length}
           hint="Prompts through quality reviews"
           icon={HardDrive}
         />

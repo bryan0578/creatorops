@@ -20,6 +20,8 @@ import {
   buildMissingAssetRepair,
   buildRemoveBrokenLinkRepair,
 } from "@/lib/data/data-health-repairs"
+import { getModuleFieldKeys } from "@/lib/ai-output/field-mapping"
+import type { AIOutputModuleType } from "@/lib/ai-output/types"
 import type {
   AnalyticsRecord,
   AssetRecord,
@@ -1260,6 +1262,103 @@ function scanAIConfigurationWarnings(
   }
 }
 
+function recordFinalFieldsEmpty(
+  record: Record<string, unknown>,
+  keys: string[],
+): boolean {
+  return keys.every((key) => !hasText(String(record[key] ?? "")))
+}
+
+function scanAiResponseWithoutFinalFields(
+  input: DataHealthScanInput,
+  issues: DataHealthIssue[],
+): void {
+  const checks: Array<{
+    module: AIOutputModuleType
+    sourceType: string
+    records: Array<Record<string, unknown> & { id: string; aiResponse?: string }>
+    href: (id: string) => string
+    title: (record: Record<string, unknown>) => string
+  }> = [
+    {
+      module: "YouTube Packaging",
+      sourceType: "youtube-package",
+      records: input.youtubePackages,
+      href: (id) => canonicalHref("youtube-package", id),
+      title: (r) => String(r.finalTitle || r.trackTitle || "YouTube package"),
+    },
+    {
+      module: "YouTube Thumbnail",
+      sourceType: "youtube-thumbnail",
+      records: input.youtubeThumbnails,
+      href: (id) => canonicalHref("youtube-thumbnail", id),
+      title: (r) => String(r.finalConcept || r.trackTitle || "YouTube thumbnail"),
+    },
+    {
+      module: "Release Plan",
+      sourceType: "release-plan",
+      records: input.releasePlans,
+      href: (id) => canonicalHref("release-plan", id),
+      title: (r) => String(r.songTitle || r.artistName || "Release plan"),
+    },
+    {
+      module: "Social Repurposing",
+      sourceType: "social-repurposing",
+      records: input.socialRepurposing,
+      href: (id) => canonicalHref("social-repurposing", id),
+      title: (r) => String(r.campaignName || r.sourceContent || "Social content"),
+    },
+    {
+      module: "Email Campaign",
+      sourceType: "email-campaign",
+      records: input.emailCampaigns,
+      href: (id) => canonicalHref("email-campaign", id),
+      title: (r) => String(r.campaignName || "Email campaign"),
+    },
+    {
+      module: "Merch Idea",
+      sourceType: "merch-idea",
+      records: input.merchIdeas,
+      href: (id) => canonicalHref("merch-idea", id),
+      title: (r) => String(r.selectedConceptName || r.niche || "Merch idea"),
+    },
+    {
+      module: "Product Listing",
+      sourceType: "product-listing",
+      records: input.productListings,
+      href: (id) => canonicalHref("product-listing", id),
+      title: (r) => String(r.finalTitle || r.niche || "Product listing"),
+    },
+    {
+      module: "Mockup Prompt",
+      sourceType: "mockup-prompt",
+      records: input.mockupPrompts,
+      href: (id) => canonicalHref("mockup-prompt", id),
+      title: (r) => String(r.projectName || r.mockupType || "Mockup prompt"),
+    },
+  ]
+
+  for (const check of checks) {
+    const keys = getModuleFieldKeys(check.module)
+    for (const record of check.records) {
+      if (!hasText(record.aiResponse)) continue
+      if (!recordFinalFieldsEmpty(record, keys)) continue
+      pushIssue(issues, {
+        id: issueId(["ai-response-no-final", check.sourceType, record.id]),
+        severity: "info",
+        category: "incomplete-records",
+        title: "AI response not applied to final fields",
+        description: `"${check.title(record)}" has AI response text but no populated final output fields.`,
+        sourceType: check.sourceType,
+        sourceId: record.id,
+        sourceTitle: check.title(record),
+        href: check.href(record.id),
+        suggestedAction: "Open the record, parse the AI response, and apply to final fields.",
+      })
+    }
+  }
+}
+
 function isValidJson(raw: string, expected: "array" | "object"): boolean {
   return isValidJsonString(raw, expected)
 }
@@ -2001,6 +2100,9 @@ export function buildDataHealthReport(
   )
   safeScan("AI configuration", issues, () =>
     scanAIConfigurationWarnings(input, issues),
+  )
+  safeScan("AI response final fields", issues, () =>
+    scanAiResponseWithoutFinalFields(input, issues),
   )
   safeScan("Asset library", issues, () => scanAssetWarnings(input, sets, issues))
   safeScan("Playbooks", issues, () => scanPlaybookWarnings(input, sets, issues))
