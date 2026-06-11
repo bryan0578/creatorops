@@ -6,6 +6,11 @@ import { resolveProviderStatus } from "@/lib/ai/ai-client"
 import { getAssets } from "@/lib/actions/assets"
 import { getExternalLinks } from "@/lib/actions/external-links"
 import { getYouTubeVideos, getYouTubeConnectionStatus } from "@/lib/actions/youtube-integration"
+import {
+  getDriveConnectionStatus,
+  getDriveFiles,
+  getDriveFolders,
+} from "@/lib/actions/drive-integration"
 import { getLearnings } from "@/lib/actions/learnings"
 import { getQualityReviews } from "@/lib/actions/quality-reviews"
 import { getCampaigns, upsertCampaign } from "@/lib/actions/campaigns"
@@ -85,6 +90,9 @@ async function loadAutomationContext() {
     externalLinks,
     youtubeConnection,
     youtubeVideos,
+    driveConnection,
+    driveFolders,
+    driveFiles,
     dataHealth,
     workspaceSettings,
   ] = await Promise.all([
@@ -102,6 +110,20 @@ async function loadAutomationContext() {
       EMPTY_YOUTUBE_CONNECTION_STATUS,
     ),
     safeLoad("youtubeVideos", () => getYouTubeVideos(), []),
+    safeLoad("driveConnection", () => getDriveConnectionStatus(), {
+      configured: false,
+      encryptionConfigured: false,
+      connected: false,
+      oauthConnected: false,
+      connection: null,
+      clientIdConfigured: false,
+      clientSecretConfigured: false,
+      redirectUri: "",
+      credentialSource: null,
+      usingYoutubeFallback: false,
+    }),
+    safeLoad("driveFolders", () => getDriveFolders(), []),
+    safeLoad("driveFiles", () => getDriveFiles(), []),
     getDataHealthReport().catch(() => null),
     getWorkspaceSettings(),
   ])
@@ -123,8 +145,11 @@ async function loadAutomationContext() {
       learnings,
       externalLinks,
       youtubeVideos,
+      driveFolders,
+      driveFiles,
     },
     youtubeConnectionConnected: youtubeConnection.oauthConnected,
+    driveConnectionConnected: driveConnection.oauthConnected,
     dataHealth,
     dataHealthFailed: dataHealth === null,
     workspaceSettings,
@@ -142,6 +167,7 @@ export async function getAutomationReport(options?: {
       campaigns: ctx.campaigns,
       store: ctx.store,
       youtubeConnectionConnected: ctx.youtubeConnectionConnected,
+      driveConnectionConnected: ctx.driveConnectionConnected,
       dataHealth: ctx.dataHealth,
       dataHealthFailed: ctx.dataHealthFailed,
       workspaceSettings: ctx.workspaceSettings,

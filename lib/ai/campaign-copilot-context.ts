@@ -11,6 +11,10 @@ import {
   filterExternalLinksForCampaign,
   groupExternalLinksByPlatform,
 } from "@/lib/data/external-links"
+import {
+  filterDriveFilesForCampaign,
+  filterDriveFoldersForCampaign,
+} from "@/lib/drive/mappers"
 import { extractPlaybookIdFromNotes } from "@/lib/playbooks"
 import { isAIGenerationTemplate } from "@/lib/ai-templates/utils"
 import { getCampaignPromptRuns } from "@/lib/prompt-run-linking"
@@ -128,6 +132,23 @@ export interface CampaignCopilotStructuredContext {
     issues: string[]
   }>
   youtubeVideoIssues: string[]
+  driveFolders: Array<{
+    id: string
+    name: string
+    url: string
+    fileCount: number
+    lastSyncedAt: number | null
+  }>
+  driveFiles: Array<{
+    id: string
+    name: string
+    detectedAssetType: string
+    linkedAssetId: string
+    modifiedTime: number | null
+    unlinked: boolean
+  }>
+  driveSummary: string
+  driveIssues: string[]
 }
 
 function isOverdueTask(task: CampaignTask): boolean {
@@ -223,6 +244,8 @@ export interface BuildCampaignCopilotContextInput {
   playbooks: PlaybookRecord[]
   externalLinks: ExternalLinkRecord[]
   youtubeVideos: import("@/lib/types").YouTubeVideoRecord[]
+  driveFolders: import("@/lib/types").DriveFolderRecord[]
+  driveFiles: import("@/lib/types").DriveFileRecord[]
 }
 
 export function buildCampaignCopilotStructuredContext(
@@ -438,6 +461,82 @@ export function buildCampaignCopilotStructuredContext(
       if (!video.lastSyncedAt) issues.push(`${video.title}: not synced`)
       return issues
     }),
+    driveFolders: (() => {
+      const folders = filterDriveFoldersForCampaign(
+        input.driveFolders ?? [],
+        campaign.id,
+        campaign.campaignName,
+      )
+      const files = filterDriveFilesForCampaign(
+        input.driveFiles ?? [],
+        campaign.id,
+        campaign.campaignName,
+      )
+      return folders.map((folder) => ({
+        id: folder.id,
+        name: folder.name,
+        url: folder.url,
+        fileCount: files.filter(
+          (file) => file.folderId === folder.id || file.driveFolderId === folder.driveFolderId,
+        ).length,
+        lastSyncedAt: folder.lastSyncedAt,
+      }))
+    })(),
+    driveFiles: filterDriveFilesForCampaign(
+      input.driveFiles ?? [],
+      campaign.id,
+      campaign.campaignName,
+    )
+      .slice(0, 12)
+      .map((file) => ({
+        id: file.id,
+        name: file.name,
+        detectedAssetType: file.detectedAssetType,
+        linkedAssetId: file.assetId,
+        modifiedTime: file.modifiedTime,
+        unlinked: !file.assetId?.trim(),
+      })),
+    driveSummary: (() => {
+      const folders = filterDriveFoldersForCampaign(
+        input.driveFolders ?? [],
+        campaign.id,
+        campaign.campaignName,
+      )
+      const files = filterDriveFilesForCampaign(
+        input.driveFiles ?? [],
+        campaign.id,
+        campaign.campaignName,
+      )
+      const linked = files.filter((file) => file.assetId?.trim()).length
+      const unlinked = files.filter((file) => !file.assetId?.trim() && file.status !== "Ignored").length
+      if (folders.length === 0 && files.length === 0) return "No synced Google Drive folders or files."
+      return `${folders.length} folder(s), ${files.length} file(s), ${linked} linked asset(s), ${unlinked} unlinked file(s).`
+    })(),
+    driveIssues: (() => {
+      const files = filterDriveFilesForCampaign(
+        input.driveFiles ?? [],
+        campaign.id,
+        campaign.campaignName,
+      )
+      const issues: string[] = []
+      if (files.some((file) => !file.assetId?.trim() && file.status !== "Ignored")) {
+        issues.push("Unlinked Drive files exist")
+      }
+      for (const file of files) {
+        if (!file.detectedAssetType?.trim()) {
+          issues.push(`${file.name}: unknown asset type`)
+        }
+      }
+      const folders = filterDriveFoldersForCampaign(
+        input.driveFolders ?? [],
+        campaign.id,
+        campaign.campaignName,
+      )
+      if (folders.length === 0 && files.length > 0) {
+        issues.push("Files synced but no campaign Drive folder record")
+      }
+      return issues
+    })(),
   }
 }
 
@@ -637,6 +736,38 @@ function formatCampaignCopilotMarkdown(
 
   if (ctx.youtubeVideoIssues.length > 0) {
     lines.push("", "## Video Intelligence attention", ...ctx.youtubeVideoIssues.map((item) => `- ${item}`))
+  }
+
+  if (ctx.driveFolders.length > 0 || ctx.driveFiles.length > 0) {
+    lines.push("", "## Google Drive sync", ctx.driveSummary)
+    if (ctx.driveFolders.length > 0) {
+      lines.push("", "### Linked Drive folders")
+      for (const folder of ctx.driveFolders) {
+        lines.push(
+          `- ${folder.name}: ${folder.fileCount} file(s), last synced ${folder.lastSyncedAt ? new Date(folder.lastSyncedAt).toLocaleDateString() : "never"}`,
+        )
+      }
+    }
+    if (ctx.driveFiles.length > 0) {
+      lines.push("", "### Recent Drive files")
+      for (const file of ctx.driveFiles) {
+        lines.push(
+          `- ${file.name} (${file.detectedAssetType || "Unknown"})${file.unlinked ? " — not linked to asset" : ""}`,
+        )
+      }
+    }
+    lines.push(
+      "",
+      "Suggested actions:",
+      "- Sync Drive folder from Integrations",
+      "- Create asset from important Drive file",
+      "- Link thumbnail or cover art file to campaign assets",
+      "- Add missing cover art/mockup/video file from Drive",
+    )
+  }
+
+  if (ctx.driveIssues.length > 0) {
+    lines.push("", "## Drive attention", ...ctx.driveIssues.map((item) => `- ${item}`))
   }
 
   if (ctx.dataHealthWarnings.length > 0) {

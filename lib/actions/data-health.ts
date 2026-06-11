@@ -41,6 +41,11 @@ import {
   getYouTubeConnectionStatus,
   getYouTubeVideos,
 } from "@/lib/actions/youtube-integration"
+import {
+  getDriveConnectionStatus,
+  getDriveFiles,
+  getDriveFolders,
+} from "@/lib/actions/drive-integration"
 import { prisma } from "@/lib/prisma"
 import { WORKSPACE_SETTINGS_ID } from "@/lib/workspace-settings"
 import type { CampaignLinkedRecordType } from "@/lib/types"
@@ -277,6 +282,9 @@ async function loadScanInput(): Promise<{
     externalLinks,
     youtubeConnection,
     youtubeVideos,
+    driveConnection,
+    driveFolders,
+    driveFiles,
     jsonFields,
   ] = await Promise.all([
     safeLoad(
@@ -510,6 +518,9 @@ async function loadScanInput(): Promise<{
       null,
     ),
     safeLoad("YouTube videos", async () => getYouTubeVideos(), loadIssues, []),
+    safeLoad("Drive connection", async () => getDriveConnectionStatus(), loadIssues, null),
+    safeLoad("Drive folders", async () => getDriveFolders(), loadIssues, []),
+    safeLoad("Drive files", async () => getDriveFiles(), loadIssues, []),
     safeLoad("JSON fields", loadJsonFields, loadIssues, []),
   ])
 
@@ -540,6 +551,9 @@ async function loadScanInput(): Promise<{
       externalLinks,
       youtubeVideos,
       youtubeConnection,
+      driveFolders,
+      driveFiles,
+      driveConnection,
       jsonFields,
       aiProviderConfigured: workspaceSettings
         ? resolveProviderStatus({

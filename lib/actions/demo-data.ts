@@ -46,6 +46,14 @@ import {
 import { buildPrettyWiseDemoRecords } from "@/lib/demo-data/prettywise-records"
 import { buildPrettyWiseDemoExternalLinks } from "@/lib/demo-data/external-links"
 import { buildPrettyWiseDemoYouTubeVideo } from "@/lib/demo-data/youtube-videos"
+import {
+  buildPrettyWiseDemoDriveFiles,
+  buildPrettyWiseDemoDriveFolder,
+} from "@/lib/demo-data/drive-records"
+import {
+  importDriveFileRecords,
+  importDriveFolderRecords,
+} from "@/lib/actions/drive-integration"
 import { importYouTubeVideoRecords } from "@/lib/actions/youtube-integration"
 import { prisma } from "@/lib/prisma"
 
@@ -247,6 +255,11 @@ export async function seedDemoData(): Promise<{
       DEMO_IDS.extLinkSuno,
       DEMO_IDS.extLinkFourthwall,
       DEMO_IDS.youtubeVideo,
+      DEMO_IDS.driveFolder,
+      DEMO_IDS.driveFileThumbnail,
+      DEMO_IDS.driveFileVideo,
+      DEMO_IDS.driveFileMockup,
+      DEMO_IDS.driveFileSocial,
     ]
 
     for (const id of demoIds) {
@@ -291,6 +304,8 @@ export async function seedDemoData(): Promise<{
       await createExternalLink(link)
     }
     await importYouTubeVideoRecords([buildPrettyWiseDemoYouTubeVideo()])
+    await importDriveFolderRecords([buildPrettyWiseDemoDriveFolder()])
+    await importDriveFileRecords(buildPrettyWiseDemoDriveFiles())
 
     revalidateDemoRoutes()
 
@@ -353,6 +368,8 @@ export async function deleteDemoData(): Promise<{
       learningRows,
       externalLinkRows,
       youtubeVideoRows,
+      driveFolderRows,
+      driveFileRows,
     ] = await Promise.all([
       prisma.releasePlan.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
       prisma.youTubePackage.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
@@ -373,6 +390,8 @@ export async function deleteDemoData(): Promise<{
       prisma.learning.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
       prisma.externalLink.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
       prisma.youTubeVideo.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
+      prisma.driveFolder.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
+      prisma.driveFile.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
     ])
 
     await deleteMarked(learningRows, async (id) => {
@@ -381,6 +400,12 @@ export async function deleteDemoData(): Promise<{
     await deleteMarked(externalLinkRows, deleteExternalLink)
     await deleteMarked(youtubeVideoRows, async (id) => {
       await prisma.youTubeVideo.delete({ where: { id } })
+    })
+    await deleteMarked(driveFileRows, async (id) => {
+      await prisma.driveFile.delete({ where: { id } })
+    })
+    await deleteMarked(driveFolderRows, async (id) => {
+      await prisma.driveFolder.delete({ where: { id } })
     })
     await deleteMarked(qualityReviewRows, async (id) => {
       await deleteQualityReview(id)

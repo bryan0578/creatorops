@@ -13,6 +13,7 @@ import { ExternalLinkForm } from "@/components/integrations/external-link-form"
 import { ExternalLinkList } from "@/components/integrations/external-link-list"
 import { YouTubeCsvImporter } from "@/components/integrations/youtube-csv-importer"
 import { YouTubeApiPanel } from "@/components/integrations/youtube-api-panel"
+import { GoogleDriveApiPanel } from "@/components/integrations/google-drive-api-panel"
 import { filterExternalLinksForCampaign } from "@/lib/data/external-links"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -25,7 +26,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 
-const TAB_VALUES = ["details", "youtube-csv", "youtube-api", "campaign-links", "saved", "settings"] as const
+const TAB_VALUES = ["details", "youtube-csv", "youtube-api", "google-drive", "campaign-links", "saved", "settings"] as const
 
 function buildPrefillFromParams(searchParams: URLSearchParams) {
   const prefill: Partial<ExternalLinkRecord> = {}
@@ -142,6 +143,7 @@ export function IntegrationsHub() {
           <TabsTrigger value="details">External Link Details</TabsTrigger>
           <TabsTrigger value="youtube-csv">YouTube CSV Import</TabsTrigger>
           <TabsTrigger value="youtube-api">YouTube API</TabsTrigger>
+          <TabsTrigger value="google-drive">Google Drive</TabsTrigger>
           <TabsTrigger value="campaign-links">Campaign Links</TabsTrigger>
           <TabsTrigger value="saved">Saved Links</TabsTrigger>
           <TabsTrigger value="settings">Integration Settings</TabsTrigger>
@@ -176,6 +178,10 @@ export function IntegrationsHub() {
 
         <TabsContent value="youtube-api" className="mt-4">
           <YouTubeApiPanel campaigns={campaigns} defaultCampaignId={campaignId} />
+        </TabsContent>
+
+        <TabsContent value="google-drive" className="mt-4">
+          <GoogleDriveApiPanel campaigns={campaigns} defaultCampaignId={campaignId} />
         </TabsContent>
 
         <TabsContent value="campaign-links" className="mt-4 space-y-4">
@@ -269,9 +275,9 @@ export function IntegrationsHub() {
             },
             {
               title: "Google Drive",
-              enabled: "Link tracking enabled",
-              later: "API sync: Coming later",
-              help: "Paste Drive folder/file links into campaigns and assets.",
+              enabled: "Link tracking and read-only API folder sync enabled",
+              later: "Upload/delete automation: Coming later",
+              help: "Connect via Google Drive tab to sync folder metadata, or paste manual links.",
             },
             {
               title: "Fourthwall",
@@ -303,12 +309,16 @@ export function IntegrationsHub() {
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground space-y-2">
               <p>
-                External API keys should stay in <code>.env.local</code>. YouTube OAuth tokens are
+                External API keys should stay in <code>.env.local</code>. YouTube and Google Drive OAuth tokens are
                 encrypted locally and are never included in backup exports.
               </p>
               <p>
-                Required for YouTube API: YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET,
-                YOUTUBE_REDIRECT_URI, CREATOROPS_TOKEN_ENCRYPTION_KEY
+                YouTube API: YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REDIRECT_URI,
+                CREATOROPS_TOKEN_ENCRYPTION_KEY
+              </p>
+              <p>
+                Google Drive API: GOOGLE_DRIVE_CLIENT_ID, GOOGLE_DRIVE_CLIENT_SECRET,
+                GOOGLE_DRIVE_REDIRECT_URI (or reuse YouTube OAuth credentials)
               </p>
             </CardContent>
           </Card>

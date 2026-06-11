@@ -3,16 +3,20 @@
 import * as React from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { ExternalLink, Link2, Loader2, Plus, Upload, Video } from "lucide-react"
+import { ExternalLink, FolderOpen, HardDrive, Link2, Loader2, Plus, Upload, Video } from "lucide-react"
 
 import { getExternalLinksForCampaign } from "@/lib/actions/external-links"
+import {
+  getDriveFilesForCampaign,
+  getDriveFoldersForCampaign,
+} from "@/lib/actions/drive-integration"
 import {
   getYouTubeVideosForCampaign,
   syncCampaignYouTubeVideos,
 } from "@/lib/actions/youtube-integration"
 import { syncVideoStats } from "@/lib/actions/videos"
 import { groupExternalLinksByPlatform } from "@/lib/data/external-links"
-import type { ExternalLinkRecord, YouTubeVideoRecord } from "@/lib/types"
+import type { DriveFileRecord, DriveFolderRecord, ExternalLinkRecord, YouTubeVideoRecord } from "@/lib/types"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -40,6 +44,8 @@ function integrationsHref(campaignId: string, params?: Record<string, string>) {
 export function CampaignExternalLinksCard({ campaignId }: { campaignId: string }) {
   const [links, setLinks] = React.useState<ExternalLinkRecord[]>([])
   const [youtubeVideos, setYoutubeVideos] = React.useState<YouTubeVideoRecord[]>([])
+  const [driveFolders, setDriveFolders] = React.useState<DriveFolderRecord[]>([])
+  const [driveFiles, setDriveFiles] = React.useState<DriveFileRecord[]>([])
   const [loading, setLoading] = React.useState(true)
   const [syncing, setSyncing] = React.useState(false)
   const [syncingVideoId, setSyncingVideoId] = React.useState<string | null>(null)
@@ -47,12 +53,16 @@ export function CampaignExternalLinksCard({ campaignId }: { campaignId: string }
   const refresh = React.useCallback(async () => {
     setLoading(true)
     try {
-      const [nextLinks, nextVideos] = await Promise.all([
+      const [nextLinks, nextVideos, nextDriveFolders, nextDriveFiles] = await Promise.all([
         getExternalLinksForCampaign(campaignId),
         getYouTubeVideosForCampaign(campaignId),
+        getDriveFoldersForCampaign(campaignId),
+        getDriveFilesForCampaign(campaignId),
       ])
       setLinks(nextLinks)
       setYoutubeVideos(nextVideos)
+      setDriveFolders(nextDriveFolders)
+      setDriveFiles(nextDriveFiles)
     } finally {
       setLoading(false)
     }
@@ -76,6 +86,13 @@ export function CampaignExternalLinksCard({ campaignId }: { campaignId: string }
     (link) => link.platform === "Suno" && (link.linkType === "Suno Project" || link.linkType === "Suno Song"),
   )
   const primaryYoutubeVideo = youtubeVideos[0]
+  const primaryDriveFolder = driveFolders[0]
+  const unlinkedDriveFiles = driveFiles.filter(
+    (file) => !file.assetId?.trim() && file.status !== "Ignored",
+  )
+  const recentDriveFiles = [...driveFiles]
+    .sort((a, b) => (b.modifiedTime ?? 0) - (a.modifiedTime ?? 0))
+    .slice(0, 3)
 
   async function handleSyncYouTube() {
     setSyncing(true)
@@ -108,10 +125,10 @@ export function CampaignExternalLinksCard({ campaignId }: { campaignId: string }
           <div>
             <CardTitle className="flex items-center gap-2 text-base">
               <Link2 className="size-4 text-primary" />
-              External Links & YouTube Video
+              Campaign Assets & Links
             </CardTitle>
             <CardDescription>
-              YouTube API videos, published links, Drive, Fourthwall, Suno, and other platform URLs
+              YouTube API videos, Google Drive sync, published links, Fourthwall, Suno, and other URLs
             </CardDescription>
           </div>
           <Badge variant="secondary">{links.length}</Badge>
@@ -123,7 +140,7 @@ export function CampaignExternalLinksCard({ campaignId }: { campaignId: string }
             <Loader2 className="size-4 animate-spin" />
             Loading external links…
           </div>
-        ) : links.length === 0 && youtubeVideos.length === 0 ? (
+        ) : links.length === 0 && youtubeVideos.length === 0 && driveFolders.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No links for this campaign yet. Link a YouTube video in Video Intelligence, import from
             YouTube API, import CSV, or add asset folders and product links.
@@ -171,12 +188,31 @@ export function CampaignExternalLinksCard({ campaignId }: { campaignId: string }
                 </Link>
               </li>
             ) : null}
-            {driveFolder ? (
-              <li>
-                <span className="text-muted-foreground">Google Drive: </span>
-                <Link href={driveFolder.url} target="_blank" rel="noopener noreferrer" className="underline">
-                  {driveFolder.name}
-                </Link>
+            {driveFolder || primaryDriveFolder ? (
+              <li className="rounded-md border border-border/60 p-3 space-y-1">
+                <p className="font-medium flex items-center gap-2">
+                  <HardDrive className="size-4 text-muted-foreground" />
+                  {primaryDriveFolder?.name || driveFolder?.name}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {driveFiles.length} synced file(s)
+                  {unlinkedDriveFiles.length > 0
+                    ? ` · ${unlinkedDriveFiles.length} not linked to assets`
+                    : ""}
+                  {primaryDriveFolder?.lastSyncedAt
+                    ? ` · Last synced ${formatDate(primaryDriveFolder.lastSyncedAt)}`
+                    : ""}
+                </p>
+                {recentDriveFiles.length > 0 ? (
+                  <ul className="text-xs text-muted-foreground space-y-0.5 pt-1">
+                    {recentDriveFiles.map((file) => (
+                      <li key={file.id}>
+                        {file.name}
+                        {file.detectedAssetType ? ` · ${file.detectedAssetType}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </li>
             ) : null}
             {fourthwall ? (
@@ -269,6 +305,45 @@ export function CampaignExternalLinksCard({ campaignId }: { campaignId: string }
                 Open YouTube Integration
               </Link>
             </>
+          )}
+          {primaryDriveFolder || driveFolder ? (
+            <>
+              <Link
+                href={primaryDriveFolder?.url || driveFolder?.url || "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={buttonVariants({ size: "sm" })}
+              >
+                <FolderOpen className="size-4" />
+                Open Drive Folder
+              </Link>
+              <Link
+                href={integrationsHref(campaignId, {
+                  tab: "google-drive",
+                  ...(primaryDriveFolder?.id ? { folderId: primaryDriveFolder.id } : {}),
+                })}
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                Sync Drive Folder
+              </Link>
+              <Link href="/assets" className={buttonVariants({ variant: "outline", size: "sm" })}>
+                View Assets
+              </Link>
+              <Link
+                href={integrationsHref(campaignId, { tab: "google-drive" })}
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                Open Drive Integration
+              </Link>
+            </>
+          ) : (
+            <Link
+              href={integrationsHref(campaignId, { tab: "google-drive" })}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <HardDrive className="size-4" />
+              Add Drive Folder
+            </Link>
           )}
           <Link
             href={integrationsHref(campaignId, { tab: "details" })}

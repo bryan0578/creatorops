@@ -56,6 +56,9 @@ import type {
   YouTubeThumbnailRecord,
   YouTubeVideoRecord,
   YouTubeConnectionStatusSummary,
+  DriveFolderRecord,
+  DriveFileRecord,
+  DriveConnectionStatusSummary,
   WorkspaceSettingsRecord,
 } from "@/lib/types"
 
@@ -152,6 +155,9 @@ export interface DataHealthScanInput {
   externalLinks: ExternalLinkRecord[]
   youtubeVideos: YouTubeVideoRecord[]
   youtubeConnection: YouTubeConnectionStatusSummary | null
+  driveFolders: DriveFolderRecord[]
+  driveFiles: DriveFileRecord[]
+  driveConnection: DriveConnectionStatusSummary | null
   jsonFields: DataHealthJsonField[]
   /** Server-resolved: preferred AI provider has API key configured. */
   aiProviderConfigured?: boolean
@@ -1555,6 +1561,9 @@ export function countScannableRecords(input: DataHealthScanInput): number {
     input.qualityReviews.length +
     input.learnings.length +
     input.externalLinks.length +
+    input.youtubeVideos.length +
+    input.driveFolders.length +
+    input.driveFiles.length +
     (input.workspaceSettings ? 1 : 0)
   )
 }
@@ -2613,6 +2622,248 @@ function scanYouTubeApiWarnings(
   }
 }
 
+function scanDriveApiWarnings(
+  input: DataHealthScanInput,
+  sets: RecordIdSets,
+  issues: DataHealthIssue[],
+): void {
+  const connection = input.driveConnection
+  const folders = input.driveFolders ?? []
+  const files = input.driveFiles ?? []
+  const weekMs = 7 * 24 * 60 * 60 * 1000
+  const campaignIds = sets.campaign
+
+  const featureUsed =
+    folders.length > 0 ||
+    files.length > 0 ||
+    connection?.oauthConnected === true
+
+  if (featureUsed && connection && !connection.configured) {
+    pushIssue(issues, {
+      id: issueId(["drive-env-missing"]),
+      severity: "warning",
+      category: "data-issues",
+      title: "Google Drive API credentials missing",
+      description:
+        "Drive sync is in use but GOOGLE_DRIVE_CLIENT_ID (or YouTube fallback) is not configured.",
+      sourceType: "integration",
+      sourceId: "google-drive",
+      sourceTitle: "Google Drive",
+      href: "/integrations?tab=settings",
+      suggestedAction: "Add Drive OAuth env vars to .env.local and restart the dev server.",
+    })
+  }
+
+  if (folders.length > 0 && connection && !connection.oauthConnected) {
+    pushIssue(issues, {
+      id: issueId(["drive-connection-disconnected"]),
+      severity: "warning",
+      category: "data-issues",
+      title: "Google Drive connection disconnected",
+      description: "Synced Drive folders exist but the API connection is not active.",
+      sourceType: "integration",
+      sourceId: "google-drive",
+      sourceTitle: "Google Drive",
+      href: "/integrations?tab=google-drive",
+      suggestedAction: "Reconnect Google Drive in Integrations.",
+    })
+  }
+
+  for (const folder of folders) {
+    const href = `/integrations?tab=google-drive&folderId=${encodeURIComponent(folder.id)}`
+
+    if (folder.campaignId?.trim() && !campaignIds.has(folder.campaignId)) {
+      pushIssue(issues, {
+        id: issueId(["drive-folder", folder.id, "missing-campaign"]),
+        severity: "warning",
+        category: "broken-links",
+        title: "Drive folder linked to missing campaign",
+        description: `"${folder.name}" references campaign id ${folder.campaignId} which no longer exists.`,
+        sourceType: "drive-folder",
+        sourceId: folder.id,
+        sourceTitle: folder.name,
+        href,
+        suggestedAction: "Relink the folder to an existing campaign or clear the link.",
+      })
+    }
+
+    if (folder.lastSyncedAt && Date.now() - folder.lastSyncedAt > weekMs) {
+      pushIssue(issues, {
+        id: issueId(["drive-folder", folder.id, "stale"]),
+        severity: "warning",
+        category: "data-issues",
+        title: "Drive folder not synced recently",
+        description: `"${folder.name}" has not been synced in over 7 days.`,
+        sourceType: "drive-folder",
+        sourceId: folder.id,
+        sourceTitle: folder.name,
+        href,
+        suggestedAction: "Sync the Drive folder again from Integrations.",
+      })
+    } else if (!folder.lastSyncedAt) {
+      pushIssue(issues, {
+        id: issueId(["drive-folder", folder.id, "never-synced"]),
+        severity: "info",
+        category: "data-issues",
+        title: "Drive folder never synced",
+        description: `"${folder.name}" was saved locally but has no sync timestamp.`,
+        sourceType: "drive-folder",
+        sourceId: folder.id,
+        sourceTitle: folder.name,
+        href,
+        suggestedAction: "Run Sync Folder from Google Drive integration.",
+      })
+    }
+  }
+
+  const assetIds = new Set(input.assets.map((asset) => asset.id))
+
+  for (const file of files) {
+    const href = file.assetId
+      ? `/assets?recordId=${encodeURIComponent(file.assetId)}`
+      : `/integrations?tab=google-drive&fileId=${encodeURIComponent(file.id)}`
+    const title = file.name || file.driveFileId
+
+    if (file.assetId?.trim() && !assetIds.has(file.assetId)) {
+      pushIssue(issues, {
+        id: issueId(["drive-file", file.id, "missing-asset"]),
+        severity: "warning",
+        category: "broken-links",
+        title: "Drive file linked to missing asset",
+        description: `"${title}" references asset id ${file.assetId} which no longer exists.`,
+        sourceType: "drive-file",
+        sourceId: file.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Create a new asset from the Drive file or clear the link.",
+      })
+    }
+
+    if (!file.detectedAssetType?.trim()) {
+      pushIssue(issues, {
+        id: issueId(["drive-file", file.id, "no-asset-type"]),
+        severity: "info",
+        category: "incomplete-records",
+        title: "Drive file has no detected asset type",
+        description: `"${title}" could not be classified automatically.`,
+        sourceType: "drive-file",
+        sourceId: file.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Review the file and create or link an asset manually.",
+      })
+    }
+
+    if (!file.assetId?.trim() && file.status !== "Ignored") {
+      pushIssue(issues, {
+        id: issueId(["drive-file", file.id, "unlinked"]),
+        severity: "info",
+        category: "incomplete-records",
+        title: "Drive file not linked to asset",
+        description: `"${title}" is synced but not linked to the Asset Library.`,
+        sourceType: "drive-file",
+        sourceId: file.id,
+        sourceTitle: title,
+        href: `/integrations?tab=google-drive&fileId=${encodeURIComponent(file.id)}`,
+        suggestedAction: "Create or link an asset from the Google Drive tab.",
+      })
+    }
+
+    if (file.lastSyncedAt && Date.now() - file.lastSyncedAt > weekMs) {
+      pushIssue(issues, {
+        id: issueId(["drive-file", file.id, "stale"]),
+        severity: "info",
+        category: "data-issues",
+        title: "Drive file metadata stale",
+        description: `"${title}" folder sync metadata is over 7 days old.`,
+        sourceType: "drive-file",
+        sourceId: file.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Re-sync the parent Drive folder.",
+      })
+    }
+  }
+
+  for (const campaign of input.campaigns) {
+    const campaignAssets = input.assets.filter(
+      (asset) =>
+        asset.campaignId === campaign.id ||
+        norm(asset.campaignName) === norm(campaign.campaignName),
+    )
+    if (campaignAssets.length === 0) continue
+
+    const hasDriveFolder =
+      folders.some(
+        (folder) =>
+          folder.campaignId === campaign.id ||
+          norm(folder.campaignName) === norm(campaign.campaignName),
+      ) ||
+      input.externalLinks.some(
+        (link) =>
+          (link.campaignId === campaign.id ||
+            norm(link.campaignName) === norm(campaign.campaignName)) &&
+          link.platform === "Google Drive" &&
+          link.linkType === "Google Drive Folder",
+      )
+
+    if (!hasDriveFolder) {
+      pushIssue(issues, {
+        id: issueId(["campaign", campaign.id, "missing-drive-folder"]),
+        severity: "info",
+        category: "missing-assets",
+        title: "Campaign has no Drive folder",
+        description: `"${campaign.campaignName}" has assets but no synced or linked Google Drive folder.`,
+        sourceType: "campaign",
+        sourceId: campaign.id,
+        sourceTitle: campaign.campaignName,
+        href: `/integrations?tab=google-drive&campaignId=${encodeURIComponent(campaign.id)}`,
+        suggestedAction: "Add and sync a Drive folder for this campaign.",
+      })
+    }
+
+    const campaignDriveFiles = files.filter(
+      (file) =>
+        file.campaignId === campaign.id ||
+        norm(file.campaignName) === norm(campaign.campaignName),
+    )
+    const assetTypesPresent = new Set(
+      campaignAssets.map((asset) => norm(asset.assetType)).filter(Boolean),
+    )
+    const driveTypes = new Map<string, DriveFileRecord>()
+    for (const file of campaignDriveFiles) {
+      const type = norm(file.detectedAssetType)
+      if (type && !driveTypes.has(type)) driveTypes.set(type, file)
+    }
+
+    const typeHints: Array<{ assetType: string; label: string }> = [
+      { assetType: "youtube thumbnail", label: "YouTube Thumbnail" },
+      { assetType: "cover art", label: "Cover Art" },
+      { assetType: "video file", label: "Video File" },
+      { assetType: "merch mockup", label: "Merch Mockup" },
+      { assetType: "social graphic", label: "Social Graphic" },
+    ]
+
+    for (const hint of typeHints) {
+      if (assetTypesPresent.has(hint.assetType)) continue
+      const matchingFile = driveTypes.get(hint.assetType)
+      if (!matchingFile) continue
+      pushIssue(issues, {
+        id: issueId(["campaign", campaign.id, "drive-coverage", hint.assetType]),
+        severity: "info",
+        category: "missing-assets",
+        title: `Drive file may fulfill missing ${hint.label}`,
+        description: `"${campaign.campaignName}" has Drive file "${matchingFile.name}" but no ${hint.label} asset in the library.`,
+        sourceType: "campaign",
+        sourceId: campaign.id,
+        sourceTitle: campaign.campaignName,
+        href: `/integrations?tab=google-drive&fileId=${encodeURIComponent(matchingFile.id)}`,
+        suggestedAction: "Create an asset from the matching Drive file.",
+      })
+    }
+  }
+}
+
 export function buildDataHealthReport(
   input: DataHealthScanInput,
   preflightIssues: DataHealthIssue[] = [],
@@ -2660,6 +2911,9 @@ export function buildDataHealthReport(
   )
   safeScan("YouTube API", issues, () =>
     scanYouTubeApiWarnings(input, sets, issues),
+  )
+  safeScan("Google Drive API", issues, () =>
+    scanDriveApiWarnings(input, sets, issues),
   )
   safeScan("JSON / data issues", issues, () => scanJsonIssues(input, issues))
 

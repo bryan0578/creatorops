@@ -1173,6 +1173,97 @@ async function searchYouTubeVideos(query: string): Promise<GlobalSearchResult[]>
   )
 }
 
+async function searchDriveFolders(query: string): Promise<GlobalSearchResult[]> {
+  const rows = await prisma.driveFolder.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: GLOBAL_SEARCH_FETCH_BATCH,
+  })
+
+  return pushMatches(
+    rows,
+    query,
+    [
+      "name",
+      "campaignName",
+      "artistName",
+      "songTitle",
+      "productName",
+      "notes",
+    ],
+    {
+      name: "Name",
+      campaignName: "Campaign",
+      artistName: "Artist",
+      songTitle: "Song",
+      productName: "Product",
+      notes: "Notes",
+    },
+    (row, matchedFields) =>
+      makeResult(
+        "drive-folder",
+        row.id as string,
+        row.name as string,
+        [row.campaignName, row.artistName].filter(Boolean).join(" · "),
+        previewText(row.url) || previewText(row.notes),
+        row.createdAt as Date,
+        row.updatedAt as Date,
+        matchedFields,
+      ),
+    GLOBAL_SEARCH_LIMIT_PER_TYPE,
+  )
+}
+
+async function searchDriveFiles(query: string): Promise<GlobalSearchResult[]> {
+  const rows = await prisma.driveFile.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: GLOBAL_SEARCH_FETCH_BATCH,
+  })
+
+  return pushMatches(
+    rows,
+    query,
+    [
+      "name",
+      "campaignName",
+      "artistName",
+      "songTitle",
+      "productName",
+      "detectedAssetType",
+      "mimeType",
+      "notes",
+    ],
+    {
+      name: "Name",
+      campaignName: "Campaign",
+      artistName: "Artist",
+      songTitle: "Song",
+      productName: "Product",
+      detectedAssetType: "Asset type",
+      mimeType: "MIME type",
+      notes: "Notes",
+    },
+    (row, matchedFields) => {
+      const tags = parseTagsJson(row.tags)
+      if (tags && textMatches(tags, query)) {
+        matchedFields.push("tags")
+      }
+      return makeResult(
+        "drive-file",
+        row.id as string,
+        row.name as string,
+        [row.detectedAssetType, row.campaignName, row.mimeType].filter(Boolean).join(" · "),
+        row.assetId
+          ? `Linked asset · ${previewText(row.webViewLink) || previewText(row.notes)}`
+          : previewText(row.webViewLink) || previewText(row.notes),
+        row.createdAt as Date,
+        row.updatedAt as Date,
+        matchedFields,
+      )
+    },
+    GLOBAL_SEARCH_LIMIT_PER_TYPE,
+  )
+}
+
 const SEARCHERS: {
   type: GlobalSearchResultType
   search: (query: string) => Promise<GlobalSearchResult[]>
@@ -1200,6 +1291,8 @@ const SEARCHERS: {
   { type: "learning", search: searchLearnings },
   { type: "external-link", search: searchExternalLinks },
   { type: "youtube-video", search: searchYouTubeVideos },
+  { type: "drive-folder", search: searchDriveFolders },
+  { type: "drive-file", search: searchDriveFiles },
 ]
 
 /**

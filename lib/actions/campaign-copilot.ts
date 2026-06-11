@@ -6,6 +6,10 @@ import { getAutomationReport } from "@/lib/actions/automation-rules"
 import { getCampaigns, upsertCampaign } from "@/lib/actions/campaigns"
 import { getDataHealthReport } from "@/lib/actions/data-health"
 import { getExternalLinks } from "@/lib/actions/external-links"
+import {
+  getDriveFilesForCampaign,
+  getDriveFoldersForCampaign,
+} from "@/lib/actions/drive-integration"
 import { getYouTubeVideosForCampaign } from "@/lib/actions/youtube-integration"
 import { getExperiments } from "@/lib/actions/experiments"
 import { getLearnings } from "@/lib/actions/learnings"
@@ -105,6 +109,8 @@ export async function getCampaignCopilotContext(campaignId: string): Promise<{
     playbooks,
     externalLinks,
     youtubeVideos,
+    driveFolders,
+    driveFiles,
   ] = await Promise.all([
     loadCampaignRecord(campaignId),
     loadCampaignLinkableStoreSlice(),
@@ -119,6 +125,8 @@ export async function getCampaignCopilotContext(campaignId: string): Promise<{
     getPlaybooks(),
     getExternalLinks(),
     getYouTubeVideosForCampaign(campaignId),
+    getDriveFoldersForCampaign(campaignId),
+    getDriveFilesForCampaign(campaignId),
   ])
 
   return buildCampaignCopilotContextFromRecords(
@@ -137,6 +145,8 @@ export async function getCampaignCopilotContext(campaignId: string): Promise<{
       playbooks,
       externalLinks,
       youtubeVideos,
+      driveFolders,
+      driveFiles,
     },
   )
 }

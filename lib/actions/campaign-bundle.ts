@@ -7,6 +7,12 @@ import { getLearnings } from "@/lib/actions/learnings"
 import { getQualityReviews } from "@/lib/actions/quality-reviews"
 import { getCampaigns } from "@/lib/actions/campaigns"
 import { getExternalLinks } from "@/lib/actions/external-links"
+import {
+  getDriveFiles,
+  getDriveFolders,
+  importDriveFileRecords,
+  importDriveFolderRecords,
+} from "@/lib/actions/drive-integration"
 import { getYouTubeVideos, importYouTubeVideoRecords } from "@/lib/actions/youtube-integration"
 import { assetToPrismaCreate } from "@/lib/data/assets"
 import { learningToPrismaCreate } from "@/lib/data/learnings"
@@ -100,7 +106,7 @@ function revalidateBundleRoutes() {
 async function loadCampaignBundleStore(): Promise<
   CampaignBundleStore & { campaigns: CampaignRecord[] }
 > {
-  const [linkable, experiments, promptRuns, workflowRuns, presets, assets, qualityReviews, learnings, externalLinks, youtubeVideos, campaigns] =
+  const [linkable, experiments, promptRuns, workflowRuns, presets, assets, qualityReviews, learnings, externalLinks, youtubeVideos, driveFolders, driveFiles, campaigns] =
     await Promise.all([
       loadCampaignLinkableStoreSlice(),
       prisma.experiment.findMany({ orderBy: { updatedAt: "desc" } }),
@@ -112,6 +118,8 @@ async function loadCampaignBundleStore(): Promise<
       getLearnings(),
       getExternalLinks(),
       getYouTubeVideos(),
+      getDriveFolders(),
+      getDriveFiles(),
       getCampaigns(),
     ])
 
@@ -124,6 +132,8 @@ async function loadCampaignBundleStore(): Promise<
     learnings,
     externalLinks,
     youtubeVideos,
+    driveFolders,
+    driveFiles,
     runs: promptRuns.map(prismaPromptRunToPromptRun),
     workflowRuns: workflowRuns.map(prismaWorkflowRunToWorkflowRun),
     campaigns,
@@ -424,6 +434,12 @@ export async function importCampaignBundle(
 
     if ((remapped.linkedRecords.youtubeVideos ?? []).length > 0) {
       await importYouTubeVideoRecords(remapped.linkedRecords.youtubeVideos)
+    }
+    if ((remapped.linkedRecords.driveFolders ?? []).length > 0) {
+      await importDriveFolderRecords(remapped.linkedRecords.driveFolders)
+    }
+    if ((remapped.linkedRecords.driveFiles ?? []).length > 0) {
+      await importDriveFileRecords(remapped.linkedRecords.driveFiles)
     }
 
     revalidateBundleRoutes()

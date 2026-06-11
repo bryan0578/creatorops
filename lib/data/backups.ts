@@ -29,6 +29,8 @@ export type BackupDataKey =
   | "learnings"
   | "externalLinks"
   | "youtubeVideos"
+  | "driveFolders"
+  | "driveFiles"
   | "workspaceSettings"
 
 export type BackupImportMode = "merge" | "replace"
@@ -57,6 +59,8 @@ export interface BackupRecordCounts {
   learnings: number
   externalLinks: number
   youtubeVideos: number
+  driveFolders: number
+  driveFiles: number
   workspaceSettings: number
 }
 
@@ -84,6 +88,8 @@ export interface CreatorOpsBackupData {
   learnings: unknown[]
   externalLinks: unknown[]
   youtubeVideos: unknown[]
+  driveFolders: unknown[]
+  driveFiles: unknown[]
   workspaceSettings: unknown[]
 }
 
@@ -95,6 +101,8 @@ export interface CreatorOpsBackup {
   data: CreatorOpsBackupData
   /** Non-secret YouTube connection metadata — OAuth tokens are never exported */
   youtubeConnectionMetadata?: unknown
+  /** Non-secret Google Drive connection metadata — OAuth tokens are never exported */
+  driveConnectionMetadata?: unknown
   securityNotes?: string[]
 }
 
@@ -150,6 +158,18 @@ export const BACKUP_MODULE_META: BackupModuleMeta[] = [
     category: "youtube",
   },
   {
+    key: "driveFolders",
+    label: "Drive Folders",
+    exportFilename: "creatorops-drive-folders.json",
+    category: "operations",
+  },
+  {
+    key: "driveFiles",
+    label: "Drive Files",
+    exportFilename: "creatorops-drive-files.json",
+    category: "operations",
+  },
+  {
     key: "workspaceSettings",
     label: "Workspace Settings",
     exportFilename: "creatorops-workspace-settings.json",
@@ -184,6 +204,8 @@ export function emptyBackupData(): CreatorOpsBackupData {
     learnings: [],
     externalLinks: [],
     youtubeVideos: [],
+    driveFolders: [],
+    driveFiles: [],
     workspaceSettings: [],
   }
 }
@@ -213,6 +235,8 @@ export function countBackupData(data: CreatorOpsBackupData): BackupRecordCounts 
     learnings: data.learnings.length,
     externalLinks: data.externalLinks.length,
     youtubeVideos: data.youtubeVideos.length,
+    driveFolders: data.driveFolders.length,
+    driveFiles: data.driveFiles.length,
     workspaceSettings: data.workspaceSettings.length,
   }
 }
@@ -274,7 +298,10 @@ export function validateFullBackup(payload: unknown): payload is CreatorOpsBacku
 
 export function buildFullBackup(
   data: CreatorOpsBackupData,
-  extras?: Pick<CreatorOpsBackup, "youtubeConnectionMetadata" | "securityNotes">,
+  extras?: Pick<
+    CreatorOpsBackup,
+    "youtubeConnectionMetadata" | "driveConnectionMetadata" | "securityNotes"
+  >,
 ): CreatorOpsBackup {
   const recordCounts = countBackupData(data)
   return {
@@ -284,6 +311,7 @@ export function buildFullBackup(
     recordCounts,
     data,
     youtubeConnectionMetadata: extras?.youtubeConnectionMetadata,
+    driveConnectionMetadata: extras?.driveConnectionMetadata,
     securityNotes: extras?.securityNotes,
   }
 }

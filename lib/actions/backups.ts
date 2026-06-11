@@ -59,6 +59,14 @@ import { getWorkflows } from "@/lib/actions/workflows"
 import { getYouTubePackages } from "@/lib/actions/youtube-packages"
 import { getYouTubeThumbnails } from "@/lib/actions/youtube-thumbnails"
 import { getExternalLinks, importExternalLinks } from "@/lib/actions/external-links"
+import {
+  driveConnectionToBackupMetadata,
+  getDriveFiles,
+  getDriveFolders,
+  importDriveFileRecords,
+  importDriveFolderRecords,
+} from "@/lib/actions/drive-integration"
+import { DRIVE_CONNECTION_ID } from "@/lib/drive/types"
 import { getYouTubeVideos, importYouTubeVideoRecords } from "@/lib/actions/youtube-integration"
 import { prisma } from "@/lib/prisma"
 import type {
@@ -86,6 +94,8 @@ import type {
   YouTubeThumbnailRecord,
   ExternalLinkRecord,
   YouTubeVideoRecord,
+  DriveFolderRecord,
+  DriveFileRecord,
 } from "@/lib/types"
 import { youtubeConnectionToBackupMetadata } from "@/lib/youtube/token-store"
 import { YOUTUBE_CONNECTION_ID } from "@/lib/youtube/types"
@@ -166,6 +176,8 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     learnings,
     externalLinks,
     youtubeVideos,
+    driveFolders,
+    driveFiles,
     workspaceSettingsRow,
   ] = await Promise.all([
     getPrompts(),
@@ -191,6 +203,8 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     getLearnings(),
     getExternalLinks(),
     getYouTubeVideos(),
+    getDriveFolders(),
+    getDriveFiles(),
     getWorkspaceSettings(),
   ])
 
@@ -220,6 +234,8 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     learnings,
     externalLinks,
     youtubeVideos,
+    driveFolders,
+    driveFiles,
     workspaceSettings,
   }
 }
@@ -253,16 +269,21 @@ export async function getBackupSummary(): Promise<BackupSummary> {
 /** Export a full CreatorOps backup JSON payload. */
 export async function exportFullBackup(): Promise<CreatorOpsBackup> {
   const data = await fetchAllBackupData()
-  const connectionRow = await prisma.youTubeConnection.findUnique({
-    where: { id: YOUTUBE_CONNECTION_ID },
-  })
+  const [connectionRow, driveConnectionRow] = await Promise.all([
+    prisma.youTubeConnection.findUnique({ where: { id: YOUTUBE_CONNECTION_ID } }),
+    prisma.driveConnection.findUnique({ where: { id: DRIVE_CONNECTION_ID } }),
+  ])
   return buildFullBackup(data, {
     youtubeConnectionMetadata: connectionRow
       ? youtubeConnectionToBackupMetadata(connectionRow)
       : undefined,
+    driveConnectionMetadata: driveConnectionRow
+      ? driveConnectionToBackupMetadata(driveConnectionRow)
+      : undefined,
     securityNotes: [
       "YouTube OAuth access and refresh tokens are not exported for security.",
-      "Reconnect YouTube after restoring a backup to resume API sync.",
+      "Google Drive OAuth access and refresh tokens are not exported for security.",
+      "Reconnect YouTube and Google Drive after restoring a backup to resume API sync.",
     ],
   })
 }
@@ -299,6 +320,8 @@ async function clearAllBackupTables(): Promise<void> {
   await prisma.learning.deleteMany()
   await prisma.externalLink.deleteMany()
   await prisma.youTubeVideo.deleteMany()
+  await prisma.driveFile.deleteMany()
+  await prisma.driveFolder.deleteMany()
   await prisma.workspaceSettings.deleteMany()
 }
 
@@ -383,6 +406,12 @@ async function importBackupData(
   }
   if (data.youtubeVideos.length > 0) {
     await importYouTubeVideoRecords(data.youtubeVideos as YouTubeVideoRecord[])
+  }
+  if (data.driveFolders.length > 0) {
+    await importDriveFolderRecords(data.driveFolders as DriveFolderRecord[])
+  }
+  if (data.driveFiles.length > 0) {
+    await importDriveFileRecords(data.driveFiles as DriveFileRecord[])
   }
   if (data.workspaceSettings.length > 0) {
     await importWorkspaceSettings(data.workspaceSettings as WorkspaceSettingsRecord[])

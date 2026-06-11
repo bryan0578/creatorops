@@ -298,6 +298,11 @@ const DOMAINS: CreatorOpsDomain[] = [
         href: "/integrations?tab=youtube-api",
         icon: Video,
       },
+      {
+        label: "Google Drive Integration",
+        href: "/integrations?tab=google-drive",
+        icon: HardDrive,
+      },
       { label: "Campaigns", href: "/campaigns", icon: Megaphone },
     ],
   },
@@ -349,6 +354,12 @@ const QUERY_DOMAIN_RULES: QueryDomainRule[] = [
     param: "tab",
     value: "youtube-api",
     domainId: "youtube-studio",
+  },
+  {
+    pathname: "/integrations",
+    param: "tab",
+    value: "google-drive",
+    domainId: "assets-integrations",
   },
 ]
 

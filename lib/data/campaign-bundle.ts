@@ -55,11 +55,19 @@ import type {
   YouTubePackage,
   YouTubeThumbnailRecord,
   YouTubeVideoRecord,
+  DriveFolderRecord,
+  DriveFileRecord,
 } from "@/lib/types"
 import {
   filterYouTubeVideosForCampaign,
   normalizeYouTubeVideoRecord,
 } from "@/lib/youtube/mappers"
+import {
+  filterDriveFilesForCampaign,
+  filterDriveFoldersForCampaign,
+  normalizeDriveFileRecord,
+  normalizeDriveFolderRecord,
+} from "@/lib/drive/mappers"
 
 export const CAMPAIGN_BUNDLE_TYPE = "creatorops-campaign-bundle"
 export const CAMPAIGN_BUNDLE_VERSION = 1
@@ -95,6 +103,8 @@ export interface CampaignBundleLinkedRecords {
   learnings: LearningRecord[]
   externalLinks: ExternalLinkRecord[]
   youtubeVideos: YouTubeVideoRecord[]
+  driveFolders: DriveFolderRecord[]
+  driveFiles: DriveFileRecord[]
 }
 
 export interface CampaignBundleRelationship {
@@ -151,6 +161,8 @@ export interface CampaignBundleSummaryCounts {
   learnings: number
   externalLinks: number
   youtubeVideos: number
+  driveFolders: number
+  driveFiles: number
 }
 
 export interface CampaignBundleConflict {
@@ -198,6 +210,8 @@ export interface CampaignBundleStore extends CampaignLinkableStoreSlice {
   learnings: LearningRecord[]
   externalLinks: ExternalLinkRecord[]
   youtubeVideos: YouTubeVideoRecord[]
+  driveFolders: DriveFolderRecord[]
+  driveFiles: DriveFileRecord[]
 }
 
 function norm(value: string | undefined | null): string {
@@ -231,6 +245,8 @@ export function emptyCampaignBundleLinkedRecords(): CampaignBundleLinkedRecords 
     learnings: [],
     externalLinks: [],
     youtubeVideos: [],
+    driveFolders: [],
+    driveFiles: [],
   }
 }
 
@@ -258,6 +274,8 @@ export function countCampaignBundleLinkedRecords(
     learnings: linked.learnings.length,
     externalLinks: linked.externalLinks.length,
     youtubeVideos: linked.youtubeVideos.length,
+    driveFolders: linked.driveFolders.length,
+    driveFiles: linked.driveFiles.length,
   }
 }
 
@@ -282,7 +300,9 @@ export function totalLinkedBundleRecords(linked: CampaignBundleLinkedRecords): n
     counts.qualityReviews +
     counts.learnings +
     counts.externalLinks +
-    counts.youtubeVideos
+    counts.youtubeVideos +
+    counts.driveFolders +
+    counts.driveFiles
   )
 }
 
@@ -729,6 +749,30 @@ function collectCampaignScopedRecords(
       recordTitle: video.title,
     })
   }
+
+  const campaignDriveFolders = filterDriveFoldersForCampaign(
+    store.driveFolders ?? [],
+    campaign.id,
+    campaign.campaignName,
+  )
+  for (const folder of campaignDriveFolders) {
+    collector.track("driveFolders", folder, {
+      source: "campaign-field",
+      recordTitle: folder.name,
+    })
+  }
+
+  const campaignDriveFiles = filterDriveFilesForCampaign(
+    store.driveFiles ?? [],
+    campaign.id,
+    campaign.campaignName,
+  )
+  for (const file of campaignDriveFiles) {
+    collector.track("driveFiles", file, {
+      source: "campaign-field",
+      recordTitle: file.name,
+    })
+  }
 }
 
 /** Build a portable campaign bundle without mutating source records. */
@@ -887,6 +931,8 @@ export function parseCampaignBundleJson(
     "learnings",
     "externalLinks",
     "youtubeVideos",
+    "driveFolders",
+    "driveFiles",
   ]
 
   for (const key of arrayKeys) {
@@ -1562,6 +1608,33 @@ export function remapCampaignBundleForImport(
         analyticsRecordId: r.analyticsRecordId
           ? remapId(idMap, r.analyticsRecordId)
           : r.analyticsRecordId,
+      }),
+    ),
+    driveFolders: (bundle.linkedRecords.driveFolders ?? []).map((r) =>
+      normalizeDriveFolderRecord({
+        ...r,
+        id: remapId(idMap, r.id),
+        campaignId: newCampaignId,
+        campaignName,
+        externalLinkId: r.externalLinkId
+          ? remapId(idMap, r.externalLinkId)
+          : r.externalLinkId,
+        sourceRecordId: r.sourceRecordId
+          ? remapId(idMap, r.sourceRecordId)
+          : r.sourceRecordId,
+      }),
+    ),
+    driveFiles: (bundle.linkedRecords.driveFiles ?? []).map((r) =>
+      normalizeDriveFileRecord({
+        ...r,
+        id: remapId(idMap, r.id),
+        campaignId: newCampaignId,
+        campaignName,
+        folderId: r.folderId ? remapId(idMap, r.folderId) : r.folderId,
+        assetId: r.assetId ? remapId(idMap, r.assetId) : r.assetId,
+        sourceRecordId: r.sourceRecordId
+          ? remapId(idMap, r.sourceRecordId)
+          : r.sourceRecordId,
       }),
     ),
   }

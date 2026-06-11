@@ -975,3 +975,98 @@ model YouTubeVideo {
   @@index([publishedAt])
   @@index([updatedAt])
 }
+
+/// Local Google Drive OAuth connection — tokens encrypted; never exported in backups.
+model DriveConnection {
+  id                    String    @id
+  accountEmail          String    @default("")
+  displayName           String    @default("")
+  /// JSON string[]
+  scopes                String    @default("[]")
+  accessTokenEncrypted  String?
+  refreshTokenEncrypted String?
+  tokenType             String    @default("")
+  expiryDate            DateTime?
+  status                String    @default("Disconnected")
+  lastSyncedAt          DateTime?
+  notes                 String    @default("")
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@index([status])
+  @@index([updatedAt])
+}
+
+/// Synced Google Drive folder metadata.
+model DriveFolder {
+  id               String    @id
+  driveFolderId    String    @unique
+  name             String    @default("")
+  url              String    @default("")
+  campaignId       String    @default("")
+  campaignName     String    @default("")
+  artistName       String    @default("")
+  songTitle        String    @default("")
+  productName      String    @default("")
+  sourceRecordType String    @default("")
+  sourceRecordId   String    @default("")
+  externalLinkId   String    @default("")
+  status           String    @default("Active")
+  lastSyncedAt     DateTime?
+  notes            String    @default("")
+  /// JSON string[]
+  tags             String    @default("[]")
+  rawJson          String    @default("{}")
+  createdAt        DateTime
+  updatedAt        DateTime
+
+  @@index([driveFolderId])
+  @@index([campaignId])
+  @@index([campaignName])
+  @@index([sourceRecordType])
+  @@index([sourceRecordId])
+  @@index([updatedAt])
+}
+
+/// Synced Google Drive file metadata.
+model DriveFile {
+  id                 String    @id
+  driveFileId        String    @unique
+  name               String    @default("")
+  mimeType           String    @default("")
+  url                String    @default("")
+  webViewLink        String    @default("")
+  thumbnailLink      String    @default("")
+  iconLink           String    @default("")
+  sizeBytes          Int?
+  modifiedTime       DateTime?
+  folderId           String    @default("")
+  driveFolderId      String    @default("")
+  campaignId         String    @default("")
+  campaignName       String    @default("")
+  artistName         String    @default("")
+  songTitle          String    @default("")
+  productName        String    @default("")
+  assetId            String    @default("")
+  sourceRecordType   String    @default("")
+  sourceRecordId     String    @default("")
+  detectedAssetType  String    @default("")
+  status             String    @default("Active")
+  lastSyncedAt       DateTime?
+  notes              String    @default("")
+  /// JSON string[]
+  tags               String    @default("[]")
+  rawJson            String    @default("{}")
+  createdAt          DateTime
+  updatedAt          DateTime
+
+  @@index([driveFileId])
+  @@index([folderId])
+  @@index([driveFolderId])
+  @@index([campaignId])
+  @@index([campaignName])
+  @@index([assetId])
+  @@index([detectedAssetType])
+  @@index([modifiedTime])
+  @@index([updatedAt])
+}

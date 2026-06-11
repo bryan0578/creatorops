@@ -2239,3 +2239,97 @@ export interface YouTubeConnectionStatusSummary {
   redirectUri: string
   message?: string
 }
+
+export const DRIVE_CONNECTION_STATUSES = [
+  "Connected",
+  "Disconnected",
+  "Expired",
+  "ReconnectRequired",
+  "Error",
+] as const
+
+export type DriveConnectionStatus = (typeof DRIVE_CONNECTION_STATUSES)[number]
+
+export interface DriveConnectionRecord {
+  id: string
+  accountEmail: string
+  displayName: string
+  scopes: string[]
+  status: DriveConnectionStatus | string
+  lastSyncedAt: number | null
+  notes: string
+  createdAt: number
+  updatedAt: number
+  hasRefreshToken: boolean
+  tokenExpiry: number | null
+  envConfigured: boolean
+  encryptionConfigured: boolean
+  credentialSource: "drive" | "youtube-fallback"
+}
+
+export interface DriveConnectionStatusSummary {
+  configured: boolean
+  encryptionConfigured: boolean
+  connected: boolean
+  oauthConnected: boolean
+  connection: DriveConnectionRecord | null
+  clientIdConfigured: boolean
+  clientSecretConfigured: boolean
+  redirectUri: string
+  credentialSource: "drive" | "youtube-fallback" | null
+  usingYoutubeFallback: boolean
+  message?: string
+}
+
+export interface DriveFolderRecord {
+  id: string
+  driveFolderId: string
+  name: string
+  url: string
+  campaignId: string
+  campaignName: string
+  artistName: string
+  songTitle: string
+  productName: string
+  sourceRecordType: string
+  sourceRecordId: string
+  externalLinkId: string
+  status: string
+  lastSyncedAt: number | null
+  notes: string
+  tags: string[]
+  rawJson: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface DriveFileRecord {
+  id: string
+  driveFileId: string
+  name: string
+  mimeType: string
+  url: string
+  webViewLink: string
+  thumbnailLink: string
+  iconLink: string
+  sizeBytes: number | null
+  modifiedTime: number | null
+  folderId: string
+  driveFolderId: string
+  campaignId: string
+  campaignName: string
+  artistName: string
+  songTitle: string
+  productName: string
+  assetId: string
+  sourceRecordType: string
+  sourceRecordId: string
+  detectedAssetType: string
+  status: string
+  lastSyncedAt: number | null
+  notes: string
+  tags: string[]
+  rawJson: string
+  createdAt: number
+  updatedAt: number
+}

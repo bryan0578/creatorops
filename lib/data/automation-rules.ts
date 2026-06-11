@@ -112,8 +112,11 @@ export interface AutomationEvaluationContext {
     learnings: LearningRecord[]
     externalLinks: ExternalLinkRecord[]
     youtubeVideos: import("@/lib/types").YouTubeVideoRecord[]
+    driveFolders: import("@/lib/types").DriveFolderRecord[]
+    driveFiles: import("@/lib/types").DriveFileRecord[]
   }
   youtubeConnectionConnected: boolean
+  driveConnectionConnected: boolean
   dataHealth: DataHealthReport | null
   dataHealthFailed: boolean
   workspaceSettings: WorkspaceSettingsRecord | null
@@ -436,6 +439,46 @@ export const BUILTIN_AUTOMATION_RULES: BuiltinAutomationRule[] = [
     id: "external-missing-google-drive",
     name: "Campaign Missing Google Drive Folder",
     description: "Campaigns with assets but no Google Drive folder link.",
+    category: "Missing Asset",
+    priority: "low",
+    enabled: true,
+  },
+  {
+    id: "drive-connection-disconnected",
+    name: "Google Drive Connection Disconnected",
+    description: "Synced Drive folders exist but OAuth is not active.",
+    category: "Data Health",
+    priority: "medium",
+    enabled: true,
+  },
+  {
+    id: "drive-folder-stale",
+    name: "Drive Folder Stale",
+    description: "Synced Drive folder has not been refreshed in 7+ days.",
+    category: "Integrations",
+    priority: "low",
+    enabled: true,
+  },
+  {
+    id: "drive-file-unlinked",
+    name: "Drive File Not Linked to Asset",
+    description: "Synced Drive file is not linked to the Asset Library.",
+    category: "Missing Asset",
+    priority: "info",
+    enabled: true,
+  },
+  {
+    id: "drive-create-asset",
+    name: "Create Asset from Drive File",
+    description: "Important Drive file detected but no matching asset exists.",
+    category: "Missing Asset",
+    priority: "info",
+    enabled: true,
+  },
+  {
+    id: "campaign-missing-drive-folder",
+    name: "Campaign Missing Drive Folder",
+    description: "Campaign with assets has no synced Google Drive folder.",
     category: "Missing Asset",
     priority: "low",
     enabled: true,
@@ -1911,6 +1954,178 @@ function evaluateYouTubeApiRules(ctx: AutomationEvaluationContext, suggestions: 
   }
 }
 
+function evaluateDriveApiRules(ctx: AutomationEvaluationContext, suggestions: AutomationSuggestion[]) {
+  const folders = ctx.store.driveFolders ?? []
+  const files = ctx.store.driveFiles ?? []
+  const weekMs = 7 * 24 * 60 * 60 * 1000
+
+  if (!ctx.driveConnectionConnected && folders.length > 0) {
+    suggestions.push({
+      id: suggestionId(["drive-connection-disconnected"]),
+      ruleId: "drive-connection-disconnected",
+      priority: "medium",
+      category: "Data Health",
+      title: "Google Drive connection disconnected",
+      description: "Synced Drive folders exist but the API connection is not active.",
+      suggestedActionLabel: "Reconnect Google Drive",
+      actionType: "navigate",
+      actionPayload: { href: "/integrations?tab=google-drive" },
+      href: "/integrations?tab=google-drive",
+      canApply: false,
+      reason: "Reconnect to sync folder metadata.",
+    })
+  }
+
+  for (const folder of folders) {
+    if (folder.lastSyncedAt && Date.now() - folder.lastSyncedAt > weekMs) {
+      suggestions.push({
+        id: suggestionId(["drive-folder-stale", folder.id]),
+        ruleId: "drive-folder-stale",
+        priority: "low",
+        category: "Integrations",
+        title: "Sync Drive folder again",
+        description: `"${folder.name}" has not been synced in over 7 days.`,
+        campaignId: folder.campaignId,
+        campaignName: folder.campaignName,
+        suggestedActionLabel: "Open Google Drive Integration",
+        actionType: "navigate",
+        actionPayload: {
+          href: `/integrations?tab=google-drive&folderId=${encodeURIComponent(folder.id)}`,
+        },
+        href: `/integrations?tab=google-drive&folderId=${encodeURIComponent(folder.id)}`,
+        canApply: false,
+        reason: "Sync runs only when you click Sync Folder.",
+      })
+    }
+
+    if (!folder.campaignId?.trim()) {
+      suggestions.push({
+        id: suggestionId(["campaign-missing-drive-folder", folder.id, "unlinked"]),
+        ruleId: "campaign-missing-drive-folder",
+        priority: "info",
+        category: "Campaign",
+        title: "Link Drive folder to campaign",
+        description: `"${folder.name}" is synced but not linked to a campaign.`,
+        suggestedActionLabel: "Open Drive Integration",
+        actionType: "navigate",
+        actionPayload: {
+          href: `/integrations?tab=google-drive&folderId=${encodeURIComponent(folder.id)}`,
+        },
+        href: `/integrations?tab=google-drive&folderId=${encodeURIComponent(folder.id)}`,
+        canApply: false,
+        reason: "Link the folder explicitly before syncing assets.",
+      })
+    }
+  }
+
+  for (const file of files) {
+    if (file.status === "Ignored") continue
+
+    if (!file.assetId?.trim()) {
+      suggestions.push({
+        id: suggestionId(["drive-file-unlinked", file.id]),
+        ruleId: "drive-file-unlinked",
+        priority: "info",
+        category: "Missing Asset",
+        title: "Link Drive file to asset",
+        description: `"${file.name}" is synced but not linked to an asset.`,
+        campaignId: file.campaignId,
+        campaignName: file.campaignName,
+        suggestedActionLabel: "Open Drive Files",
+        actionType: "navigate",
+        actionPayload: {
+          href: `/integrations?tab=google-drive&fileId=${encodeURIComponent(file.id)}`,
+        },
+        href: `/integrations?tab=google-drive&fileId=${encodeURIComponent(file.id)}`,
+        canApply: false,
+        reason: "Create or link an asset explicitly.",
+      })
+    }
+
+    const importantTypes = new Set([
+      "youtube thumbnail",
+      "cover art",
+      "video file",
+      "merch mockup",
+    ])
+    if (
+      importantTypes.has(file.detectedAssetType.trim().toLowerCase()) &&
+      !file.assetId?.trim()
+    ) {
+      suggestions.push({
+        id: suggestionId(["drive-create-asset", file.id]),
+        ruleId: "drive-create-asset",
+        priority: "info",
+        category: "Missing Asset",
+        title: "Create asset from Drive file",
+        description: `"${file.name}" looks like ${file.detectedAssetType} but has no asset.`,
+        campaignId: file.campaignId,
+        campaignName: file.campaignName,
+        suggestedActionLabel: "Create Asset from File",
+        actionType: "navigate",
+        actionPayload: {
+          href: `/integrations?tab=google-drive&fileId=${encodeURIComponent(file.id)}`,
+        },
+        href: `/integrations?tab=google-drive&fileId=${encodeURIComponent(file.id)}`,
+        canApply: false,
+        reason: "Asset creation requires explicit confirmation.",
+      })
+    }
+  }
+
+  for (const campaign of ctx.campaigns) {
+    const campaignAssets = (ctx.store.assets ?? []).filter(
+      (asset) =>
+        asset.campaignId === campaign.id ||
+        norm(asset.campaignName) === norm(campaign.campaignName),
+    )
+    if (campaignAssets.length === 0) continue
+
+    const hasFolder = folders.some(
+      (folder) =>
+        folder.campaignId === campaign.id ||
+        norm(folder.campaignName) === norm(campaign.campaignName),
+    )
+    if (!hasFolder) {
+      suggestions.push({
+        id: suggestionId(["campaign-missing-drive-folder", campaign.id]),
+        ruleId: "campaign-missing-drive-folder",
+        priority: "low",
+        category: "Missing Asset",
+        title: "Add Drive folder for campaign",
+        description: `"${campaign.campaignName}" has assets but no synced Drive folder.`,
+        campaignId: campaign.id,
+        campaignName: campaign.campaignName,
+        suggestedActionLabel: "Add Drive Folder",
+        actionType: "navigate",
+        actionPayload: {
+          href: `/integrations?tab=google-drive&campaignId=${encodeURIComponent(campaign.id)}`,
+        },
+        href: `/integrations?tab=google-drive&campaignId=${encodeURIComponent(campaign.id)}`,
+        canApply: false,
+        reason: "Paste a folder URL and sync explicitly.",
+      })
+    }
+  }
+
+  if (files.length > 0) {
+    suggestions.push({
+      id: suggestionId(["open-drive-files"]),
+      ruleId: "drive-file-unlinked",
+      priority: "info",
+      category: "Integrations",
+      title: "Open Drive Files",
+      description: `${files.length} synced Drive file(s) available in Integrations.`,
+      suggestedActionLabel: "Open Google Drive Integration",
+      actionType: "navigate",
+      actionPayload: { href: "/integrations?tab=google-drive" },
+      href: "/integrations?tab=google-drive",
+      canApply: false,
+      reason: "Review synced files and link assets.",
+    })
+  }
+}
+
 const RULE_EVALUATORS: Array<(ctx: AutomationEvaluationContext, out: AutomationSuggestion[]) => void> = [
   evaluateMissingAssets,
   evaluateMissingAssetLibrary,
@@ -1928,6 +2143,7 @@ const RULE_EVALUATORS: Array<(ctx: AutomationEvaluationContext, out: AutomationS
   evaluateQualityReviews,
   evaluateExternalIntegrations,
   evaluateYouTubeApiRules,
+  evaluateDriveApiRules,
   evaluateLearnings,
   evaluateIncompleteCampaignFields,
   evaluatePrePublishChecklist,

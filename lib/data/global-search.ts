@@ -39,6 +39,8 @@ export type GlobalSearchResultType =
   | "learning"
   | "external-link"
   | "youtube-video"
+  | "drive-folder"
+  | "drive-file"
 
 export interface GlobalSearchResult {
   id: string
@@ -179,6 +181,16 @@ export const GLOBAL_SEARCH_TYPE_META: Record<
     category: "youtube",
     href: "/videos",
   },
+  "drive-folder": {
+    typeLabel: "Drive Folder",
+    category: "operations",
+    href: "/integrations",
+  },
+  "drive-file": {
+    typeLabel: "Drive File",
+    category: "operations",
+    href: "/integrations",
+  },
 }
 
 export function normalizeSearchQuery(raw: string): string {
@@ -292,6 +304,20 @@ export function buildResultHref(
   if (type === "youtube-video") {
     return {
       href: `${base}?recordId=${encodeURIComponent(id)}`,
+      directOpen: true,
+    }
+  }
+
+  if (type === "drive-folder") {
+    return {
+      href: `${base}?tab=google-drive&folderId=${encodeURIComponent(id)}`,
+      directOpen: true,
+    }
+  }
+
+  if (type === "drive-file") {
+    return {
+      href: `${base}?tab=google-drive&fileId=${encodeURIComponent(id)}`,
       directOpen: true,
     }
   }

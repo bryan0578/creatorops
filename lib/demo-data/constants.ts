@@ -41,6 +41,11 @@ export const DEMO_IDS = {
   extLinkSuno: `${DEMO_ID_PREFIX}prettywise-extlink-suno`,
   extLinkFourthwall: `${DEMO_ID_PREFIX}prettywise-extlink-fourthwall`,
   youtubeVideo: `${DEMO_ID_PREFIX}prettywise-youtube-video`,
+  driveFolder: `${DEMO_ID_PREFIX}prettywise-drive-folder`,
+  driveFileThumbnail: `${DEMO_ID_PREFIX}prettywise-drive-file-thumbnail`,
+  driveFileVideo: `${DEMO_ID_PREFIX}prettywise-drive-file-video`,
+  driveFileMockup: `${DEMO_ID_PREFIX}prettywise-drive-file-mockup`,
+  driveFileSocial: `${DEMO_ID_PREFIX}prettywise-drive-file-social`,
 } as const
 
 export function isDemoDataNotes(notes: string | null | undefined): boolean {

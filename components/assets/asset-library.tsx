@@ -25,6 +25,7 @@ import {
   importAssets,
   updateAsset,
 } from "@/lib/actions/assets"
+import { getDriveFilesForAsset } from "@/lib/actions/drive-integration"
 import {
   ASSET_SOURCE_TOOLS,
   ASSET_STATUSES,
@@ -48,7 +49,7 @@ import {
 import { parseImportJsonText } from "@/lib/safe-json"
 import { downloadJson } from "@/lib/storage"
 import { createId, useStore } from "@/lib/store"
-import type { AssetFormValues, AssetRecord } from "@/lib/types"
+import type { AssetFormValues, AssetRecord, DriveFileRecord } from "@/lib/types"
 
 import { ModulePageHeader } from "@/components/app-shell"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
@@ -62,7 +63,7 @@ import {
 } from "@/components/module/form-layout"
 import { IntegrationLinkButton } from "@/components/integrations/integration-link-button"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -285,6 +286,8 @@ export function AssetLibrary() {
   const [saving, setSaving] = React.useState(false)
   const [form, setForm] = React.useState<AssetFormValues>(emptyAssetForm())
   const [editingId, setEditingId] = React.useState<string | null>(null)
+  const [driveLinkedFiles, setDriveLinkedFiles] = React.useState<DriveFileRecord[]>([])
+  const [driveFilesLoading, setDriveFilesLoading] = React.useState(false)
   const [recordSearch, setRecordSearch] = React.useState("")
   const [filterType, setFilterType] = React.useState("all")
   const [filterStatus, setFilterStatus] = React.useState("all")
@@ -355,6 +358,26 @@ export function AssetLibrary() {
     prefillApplied.current = true
     toast.success(campaignPrefillToastMessage(context.campaignName))
   }, [searchParams, campaigns, editingId])
+
+  React.useEffect(() => {
+    const assetId = editingId ?? form.id
+    if (!assetId) {
+      setDriveLinkedFiles([])
+      return
+    }
+    let cancelled = false
+    setDriveFilesLoading(true)
+    void getDriveFilesForAsset(assetId)
+      .then((files) => {
+        if (!cancelled) setDriveLinkedFiles(files)
+      })
+      .finally(() => {
+        if (!cancelled) setDriveFilesLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [editingId, form.id])
 
   const filterOptions = React.useMemo(() => {
     const campaignNames = new Set<string>()
@@ -829,6 +852,103 @@ export function AssetLibrary() {
               <Button type="button" onClick={() => void handleSave()} disabled={saving}>
                 Save Source &amp; Links
               </Button>
+              {form.sourceTool === "Google Drive" ? (
+                <p className="text-sm text-muted-foreground rounded-md border border-border/60 p-3">
+                  This asset was created from Google Drive
+                  {form.sourceRecordType === "DriveFile" && form.sourceRecordId
+                    ? ` (file id ${form.sourceRecordId})`
+                    : ""}
+                  .
+                </p>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <Card className={RECENT_RECORDS_CARD_CLASS}>
+            <CardHeader>
+              <CardTitle className="text-base">Google Drive files</CardTitle>
+              <CardDescription>
+                Drive files synced and linked to this asset via the Google Drive integration.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {form.id ? (
+                <>
+                  {driveFilesLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="size-4 animate-spin" />
+                      Loading Drive files…
+                    </div>
+                  ) : driveLinkedFiles.length > 0 ? (
+                    <ul className="space-y-2 text-sm">
+                      {driveLinkedFiles.map((file) => (
+                        <li
+                          key={file.id}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/60 p-3"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{file.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {[file.detectedAssetType, file.mimeType].filter(Boolean).join(" · ")}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {file.webViewLink || file.url ? (
+                              <Link
+                                href={file.webViewLink || file.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={buttonVariants({ variant: "outline", size: "sm" })}
+                              >
+                                Open Drive
+                              </Link>
+                            ) : null}
+                            <Link
+                              href={`/integrations?tab=google-drive&fileId=${encodeURIComponent(file.id)}`}
+                              className={buttonVariants({ variant: "outline", size: "sm" })}
+                            >
+                              View in Integrations
+                            </Link>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <EmptyState
+                      icon={FolderOpen}
+                      title="No linked Drive files"
+                      description="Sync a Drive folder in Integrations, then link or create assets from synced files."
+                    />
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <Link
+                      href={`/integrations?tab=google-drive&assetId=${encodeURIComponent(form.id)}`}
+                      className={buttonVariants({ variant: "outline", size: "sm" })}
+                    >
+                      Link Drive File
+                    </Link>
+                    {(form.externalUrl || form.fileUrl || driveLinkedFiles[0]?.webViewLink) ? (
+                      <Link
+                        href={
+                          form.externalUrl ||
+                          form.fileUrl ||
+                          driveLinkedFiles[0]?.webViewLink ||
+                          "#"
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={buttonVariants({ variant: "outline", size: "sm" })}
+                      >
+                        Open Drive Source
+                      </Link>
+                    ) : null}
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Save this asset first to link Google Drive files.
+                </p>
+              )}
             </CardContent>
           </Card>
 
