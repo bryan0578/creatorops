@@ -1074,6 +1074,103 @@ async function searchLearnings(query: string): Promise<GlobalSearchResult[]> {
   )
 }
 
+async function searchExternalLinks(query: string): Promise<GlobalSearchResult[]> {
+  const rows = await prisma.externalLink.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: GLOBAL_SEARCH_FETCH_BATCH,
+  })
+
+  return pushMatches(
+    rows.map((row) => ({
+      ...row,
+      tagsText: parseTagsJson(row.tags),
+    })),
+    query,
+    [
+      "name",
+      "platform",
+      "linkType",
+      "url",
+      "campaignName",
+      "artistName",
+      "songTitle",
+      "productName",
+      "sourceRecordType",
+      "tagsText",
+      "notes",
+    ],
+    {
+      name: "Name",
+      platform: "Platform",
+      linkType: "Link type",
+      url: "URL",
+      campaignName: "Campaign",
+      artistName: "Artist",
+      songTitle: "Song",
+      productName: "Product",
+      sourceRecordType: "Source type",
+      tagsText: "Tags",
+      notes: "Notes",
+    },
+    (row, matchedFields) =>
+      makeResult(
+        "external-link",
+        row.id as string,
+        row.name as string,
+        [row.platform, row.linkType, row.campaignName].filter(Boolean).join(" · "),
+        previewText(row.url) || previewText(row.notes),
+        row.createdAt as Date,
+        row.updatedAt as Date,
+        matchedFields,
+      ),
+    GLOBAL_SEARCH_LIMIT_PER_TYPE,
+  )
+}
+
+async function searchYouTubeVideos(query: string): Promise<GlobalSearchResult[]> {
+  const rows = await prisma.youTubeVideo.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: GLOBAL_SEARCH_FETCH_BATCH,
+  })
+
+  return pushMatches(
+    rows,
+    query,
+    [
+      "title",
+      "description",
+      "channelTitle",
+      "campaignName",
+      "artistName",
+      "songTitle",
+      "youtubeVideoId",
+      "notes",
+    ],
+    {
+      title: "Title",
+      description: "Description",
+      channelTitle: "Channel",
+      campaignName: "Campaign",
+      artistName: "Artist",
+      songTitle: "Song",
+      youtubeVideoId: "YouTube ID",
+      notes: "Notes",
+    },
+    (row, matchedFields) =>
+      makeResult(
+        "youtube-video",
+        row.id as string,
+        row.title as string,
+        [row.channelTitle, row.campaignName, row.youtubeVideoId].filter(Boolean).join(" · "),
+        previewText(row.description) || previewText(row.videoUrl),
+        row.createdAt as Date,
+        row.updatedAt as Date,
+        matchedFields,
+      ),
+    GLOBAL_SEARCH_LIMIT_PER_TYPE,
+  )
+}
+
 const SEARCHERS: {
   type: GlobalSearchResultType
   search: (query: string) => Promise<GlobalSearchResult[]>
@@ -1099,6 +1196,8 @@ const SEARCHERS: {
   { type: "asset", search: searchAssets },
   { type: "quality-review", search: searchQualityReviews },
   { type: "learning", search: searchLearnings },
+  { type: "external-link", search: searchExternalLinks },
+  { type: "youtube-video", search: searchYouTubeVideos },
 ]
 
 /**

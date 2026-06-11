@@ -58,6 +58,8 @@ import { getWorkflowRuns } from "@/lib/actions/workflow-runs"
 import { getWorkflows } from "@/lib/actions/workflows"
 import { getYouTubePackages } from "@/lib/actions/youtube-packages"
 import { getYouTubeThumbnails } from "@/lib/actions/youtube-thumbnails"
+import { getExternalLinks, importExternalLinks } from "@/lib/actions/external-links"
+import { getYouTubeVideos, importYouTubeVideoRecords } from "@/lib/actions/youtube-integration"
 import { prisma } from "@/lib/prisma"
 import type {
   AssetRecord,
@@ -82,7 +84,11 @@ import type {
   WorkflowRun,
   YouTubePackage,
   YouTubeThumbnailRecord,
+  ExternalLinkRecord,
+  YouTubeVideoRecord,
 } from "@/lib/types"
+import { youtubeConnectionToBackupMetadata } from "@/lib/youtube/token-store"
+import { YOUTUBE_CONNECTION_ID } from "@/lib/youtube/types"
 
 const REVALIDATE_PATHS = [
   "/",
@@ -108,6 +114,7 @@ const REVALIDATE_PATHS = [
   "/assets",
   "/quality",
   "/learnings",
+  "/integrations",
   "/search",
   "/settings",
 ]
@@ -157,6 +164,8 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     assets,
     qualityReviews,
     learnings,
+    externalLinks,
+    youtubeVideos,
     workspaceSettingsRow,
   ] = await Promise.all([
     getPrompts(),
@@ -180,6 +189,8 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     getAssets(),
     getQualityReviews(),
     getLearnings(),
+    getExternalLinks(),
+    getYouTubeVideos(),
     getWorkspaceSettings(),
   ])
 
@@ -207,6 +218,8 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     assets,
     qualityReviews,
     learnings,
+    externalLinks,
+    youtubeVideos,
     workspaceSettings,
   }
 }
@@ -240,7 +253,18 @@ export async function getBackupSummary(): Promise<BackupSummary> {
 /** Export a full CreatorOps backup JSON payload. */
 export async function exportFullBackup(): Promise<CreatorOpsBackup> {
   const data = await fetchAllBackupData()
-  return buildFullBackup(data)
+  const connectionRow = await prisma.youTubeConnection.findUnique({
+    where: { id: YOUTUBE_CONNECTION_ID },
+  })
+  return buildFullBackup(data, {
+    youtubeConnectionMetadata: connectionRow
+      ? youtubeConnectionToBackupMetadata(connectionRow)
+      : undefined,
+    securityNotes: [
+      "YouTube OAuth access and refresh tokens are not exported for security.",
+      "Reconnect YouTube after restoring a backup to resume API sync.",
+    ],
+  })
 }
 
 /** Export one module as a JSON-compatible array (matches per-module export). */
@@ -273,6 +297,8 @@ async function clearAllBackupTables(): Promise<void> {
   await prisma.asset.deleteMany()
   await prisma.qualityReview.deleteMany()
   await prisma.learning.deleteMany()
+  await prisma.externalLink.deleteMany()
+  await prisma.youTubeVideo.deleteMany()
   await prisma.workspaceSettings.deleteMany()
 }
 
@@ -351,6 +377,12 @@ async function importBackupData(
     if (result.imported === 0 && data.learnings.length > 0) {
       console.warn("[CreatorOps] Learnings import returned 0 items.")
     }
+  }
+  if (data.externalLinks.length > 0) {
+    await importExternalLinks(data.externalLinks as ExternalLinkRecord[])
+  }
+  if (data.youtubeVideos.length > 0) {
+    await importYouTubeVideoRecords(data.youtubeVideos as YouTubeVideoRecord[])
   }
   if (data.workspaceSettings.length > 0) {
     await importWorkspaceSettings(data.workspaceSettings as WorkspaceSettingsRecord[])

@@ -262,6 +262,11 @@ export function AnalyticsTracker() {
   }, [experiments, form.experimentId, experimentPrefillId])
 
   React.useEffect(() => {
+    if (!hydrated) return
+    void reloadAnalyticsRecords()
+  }, [hydrated, reloadAnalyticsRecords])
+
+  React.useEffect(() => {
     const recordId = searchParams.get("recordId")?.trim()
     if (!recordId) return
     const record = analyticsRecords.find((item) => item.id === recordId)

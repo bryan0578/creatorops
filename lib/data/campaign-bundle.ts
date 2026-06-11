@@ -27,6 +27,8 @@ import { normalizeSocialRepurposingRecord } from "@/lib/social-repurposing"
 import { normalizeWorkflowRun } from "@/lib/data/workflow-runs"
 import { normalizeYouTubePackage } from "@/lib/youtube-packaging"
 import { normalizeYouTubeThumbnailRecord } from "@/lib/youtube-thumbnails"
+import { normalizeExternalLinkRecord } from "@/lib/data/external-links"
+import { filterExternalLinksForCampaign } from "@/lib/data/external-links"
 import { extractPlaybookIdFromNotes } from "@/lib/playbooks"
 import { parseImportJsonText } from "@/lib/safe-json"
 import { createId } from "@/lib/storage"
@@ -46,6 +48,7 @@ import type {
   PromptRun,
   LearningRecord,
   QualityReviewRecord,
+  ExternalLinkRecord,
   ReleasePlan,
   SocialRepurposingRecord,
   WorkflowRun,
@@ -85,6 +88,7 @@ export interface CampaignBundleLinkedRecords {
   assets: AssetRecord[]
   qualityReviews: QualityReviewRecord[]
   learnings: LearningRecord[]
+  externalLinks: ExternalLinkRecord[]
 }
 
 export interface CampaignBundleRelationship {
@@ -139,6 +143,7 @@ export interface CampaignBundleSummaryCounts {
   assets: number
   qualityReviews: number
   learnings: number
+  externalLinks: number
 }
 
 export interface CampaignBundleConflict {
@@ -184,6 +189,7 @@ export interface CampaignBundleStore extends CampaignLinkableStoreSlice {
   assets: AssetRecord[]
   qualityReviews: QualityReviewRecord[]
   learnings: LearningRecord[]
+  externalLinks: ExternalLinkRecord[]
 }
 
 function norm(value: string | undefined | null): string {
@@ -215,6 +221,7 @@ export function emptyCampaignBundleLinkedRecords(): CampaignBundleLinkedRecords 
     assets: [],
     qualityReviews: [],
     learnings: [],
+    externalLinks: [],
   }
 }
 
@@ -240,6 +247,7 @@ export function countCampaignBundleLinkedRecords(
     assets: linked.assets.length,
     qualityReviews: linked.qualityReviews.length,
     learnings: linked.learnings.length,
+    externalLinks: linked.externalLinks.length,
   }
 }
 
@@ -262,7 +270,8 @@ export function totalLinkedBundleRecords(linked: CampaignBundleLinkedRecords): n
     counts.presets +
     counts.assets +
     counts.qualityReviews +
-    counts.learnings
+    counts.learnings +
+    counts.externalLinks
   )
 }
 
@@ -685,6 +694,18 @@ function collectCampaignScopedRecords(
       recordTitle: learning.title,
     })
   }
+
+  const campaignExternalLinks = filterExternalLinksForCampaign(
+    store.externalLinks ?? [],
+    campaign.id,
+    campaign.campaignName,
+  )
+  for (const link of campaignExternalLinks) {
+    collector.track("externalLinks", link, {
+      source: "campaign-field",
+      recordTitle: link.name,
+    })
+  }
 }
 
 /** Build a portable campaign bundle without mutating source records. */
@@ -841,6 +862,7 @@ export function parseCampaignBundleJson(
     "assets",
     "qualityReviews",
     "learnings",
+    "externalLinks",
   ]
 
   for (const key of arrayKeys) {
@@ -1202,6 +1224,11 @@ function buildImportPlan(
     bundle.linkedRecords.learnings,
     (r) => (r as LearningRecord).title,
   )
+  addItems(
+    "external-link",
+    bundle.linkedRecords.externalLinks,
+    (r) => (r as ExternalLinkRecord).name,
+  )
 
   return plan
 }
@@ -1270,6 +1297,8 @@ function prefixForRecordType(recordType: string): string {
       return "quality-review"
     case "learning":
       return "learning"
+    case "external-link":
+      return "extlink"
     default:
       return "record"
   }
@@ -1480,6 +1509,21 @@ export function remapCampaignBundleForImport(
         assetId: r.assetId ? remapId(idMap, r.assetId) : r.assetId,
         promptRunId: r.promptRunId ? remapId(idMap, r.promptRunId) : r.promptRunId,
         playbookId: r.playbookId ? remapId(idMap, r.playbookId) : r.playbookId,
+      }),
+    ),
+    externalLinks: bundle.linkedRecords.externalLinks.map((r) =>
+      normalizeExternalLinkRecord({
+        ...r,
+        id: remapId(idMap, r.id),
+        campaignId: newCampaignId,
+        campaignName,
+        sourceRecordId: r.sourceRecordId
+          ? remapId(idMap, r.sourceRecordId)
+          : r.sourceRecordId,
+        assetId: r.assetId ? remapId(idMap, r.assetId) : r.assetId,
+        analyticsRecordId: r.analyticsRecordId
+          ? remapId(idMap, r.analyticsRecordId)
+          : r.analyticsRecordId,
       }),
     ),
   }

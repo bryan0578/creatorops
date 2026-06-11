@@ -13,6 +13,7 @@ import type { DataHealthReport } from "@/lib/data/data-health"
 import { filterAssetsForCampaign } from "@/lib/assets"
 import { filterLearningsForCampaign } from "@/lib/learnings"
 import { filterQualityReviewsForCampaign } from "@/lib/quality-reviews"
+import { filterExternalLinksForCampaign } from "@/lib/data/external-links"
 import { normalizeStatusToStage } from "@/lib/data/campaign-board"
 import {
   generateDefaultPublishingChecklist,
@@ -22,7 +23,7 @@ import {
   isReadyToPublishCampaignStatus,
 } from "@/lib/data/publishing-checklist"
 import { extractPlaybookIdFromNotes } from "@/lib/playbooks"
-import type { CampaignLinkedRecordType, CampaignRecord, ExperimentRecord, AssetRecord, LearningRecord, PromptRun, QualityReviewRecord, WorkspaceSettingsRecord } from "@/lib/types"
+import type { CampaignLinkedRecordType, CampaignRecord, ExperimentRecord, AssetRecord, LearningRecord, PromptRun, QualityReviewRecord, WorkspaceSettingsRecord, ExternalLinkRecord } from "@/lib/types"
 
 export type AutomationPriority = "high" | "medium" | "low" | "info"
 
@@ -109,7 +110,10 @@ export interface AutomationEvaluationContext {
     assets: AssetRecord[]
     qualityReviews: QualityReviewRecord[]
     learnings: LearningRecord[]
+    externalLinks: ExternalLinkRecord[]
+    youtubeVideos: import("@/lib/types").YouTubeVideoRecord[]
   }
+  youtubeConnectionConnected: boolean
   dataHealth: DataHealthReport | null
   dataHealthFailed: boolean
   workspaceSettings: WorkspaceSettingsRecord | null
@@ -417,6 +421,46 @@ export const BUILTIN_AUTOMATION_RULES: BuiltinAutomationRule[] = [
     name: "Apply High-Impact Learning",
     description: "High-impact learnings exist that may apply to similar campaigns.",
     category: "Task Automation",
+    priority: "info",
+    enabled: true,
+  },
+  {
+    id: "external-missing-youtube-video",
+    name: "Published Campaign Missing YouTube Video Link",
+    description: "Published campaigns without a Published Video external link.",
+    category: "Missing Asset",
+    priority: "medium",
+    enabled: true,
+  },
+  {
+    id: "external-missing-google-drive",
+    name: "Campaign Missing Google Drive Folder",
+    description: "Campaigns with assets but no Google Drive folder link.",
+    category: "Missing Asset",
+    priority: "low",
+    enabled: true,
+  },
+  {
+    id: "external-missing-fourthwall",
+    name: "Fourthwall Listing Without Link",
+    description: "Campaigns with product listings but no Fourthwall external link.",
+    category: "Missing Asset",
+    priority: "medium",
+    enabled: true,
+  },
+  {
+    id: "external-missing-suno",
+    name: "Release Campaign Missing Suno Link",
+    description: "Music release campaigns without a Suno project or song link.",
+    category: "Missing Asset",
+    priority: "info",
+    enabled: true,
+  },
+  {
+    id: "external-youtube-without-csv",
+    name: "YouTube Video Without CSV Analytics",
+    description: "Published video links without a YouTube Analytics CSV import.",
+    category: "Analytics",
     priority: "info",
     enabled: true,
   },
@@ -1069,6 +1113,188 @@ function hasLearningForSource(
   )
 }
 
+function evaluateExternalIntegrations(
+  ctx: AutomationEvaluationContext,
+  suggestions: AutomationSuggestion[],
+) {
+  const links = ctx.store.externalLinks ?? []
+
+  for (const campaign of ctx.campaigns) {
+    const campaignLinks = filterExternalLinksForCampaign(
+      links,
+      campaign.id,
+      campaign.campaignName,
+    )
+    const integrationsHref = (params: Record<string, string>) =>
+      `/integrations?${new URLSearchParams({ campaignId: campaign.id, ...params }).toString()}`
+
+    if (isPublishedCampaignStatus(campaign.status)) {
+      const hasVideo = campaignLinks.some(
+        (link) => link.platform === "YouTube" && link.linkType === "Published Video",
+      )
+      if (!hasVideo) {
+        suggestions.push({
+          id: suggestionId(["external-missing-youtube-video", campaign.id]),
+          ruleId: "external-missing-youtube-video",
+          priority: "medium",
+          category: "Missing Asset",
+          title: "Add published YouTube video link",
+          description: `${campaign.campaignName || "Campaign"} is published but has no Published Video external link.`,
+          campaignId: campaign.id,
+          campaignName: campaign.campaignName,
+          suggestedActionLabel: "Add YouTube Video Link",
+          actionType: "navigate",
+          actionPayload: {
+            campaignId: campaign.id,
+            href: integrationsHref({
+              tab: "details",
+              platform: "YouTube",
+              linkType: "Published Video",
+            }),
+          },
+          href: integrationsHref({
+            tab: "details",
+            platform: "YouTube",
+            linkType: "Published Video",
+          }),
+          canApply: false,
+          reason: "Track the live YouTube URL for this campaign.",
+        })
+      }
+    }
+
+    const campaignAssets = filterAssetsForCampaign(
+      ctx.store.assets ?? [],
+      campaign.id,
+      campaign.campaignName,
+    )
+    const hasDrive = campaignLinks.some(
+      (link) =>
+        link.platform === "Google Drive" && link.linkType === "Google Drive Folder",
+    )
+    if (campaignAssets.length > 0 && !hasDrive) {
+      suggestions.push({
+        id: suggestionId(["external-missing-google-drive", campaign.id]),
+        ruleId: "external-missing-google-drive",
+        priority: "low",
+        category: "Missing Asset",
+        title: "Add Google Drive folder link",
+        description: `${campaign.campaignName || "Campaign"} has assets but no Google Drive folder link.`,
+        campaignId: campaign.id,
+        campaignName: campaign.campaignName,
+        suggestedActionLabel: "Add Google Drive Folder",
+        actionType: "navigate",
+        actionPayload: {
+          campaignId: campaign.id,
+          href: integrationsHref({
+            tab: "details",
+            platform: "Google Drive",
+            linkType: "Google Drive Folder",
+          }),
+        },
+        href: integrationsHref({
+          tab: "details",
+          platform: "Google Drive",
+          linkType: "Google Drive Folder",
+        }),
+        canApply: false,
+        reason: "Organize campaign asset folders in Google Drive.",
+      })
+    }
+
+    const hasProductListing = campaign.linkedRecords.some(
+      (link) => link.type === "product-listing",
+    )
+    const hasFourthwall = campaignLinks.some((link) => link.platform === "Fourthwall")
+    if (hasProductListing && !hasFourthwall) {
+      suggestions.push({
+        id: suggestionId(["external-missing-fourthwall", campaign.id]),
+        ruleId: "external-missing-fourthwall",
+        priority: "medium",
+        category: "Missing Asset",
+        title: "Add Fourthwall product link",
+        description: `${campaign.campaignName || "Campaign"} has a product listing but no Fourthwall link.`,
+        campaignId: campaign.id,
+        campaignName: campaign.campaignName,
+        suggestedActionLabel: "Add Fourthwall Product Link",
+        actionType: "navigate",
+        actionPayload: {
+          campaignId: campaign.id,
+          href: integrationsHref({
+            platform: "Fourthwall",
+            linkType: "Fourthwall Product",
+          }),
+        },
+        href: integrationsHref({
+          platform: "Fourthwall",
+          linkType: "Fourthwall Product",
+        }),
+        canApply: false,
+        reason: "Track the live Fourthwall product or store URL.",
+      })
+    }
+
+    if (isMusicLaunchCampaign(campaign) && !campaignLinks.some((link) => link.platform === "Suno")) {
+      suggestions.push({
+        id: suggestionId(["external-missing-suno", campaign.id]),
+        ruleId: "external-missing-suno",
+        priority: "info",
+        category: "Missing Asset",
+        title: "Add Suno project link",
+        description: `${campaign.campaignName || "Campaign"} is a music release without a Suno source link.`,
+        campaignId: campaign.id,
+        campaignName: campaign.campaignName,
+        suggestedActionLabel: "Add Suno Project Link",
+        actionType: "navigate",
+        actionPayload: {
+          campaignId: campaign.id,
+          href: integrationsHref({ platform: "Suno", linkType: "Suno Project" }),
+        },
+        href: integrationsHref({ platform: "Suno", linkType: "Suno Project" }),
+        canApply: false,
+        reason: "Track AI music source material for the release.",
+      })
+    }
+
+    const videoLink = campaignLinks.find(
+      (link) => link.platform === "YouTube" && link.linkType === "Published Video",
+    )
+    if (videoLink) {
+      const hasCsvLink = campaignLinks.some(
+        (link) => link.linkType === "YouTube Analytics CSV",
+      )
+      const hasImportedAnalytics = (ctx.store.analyticsRecords ?? []).some(
+        (record) =>
+          (record.relatedCampaign === campaign.campaignName ||
+            record.campaignName === campaign.campaignName) &&
+          record.platform === "YouTube" &&
+          record.notes?.toLowerCase().includes("youtube csv"),
+      )
+      if (!hasCsvLink && !hasImportedAnalytics) {
+        suggestions.push({
+          id: suggestionId(["external-youtube-without-csv", campaign.id]),
+          ruleId: "external-youtube-without-csv",
+          priority: "info",
+          category: "Analytics",
+          title: "Import YouTube analytics CSV",
+          description: `${campaign.campaignName || "Campaign"} has a published video link but no imported YouTube analytics CSV.`,
+          campaignId: campaign.id,
+          campaignName: campaign.campaignName,
+          suggestedActionLabel: "Import YouTube CSV",
+          actionType: "navigate",
+          actionPayload: {
+            campaignId: campaign.id,
+            href: integrationsHref({ tab: "youtube-csv" }),
+          },
+          href: integrationsHref({ tab: "youtube-csv" }),
+          canApply: false,
+          reason: "Import Studio analytics to track performance locally.",
+        })
+      }
+    }
+  }
+}
+
 function evaluateLearnings(ctx: AutomationEvaluationContext, suggestions: AutomationSuggestion[]) {
   const learnings = ctx.store.learnings ?? []
   const analytics = ctx.store.analyticsRecords ?? []
@@ -1515,6 +1741,76 @@ function evaluateAIGeneration(
   }
 }
 
+function evaluateYouTubeApiRules(ctx: AutomationEvaluationContext, suggestions: AutomationSuggestion[]) {
+  const videos = ctx.store.youtubeVideos ?? []
+
+  if (!ctx.youtubeConnectionConnected && videos.length > 0) {
+    suggestions.push({
+      id: suggestionId(["youtube-connection-disconnected"]),
+      ruleId: "youtube-connection-disconnected",
+      priority: "medium",
+      category: "Data Health",
+      title: "YouTube connection disconnected",
+      description: "Imported YouTube videos exist but the API connection is not active.",
+      suggestedActionLabel: "Reconnect YouTube",
+      actionType: "navigate",
+      actionPayload: { href: "/integrations?tab=youtube-api" },
+      href: "/integrations?tab=youtube-api",
+      canApply: false,
+      reason: "Reconnect to sync video stats.",
+    })
+  }
+
+  const weekMs = 7 * 24 * 60 * 60 * 1000
+  for (const video of videos) {
+    if (!video.analyticsRecordId) {
+      suggestions.push({
+        id: suggestionId(["youtube-video-missing-analytics", video.id]),
+        ruleId: "youtube-video-missing-analytics",
+        priority: "info",
+        category: "Analytics",
+        title: "Create analytics from YouTube video",
+        description: `"${video.title}" is imported but has no analytics record.`,
+        campaignId: video.campaignId,
+        campaignName: video.campaignName,
+        suggestedActionLabel: "Open YouTube Integration",
+        actionType: "navigate",
+        actionPayload: {
+          href: `/integrations?tab=youtube-api&videoId=${encodeURIComponent(video.id)}`,
+        },
+        href: `/integrations?tab=youtube-api&videoId=${encodeURIComponent(video.id)}`,
+        canApply: false,
+        reason: "Sync stats or create analytics record explicitly.",
+      })
+    }
+
+    if (
+      video.lastSyncedAt &&
+      Date.now() - video.lastSyncedAt > weekMs &&
+      video.campaignId
+    ) {
+      suggestions.push({
+        id: suggestionId(["youtube-video-stats-stale", video.id]),
+        ruleId: "youtube-video-stats-stale",
+        priority: "low",
+        category: "Analytics",
+        title: "YouTube video stats stale",
+        description: `"${video.title}" has not been synced in over 7 days.`,
+        campaignId: video.campaignId,
+        campaignName: video.campaignName,
+        suggestedActionLabel: "Sync YouTube Stats",
+        actionType: "navigate",
+        actionPayload: {
+          href: `/integrations?tab=youtube-api&campaignId=${encodeURIComponent(video.campaignId)}`,
+        },
+        href: `/integrations?tab=youtube-api&campaignId=${encodeURIComponent(video.campaignId)}`,
+        canApply: false,
+        reason: "Refresh views, likes, and comments from YouTube.",
+      })
+    }
+  }
+}
+
 const RULE_EVALUATORS: Array<(ctx: AutomationEvaluationContext, out: AutomationSuggestion[]) => void> = [
   evaluateMissingAssets,
   evaluateMissingAssetLibrary,
@@ -1530,6 +1826,8 @@ const RULE_EVALUATORS: Array<(ctx: AutomationEvaluationContext, out: AutomationS
   evaluateCampaignCopilot,
   evaluateExportBundle,
   evaluateQualityReviews,
+  evaluateExternalIntegrations,
+  evaluateYouTubeApiRules,
   evaluateLearnings,
   evaluateIncompleteCampaignFields,
   evaluatePrePublishChecklist,

@@ -2084,3 +2084,158 @@ export interface GetReusableLearningsInput {
   platform?: string
   limit?: number
 }
+
+export const EXTERNAL_LINK_PLATFORMS = [
+  "YouTube",
+  "YouTube Studio",
+  "Google Drive",
+  "Fourthwall",
+  "Suno",
+  "Spotify",
+  "Apple Music",
+  "Amazon Music",
+  "TikTok",
+  "Instagram",
+  "X",
+  "Website",
+  "Notion",
+  "Canva",
+  "Midjourney",
+  "ChatGPT",
+  "Claude",
+  "Other",
+] as const
+
+export type ExternalLinkPlatform = (typeof EXTERNAL_LINK_PLATFORMS)[number]
+
+export const EXTERNAL_LINK_TYPES = [
+  "Published Video",
+  "YouTube Studio Analytics",
+  "YouTube Analytics CSV",
+  "Google Drive Folder",
+  "Google Drive File",
+  "Asset Source",
+  "Thumbnail File",
+  "Video File",
+  "Audio File",
+  "Suno Song",
+  "Suno Project",
+  "Fourthwall Product",
+  "Fourthwall Collection",
+  "Fourthwall Store",
+  "Streaming Link",
+  "Social Post",
+  "Reference",
+  "Other",
+] as const
+
+export type ExternalLinkType = (typeof EXTERNAL_LINK_TYPES)[number]
+
+export const EXTERNAL_LINK_STATUSES = [
+  "Active",
+  "Draft",
+  "Archived",
+  "Broken",
+  "Needs Review",
+] as const
+
+export type ExternalLinkStatus = (typeof EXTERNAL_LINK_STATUSES)[number]
+
+export interface ExternalLinkRecord {
+  id: string
+  name: string
+  platform: ExternalLinkPlatform | string
+  linkType: ExternalLinkType | string
+  url: string
+  status: ExternalLinkStatus | string
+  campaignId: string
+  campaignName: string
+  artistName: string
+  songTitle: string
+  productName: string
+  sourceRecordType: string
+  sourceRecordId: string
+  assetId: string
+  analyticsRecordId: string
+  notes: string
+  tags: string[]
+  createdAt: number
+  updatedAt: number
+}
+
+export const YOUTUBE_CONNECTION_STATUSES = [
+  "Connected",
+  "ConnectedNeedsChannel",
+  "ConnectedNeedsReconnect",
+  "ChannelIdSaved",
+  "Disconnected",
+  "Expired",
+  "Error",
+] as const
+
+export type YouTubeConnectionStatus = (typeof YOUTUBE_CONNECTION_STATUSES)[number]
+
+export interface YouTubeConnectionRecord {
+  id: string
+  accountEmail: string
+  channelId: string
+  channelTitle: string
+  channelHandle: string
+  channelUrl: string
+  thumbnailUrl: string
+  scopes: string[]
+  status: YouTubeConnectionStatus | string
+  lastSyncedAt: number | null
+  notes: string
+  createdAt: number
+  updatedAt: number
+  hasRefreshToken: boolean
+  tokenExpiry: number | null
+  envConfigured: boolean
+  encryptionConfigured: boolean
+}
+
+export interface YouTubeVideoRecord {
+  id: string
+  youtubeVideoId: string
+  title: string
+  description: string
+  channelId: string
+  channelTitle: string
+  publishedAt: number | null
+  thumbnailUrl: string
+  videoUrl: string
+  duration: string
+  privacyStatus: string
+  campaignId: string
+  campaignName: string
+  artistName: string
+  songTitle: string
+  externalLinkId: string
+  analyticsRecordId: string
+  rawJson: string
+  lastSyncedAt: number | null
+  notes: string
+  createdAt: number
+  updatedAt: number
+  viewCount?: number
+  likeCount?: number
+  commentCount?: number
+}
+
+export interface YouTubeConnectionStatusSummary {
+  configured: boolean
+  encryptionConfigured: boolean
+  /** Channel fully resolved — can fetch videos and sync stats. */
+  connected: boolean
+  /** OAuth tokens stored or channel ID saved locally. */
+  oauthConnected: boolean
+  needsChannelSelection: boolean
+  needsOAuthReconnect: boolean
+  apiKeyConfigured: boolean
+  connection: YouTubeConnectionRecord | null
+  clientIdConfigured: boolean
+  clientSecretConfigured: boolean
+  redirectUri: string
+  message?: string
+}

@@ -36,6 +36,11 @@ export const DEMO_IDS = {
   qualityReviewThumbnail: `${DEMO_ID_PREFIX}prettywise-quality-thumbnail`,
   learningThumbnailText: `${DEMO_ID_PREFIX}prettywise-learning-thumbnail-text`,
   learningVisualStyle: `${DEMO_ID_PREFIX}prettywise-learning-visual-style`,
+  extLinkYoutube: `${DEMO_ID_PREFIX}prettywise-extlink-youtube`,
+  extLinkDrive: `${DEMO_ID_PREFIX}prettywise-extlink-drive`,
+  extLinkSuno: `${DEMO_ID_PREFIX}prettywise-extlink-suno`,
+  extLinkFourthwall: `${DEMO_ID_PREFIX}prettywise-extlink-fourthwall`,
+  youtubeVideo: `${DEMO_ID_PREFIX}prettywise-youtube-video`,
 } as const
 
 export function isDemoDataNotes(notes: string | null | undefined): boolean {

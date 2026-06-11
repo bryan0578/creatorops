@@ -16,6 +16,7 @@ import {
   ImagePlus,
   Library,
   Lightbulb,
+  Link2,
   ListChecks,
   Loader2,
   Mail,
@@ -67,6 +68,7 @@ const ACTIVITY_ICONS: Record<ActivityType, LucideIcon> = {
   asset: FolderOpen,
   "quality-review": ClipboardCheck,
   learning: Lightbulb,
+  "external-link": Link2,
 }
 
 function formatActivityTime(ts: number) {

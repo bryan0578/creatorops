@@ -57,6 +57,7 @@ const TYPE_OPTIONS: { value: ActivityType | "all"; label: string }[] = [
   { value: "asset", label: "Assets" },
   { value: "quality-review", label: "Quality Reviews" },
   { value: "learning", label: "Learnings" },
+  { value: "external-link", label: "External Links" },
 ]
 
 export function ActivityPage() {

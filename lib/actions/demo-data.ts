@@ -7,6 +7,7 @@ import { createAsset, deleteAsset } from "@/lib/actions/assets"
 import { createLearning, deleteLearning } from "@/lib/actions/learnings"
 import { createQualityReview, deleteQualityReview } from "@/lib/actions/quality-reviews"
 import { createExperiment, deleteExperiment } from "@/lib/actions/experiments"
+import { createExternalLink, deleteExternalLink } from "@/lib/actions/external-links"
 import { deleteArtistById, upsertArtist } from "@/lib/actions/artists"
 import { deleteCampaignById, upsertCampaign } from "@/lib/actions/campaigns"
 import {
@@ -43,6 +44,9 @@ import {
   isDemoRecord,
 } from "@/lib/demo-data/constants"
 import { buildPrettyWiseDemoRecords } from "@/lib/demo-data/prettywise-records"
+import { buildPrettyWiseDemoExternalLinks } from "@/lib/demo-data/external-links"
+import { buildPrettyWiseDemoYouTubeVideo } from "@/lib/demo-data/youtube-videos"
+import { importYouTubeVideoRecords } from "@/lib/actions/youtube-integration"
 import { prisma } from "@/lib/prisma"
 
 const REVALIDATE_PATHS = [
@@ -66,6 +70,7 @@ const REVALIDATE_PATHS = [
   "/quality",
   "/learnings",
   "/activity",
+  "/integrations",
 ]
 
 export type DemoDataStatus = {
@@ -237,6 +242,11 @@ export async function seedDemoData(): Promise<{
       DEMO_IDS.qualityReviewThumbnail,
       DEMO_IDS.learningThumbnailText,
       DEMO_IDS.learningVisualStyle,
+      DEMO_IDS.extLinkYoutube,
+      DEMO_IDS.extLinkDrive,
+      DEMO_IDS.extLinkSuno,
+      DEMO_IDS.extLinkFourthwall,
+      DEMO_IDS.youtubeVideo,
     ]
 
     for (const id of demoIds) {
@@ -277,6 +287,10 @@ export async function seedDemoData(): Promise<{
     for (const learning of demo.learnings) {
       await createLearning(learning)
     }
+    for (const link of buildPrettyWiseDemoExternalLinks()) {
+      await createExternalLink(link)
+    }
+    await importYouTubeVideoRecords([buildPrettyWiseDemoYouTubeVideo()])
 
     revalidateDemoRoutes()
 
@@ -337,6 +351,8 @@ export async function deleteDemoData(): Promise<{
       assetRows,
       qualityReviewRows,
       learningRows,
+      externalLinkRows,
+      youtubeVideoRows,
     ] = await Promise.all([
       prisma.releasePlan.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
       prisma.youTubePackage.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
@@ -355,10 +371,16 @@ export async function deleteDemoData(): Promise<{
         where: { reviewerNotes: { contains: DEMO_DATA_MARKER } },
       }),
       prisma.learning.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
+      prisma.externalLink.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
+      prisma.youTubeVideo.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
     ])
 
     await deleteMarked(learningRows, async (id) => {
       await deleteLearning(id)
+    })
+    await deleteMarked(externalLinkRows, deleteExternalLink)
+    await deleteMarked(youtubeVideoRows, async (id) => {
+      await prisma.youTubeVideo.delete({ where: { id } })
     })
     await deleteMarked(qualityReviewRows, async (id) => {
       await deleteQualityReview(id)

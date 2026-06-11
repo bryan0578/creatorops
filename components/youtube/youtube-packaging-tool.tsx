@@ -63,6 +63,7 @@ import {
   PromptPreviewBlock,
   RECENT_RECORDS_CARD_CLASS,
 } from "@/components/module/form-layout"
+import { IntegrationLinkButton } from "@/components/integrations/integration-link-button"
 import {
   Card,
   CardContent,
@@ -967,6 +968,19 @@ export function YouTubePackagingTool() {
                         Response
                       </Button>
                     ) : null}
+                    <IntegrationLinkButton
+                      label="YouTube Link"
+                      campaignId={campaignPrefill.campaignId}
+                      sourceRecordType="YouTubePackage"
+                      sourceRecordId={normalized.id}
+                      platform="YouTube"
+                      linkType="Published Video"
+                    />
+                    <IntegrationLinkButton
+                      label="Import CSV"
+                      campaignId={campaignPrefill.campaignId}
+                      tab="youtube-csv"
+                    />
                     {normalized.finalCommunityPost.trim() ? (
                       <Button
                         type="button"
@@ -1062,7 +1076,7 @@ export function YouTubePackagingTool() {
               ) : null}
             </div>
           ) : null}
-          <DialogFooter>
+          <DialogFooter className="flex-wrap gap-2">
             <Button
               type="button"
               variant="outline"
@@ -1070,6 +1084,23 @@ export function YouTubePackagingTool() {
             >
               Close
             </Button>
+            {viewingPackage ? (
+              <>
+                <IntegrationLinkButton
+                  label="Add Published YouTube Link"
+                  campaignId={campaignPrefill.campaignId}
+                  sourceRecordType="YouTubePackage"
+                  sourceRecordId={viewingPackage.id}
+                  platform="YouTube"
+                  linkType="Published Video"
+                />
+                <IntegrationLinkButton
+                  label="Import YouTube Analytics CSV"
+                  campaignId={campaignPrefill.campaignId}
+                  tab="youtube-csv"
+                />
+              </>
+            ) : null}
             {viewingPackage?.finalCommunityPost.trim() ? (
               <Button
                 type="button"

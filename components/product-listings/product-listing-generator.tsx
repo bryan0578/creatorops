@@ -61,6 +61,7 @@ import {
   PromptPreviewBlock,
   RECENT_RECORDS_CARD_CLASS,
 } from "@/components/module/form-layout"
+import { IntegrationLinkButton } from "@/components/integrations/integration-link-button"
 import {
   Card,
   CardContent,
@@ -932,6 +933,14 @@ export function ProductListingGenerator() {
                       >
                         Open
                       </Button>
+                      <IntegrationLinkButton
+                        label="Fourthwall Link"
+                        campaignId={campaignPrefill.campaignId}
+                        sourceRecordType="ProductListing"
+                        sourceRecordId={normalized.id}
+                        platform="Fourthwall"
+                        linkType="Fourthwall Product"
+                      />
                       <Button
                         type="button"
                         variant="ghost"

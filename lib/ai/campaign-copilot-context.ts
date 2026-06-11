@@ -7,6 +7,10 @@ import {
 } from "@/lib/data/automation-rules"
 import type { DataHealthIssue, DataHealthReport } from "@/lib/data/data-health"
 import { filterQualityReviewsForCampaign } from "@/lib/quality-reviews"
+import {
+  filterExternalLinksForCampaign,
+  groupExternalLinksByPlatform,
+} from "@/lib/data/external-links"
 import { extractPlaybookIdFromNotes } from "@/lib/playbooks"
 import { isAIGenerationTemplate } from "@/lib/ai-templates/utils"
 import { getCampaignPromptRuns } from "@/lib/prompt-run-linking"
@@ -19,6 +23,7 @@ import type {
   Prompt,
   PromptRun,
   QualityReviewRecord,
+  ExternalLinkRecord,
   WorkspaceSettingsRecord,
 } from "@/lib/types"
 
@@ -107,6 +112,17 @@ export interface CampaignCopilotStructuredContext {
   playbookName: string | null
   aiTemplateCount: number
   launchData: LaunchDashboardData
+  externalLinksByPlatform: Record<string, Array<{ name: string; linkType: string; url: string }>>
+  missingExternalLinks: string[]
+  importedYouTubeAnalyticsSummary: string
+  youtubeVideos: Array<{
+    title: string
+    viewCount: number
+    likeCount: number
+    commentCount: number
+    lastSyncedAt: number | null
+    videoUrl: string
+  }>
 }
 
 function isOverdueTask(task: CampaignTask): boolean {
@@ -200,6 +216,8 @@ export interface BuildCampaignCopilotContextInput {
   automationReport: AutomationReport | null
   prompts: Prompt[]
   playbooks: PlaybookRecord[]
+  externalLinks: ExternalLinkRecord[]
+  youtubeVideos: import("@/lib/types").YouTubeVideoRecord[]
 }
 
 export function buildCampaignCopilotStructuredContext(
@@ -256,6 +274,69 @@ export function buildCampaignCopilotStructuredContext(
     .map((asset) => ({ key: asset.key, label: asset.label, title: asset.title }))
 
   const linkedTypes = [...new Set(campaign.linkedRecords.map((record) => record.type))]
+
+  const campaignExternalLinks = filterExternalLinksForCampaign(
+    input.externalLinks,
+    campaign.id,
+    campaign.campaignName,
+  )
+  const groupedExternalLinks = groupExternalLinksByPlatform(campaignExternalLinks)
+  const externalLinksByPlatform: CampaignCopilotStructuredContext["externalLinksByPlatform"] = {}
+  for (const [platform, links] of groupedExternalLinks.entries()) {
+    externalLinksByPlatform[platform] = links.map((link) => ({
+      name: link.name,
+      linkType: link.linkType,
+      url: link.url,
+    }))
+  }
+  const missingExternalLinks: string[] = []
+  if (
+    !campaignExternalLinks.some(
+      (link) => link.platform === "YouTube" && link.linkType === "Published Video",
+    )
+  ) {
+    missingExternalLinks.push("Published YouTube video link")
+  }
+  if (
+    !campaignExternalLinks.some(
+      (link) =>
+        link.platform === "Google Drive" && link.linkType === "Google Drive Folder",
+    )
+  ) {
+    missingExternalLinks.push("Google Drive folder link")
+  }
+  if (
+    Boolean(input.bundle.productListing) &&
+    !campaignExternalLinks.some((link) => link.platform === "Fourthwall")
+  ) {
+    missingExternalLinks.push("Fourthwall product link")
+  }
+  if (
+    Boolean(input.bundle.releasePlan) &&
+    !campaignExternalLinks.some((link) => link.platform === "Suno")
+  ) {
+    missingExternalLinks.push("Suno project/song link")
+  }
+  const youtubeAnalytics = campaignExternalLinks
+    .filter((link) => link.linkType === "YouTube Analytics CSV")
+    .map((link) => link.name)
+  const importedYouTubeAnalyticsSummary =
+    input.bundle.analyticsRecord &&
+    input.bundle.analyticsRecord.platform === "YouTube"
+      ? [
+          input.bundle.analyticsRecord.itemName,
+          input.bundle.analyticsRecord.views
+            ? `${input.bundle.analyticsRecord.views} views`
+            : "",
+          input.bundle.analyticsRecord.notes?.includes("YouTube CSV")
+            ? "Imported from YouTube CSV"
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : youtubeAnalytics.length > 0
+        ? `CSV links: ${youtubeAnalytics.join(", ")}`
+        : ""
 
   return {
     campaignId: campaign.id,
@@ -320,6 +401,17 @@ export function buildCampaignCopilotStructuredContext(
     playbookName: playbook?.name ?? null,
     aiTemplateCount: input.prompts.filter(isAIGenerationTemplate).length,
     launchData,
+    externalLinksByPlatform,
+    missingExternalLinks,
+    importedYouTubeAnalyticsSummary,
+    youtubeVideos: input.youtubeVideos.map((video) => ({
+      title: video.title,
+      viewCount: video.viewCount ?? 0,
+      likeCount: video.likeCount ?? 0,
+      commentCount: video.commentCount ?? 0,
+      lastSyncedAt: video.lastSyncedAt,
+      videoUrl: video.videoUrl,
+    })),
   }
 }
 
@@ -464,6 +556,54 @@ function formatCampaignCopilotMarkdown(
 
   if (ctx.analyticsSummary) {
     lines.push("", "## Analytics", ctx.analyticsSummary)
+  }
+
+  if (Object.keys(ctx.externalLinksByPlatform).length > 0) {
+    lines.push("", "## External links")
+    for (const [platform, links] of Object.entries(ctx.externalLinksByPlatform)) {
+      lines.push(`- ${platform}: ${links.length} link(s)`)
+      for (const link of links.slice(0, 4)) {
+        lines.push(`  - ${link.name || link.linkType} (${link.linkType})`)
+      }
+    }
+  } else {
+    lines.push("", "## External links", "- None linked to this campaign")
+  }
+
+  if (ctx.missingExternalLinks.length > 0) {
+    lines.push("", "## Missing external links")
+    for (const item of ctx.missingExternalLinks) {
+      lines.push(`- ${item}`)
+    }
+    lines.push(
+      "",
+      "Suggested actions:",
+      "- Add Published YouTube Link",
+      "- Import YouTube CSV",
+      "- Add Google Drive folder",
+      "- Add Fourthwall product link",
+      "- Add Suno project link",
+    )
+  }
+
+  if (ctx.importedYouTubeAnalyticsSummary) {
+    lines.push("", "## Imported YouTube analytics", ctx.importedYouTubeAnalyticsSummary)
+  }
+
+  if (ctx.youtubeVideos.length > 0) {
+    lines.push("", "## YouTube API videos")
+    for (const video of ctx.youtubeVideos) {
+      lines.push(
+        `- ${video.title}: ${video.viewCount.toLocaleString()} views, ${video.likeCount.toLocaleString()} likes, ${video.commentCount.toLocaleString()} comments (last synced ${video.lastSyncedAt ? new Date(video.lastSyncedAt).toLocaleDateString() : "never"})`,
+      )
+    }
+    lines.push(
+      "",
+      "Suggested actions:",
+      "- Sync stats",
+      "- Create learning from YouTube analytics",
+      "- Run quality review if performance is weak",
+    )
   }
 
   if (ctx.dataHealthWarnings.length > 0) {

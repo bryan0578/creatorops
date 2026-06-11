@@ -6,9 +6,11 @@ import { getAssets } from "@/lib/actions/assets"
 import { getLearnings } from "@/lib/actions/learnings"
 import { getQualityReviews } from "@/lib/actions/quality-reviews"
 import { getCampaigns } from "@/lib/actions/campaigns"
+import { getExternalLinks } from "@/lib/actions/external-links"
 import { assetToPrismaCreate } from "@/lib/data/assets"
 import { learningToPrismaCreate } from "@/lib/data/learnings"
 import { qualityReviewToPrismaCreate } from "@/lib/data/quality-reviews"
+import { externalLinkToPrismaCreate } from "@/lib/data/external-links"
 import {
   analyticsRecordToPrismaCreate,
 } from "@/lib/data/analytics-records"
@@ -57,7 +59,7 @@ import { youtubePackageToPrismaCreate } from "@/lib/data/youtube-packages"
 import { prismaYouTubeThumbnailToRecord } from "@/lib/data/youtube-thumbnails"
 import { youtubeThumbnailToPrismaCreate } from "@/lib/data/youtube-thumbnails"
 import { prisma } from "@/lib/prisma"
-import type { AssetRecord, CampaignRecord, LearningRecord, QualityReviewRecord } from "@/lib/types"
+import type { AssetRecord, CampaignRecord, ExternalLinkRecord, LearningRecord, QualityReviewRecord } from "@/lib/types"
 
 const REVALIDATE_PATHS = [
   "/",
@@ -83,6 +85,7 @@ const REVALIDATE_PATHS = [
   "/assets",
   "/quality",
   "/learnings",
+  "/integrations",
   "/data-health",
 ]
 
@@ -95,7 +98,7 @@ function revalidateBundleRoutes() {
 async function loadCampaignBundleStore(): Promise<
   CampaignBundleStore & { campaigns: CampaignRecord[] }
 > {
-  const [linkable, experiments, promptRuns, workflowRuns, presets, assets, qualityReviews, learnings, campaigns] =
+  const [linkable, experiments, promptRuns, workflowRuns, presets, assets, qualityReviews, learnings, externalLinks, campaigns] =
     await Promise.all([
       loadCampaignLinkableStoreSlice(),
       prisma.experiment.findMany({ orderBy: { updatedAt: "desc" } }),
@@ -105,6 +108,7 @@ async function loadCampaignBundleStore(): Promise<
       getAssets(),
       getQualityReviews(),
       getLearnings(),
+      getExternalLinks(),
       getCampaigns(),
     ])
 
@@ -115,6 +119,7 @@ async function loadCampaignBundleStore(): Promise<
     assets,
     qualityReviews,
     learnings,
+    externalLinks,
     runs: promptRuns.map(prismaPromptRunToPromptRun),
     workflowRuns: workflowRuns.map(prismaWorkflowRunToWorkflowRun),
     campaigns,
@@ -182,6 +187,7 @@ export async function previewCampaignBundleImportAction(
         assets: 0,
         qualityReviews: 0,
         learnings: 0,
+        externalLinks: 0,
       },
       conflicts: [],
       warnings: [],
@@ -393,6 +399,17 @@ export async function importCampaignBundle(
         (record) =>
           tx.learning.create({
             data: learningToPrismaCreate(record as LearningRecord),
+          }),
+      )
+      await createPairedRecords(
+        tx,
+        bundle.linkedRecords.externalLinks ?? [],
+        remapped.linkedRecords.externalLinks ?? [],
+        "external-link",
+        preview,
+        (record) =>
+          tx.externalLink.create({
+            data: externalLinkToPrismaCreate(record as ExternalLinkRecord),
           }),
       )
 

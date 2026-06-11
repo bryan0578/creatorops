@@ -37,6 +37,8 @@ export type GlobalSearchResultType =
   | "asset"
   | "quality-review"
   | "learning"
+  | "external-link"
+  | "youtube-video"
 
 export interface GlobalSearchResult {
   id: string
@@ -167,6 +169,16 @@ export const GLOBAL_SEARCH_TYPE_META: Record<
     category: "operations",
     href: "/learnings",
   },
+  "external-link": {
+    typeLabel: "External Link",
+    category: "operations",
+    href: "/integrations",
+  },
+  "youtube-video": {
+    typeLabel: "YouTube Video",
+    category: "youtube",
+    href: "/integrations",
+  },
 }
 
 export function normalizeSearchQuery(raw: string): string {
@@ -223,6 +235,8 @@ const GLOBAL_SEARCH_RECORD_ID_TYPES = new Set<GlobalSearchResultType>([
   "playbook",
   "quality-review",
   "learning",
+  "external-link",
+  "youtube-video",
 ])
 
 export function buildResultHref(
@@ -271,6 +285,13 @@ export function buildResultHref(
   if (type === "workflow") {
     return {
       href: `${base}?recordId=${encodeURIComponent(id)}`,
+      directOpen: true,
+    }
+  }
+
+  if (type === "youtube-video") {
+    return {
+      href: `${base}?tab=youtube-api&videoId=${encodeURIComponent(id)}`,
       directOpen: true,
     }
   }

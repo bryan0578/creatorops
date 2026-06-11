@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache"
 
 import { resolveProviderStatus } from "@/lib/ai/ai-client"
 import { getAssets } from "@/lib/actions/assets"
+import { getExternalLinks } from "@/lib/actions/external-links"
+import { getYouTubeVideos, getYouTubeConnectionStatus } from "@/lib/actions/youtube-integration"
 import { getLearnings } from "@/lib/actions/learnings"
 import { getQualityReviews } from "@/lib/actions/quality-reviews"
 import { getCampaigns, upsertCampaign } from "@/lib/actions/campaigns"
@@ -21,7 +23,7 @@ import {
 import { loadCampaignLinkableStoreSlice } from "@/lib/data/campaign-linkable-store"
 import { generateDefaultPublishingChecklist } from "@/lib/data/publishing-checklist"
 import { createId } from "@/lib/storage"
-import type { CampaignTask } from "@/lib/types"
+import type { CampaignTask, YouTubeConnectionStatusSummary } from "@/lib/types"
 import { getWorkspaceSettings } from "@/lib/actions/workspace-settings"
 
 const REVALIDATE_PATHS = [
@@ -43,6 +45,34 @@ function revalidateAutomationRoutes() {
   }
 }
 
+const EMPTY_YOUTUBE_CONNECTION_STATUS: YouTubeConnectionStatusSummary = {
+  configured: false,
+  encryptionConfigured: false,
+  connected: false,
+  oauthConnected: false,
+  needsChannelSelection: false,
+  needsOAuthReconnect: false,
+  apiKeyConfigured: false,
+  connection: null,
+  clientIdConfigured: false,
+  clientSecretConfigured: false,
+  redirectUri: "",
+}
+
+async function safeLoad<T>(label: string, loader: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await loader()
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn(
+        `[Automation] Failed to load ${label}:`,
+        error instanceof Error ? error.message : String(error),
+      )
+    }
+    return fallback
+  }
+}
+
 async function loadAutomationContext() {
   const [
     campaigns,
@@ -52,6 +82,9 @@ async function loadAutomationContext() {
     assets,
     qualityReviews,
     learnings,
+    externalLinks,
+    youtubeConnection,
+    youtubeVideos,
     dataHealth,
     workspaceSettings,
   ] = await Promise.all([
@@ -62,6 +95,13 @@ async function loadAutomationContext() {
     getAssets(),
     getQualityReviews(),
     getLearnings(),
+    safeLoad("externalLinks", () => getExternalLinks(), []),
+    safeLoad(
+      "youtubeConnection",
+      () => getYouTubeConnectionStatus(),
+      EMPTY_YOUTUBE_CONNECTION_STATUS,
+    ),
+    safeLoad("youtubeVideos", () => getYouTubeVideos(), []),
     getDataHealthReport().catch(() => null),
     getWorkspaceSettings(),
   ])
@@ -74,7 +114,17 @@ async function loadAutomationContext() {
 
   return {
     campaigns,
-    store: { ...store, experiments, runs, assets, qualityReviews, learnings },
+    store: {
+      ...store,
+      experiments,
+      runs,
+      assets,
+      qualityReviews,
+      learnings,
+      externalLinks,
+      youtubeVideos,
+    },
+    youtubeConnectionConnected: youtubeConnection.oauthConnected,
     dataHealth,
     dataHealthFailed: dataHealth === null,
     workspaceSettings,
@@ -91,6 +141,7 @@ export async function getAutomationReport(options?: {
     {
       campaigns: ctx.campaigns,
       store: ctx.store,
+      youtubeConnectionConnected: ctx.youtubeConnectionConnected,
       dataHealth: ctx.dataHealth,
       dataHealthFailed: ctx.dataHealthFailed,
       workspaceSettings: ctx.workspaceSettings,

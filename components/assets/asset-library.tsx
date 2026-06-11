@@ -60,6 +60,7 @@ import {
   ModuleWorkflowTabs,
   RECENT_RECORDS_CARD_CLASS,
 } from "@/components/module/form-layout"
+import { IntegrationLinkButton } from "@/components/integrations/integration-link-button"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -828,6 +829,79 @@ export function AssetLibrary() {
               <Button type="button" onClick={() => void handleSave()} disabled={saving}>
                 Save Source &amp; Links
               </Button>
+            </CardContent>
+          </Card>
+
+          <Card className={RECENT_RECORDS_CARD_CLASS}>
+            <CardHeader>
+              <CardTitle className="text-base">External links</CardTitle>
+              <CardDescription>
+                Track Google Drive, Canva, Midjourney, Suno, and other source URLs for this
+                asset.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              {form.id ? (
+                <>
+                  <IntegrationLinkButton
+                    label="Google Drive File"
+                    assetId={form.id}
+                    campaignId={form.campaignId}
+                    sourceRecordType="Asset"
+                    sourceRecordId={form.id}
+                    platform="Google Drive"
+                    linkType="Google Drive File"
+                  />
+                  <IntegrationLinkButton
+                    label="Google Drive Folder"
+                    assetId={form.id}
+                    campaignId={form.campaignId}
+                    sourceRecordType="Asset"
+                    sourceRecordId={form.id}
+                    platform="Google Drive"
+                    linkType="Google Drive Folder"
+                  />
+                  <IntegrationLinkButton
+                    label="Canva Link"
+                    assetId={form.id}
+                    campaignId={form.campaignId}
+                    sourceRecordType="Asset"
+                    sourceRecordId={form.id}
+                    platform="Canva"
+                    linkType="Reference"
+                  />
+                  <IntegrationLinkButton
+                    label="Midjourney Link"
+                    assetId={form.id}
+                    campaignId={form.campaignId}
+                    sourceRecordType="Asset"
+                    sourceRecordId={form.id}
+                    platform="Midjourney"
+                    linkType="Reference"
+                  />
+                  <IntegrationLinkButton
+                    label="Suno Link"
+                    assetId={form.id}
+                    campaignId={form.campaignId}
+                    sourceRecordType="Asset"
+                    sourceRecordId={form.id}
+                    platform="Suno"
+                    linkType="Suno Song"
+                  />
+                  <IntegrationLinkButton
+                    label="Other Source Link"
+                    assetId={form.id}
+                    campaignId={form.campaignId}
+                    sourceRecordType="Asset"
+                    sourceRecordId={form.id}
+                    linkType="Asset Source"
+                  />
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Save this asset first to add external links.
+                </p>
+              )}
             </CardContent>
           </Card>
         </ModuleTabPanel>

@@ -368,6 +368,23 @@ async function fetchLearningActivities() {
   )
 }
 
+async function fetchExternalLinkActivities() {
+  const rows = await prisma.externalLink.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: RECENT_ACTIVITY_PER_MODULE,
+  })
+  return rows.map((row) =>
+    buildActivityItem({
+      id: row.id,
+      type: "external-link",
+      title: row.name || "External link",
+      subtitle: [row.platform, row.linkType, row.campaignName].filter(Boolean).join(" · "),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }),
+  )
+}
+
 /** Load recent activity across all major CreatorOps modules. */
 export async function getRecentActivity(
   limit = RECENT_ACTIVITY_LIMIT,
@@ -394,6 +411,7 @@ export async function getRecentActivity(
     fetchAssetActivities(),
     fetchQualityReviewActivities(),
     fetchLearningActivities(),
+    fetchExternalLinkActivities(),
   ])
 
   return mergeAndLimitActivities(batches.flat(), limit)

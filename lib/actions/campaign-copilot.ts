@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache"
 import { getAutomationReport } from "@/lib/actions/automation-rules"
 import { getCampaigns, upsertCampaign } from "@/lib/actions/campaigns"
 import { getDataHealthReport } from "@/lib/actions/data-health"
+import { getExternalLinks } from "@/lib/actions/external-links"
+import { getYouTubeVideosForCampaign } from "@/lib/actions/youtube-integration"
 import { getExperiments } from "@/lib/actions/experiments"
 import { getLearnings } from "@/lib/actions/learnings"
 import { saveLinkedPromptRun } from "@/lib/actions/linked-prompt-runs"
@@ -101,6 +103,8 @@ export async function getCampaignCopilotContext(campaignId: string): Promise<{
     automationReport,
     prompts,
     playbooks,
+    externalLinks,
+    youtubeVideos,
   ] = await Promise.all([
     loadCampaignRecord(campaignId),
     loadCampaignLinkableStoreSlice(),
@@ -113,6 +117,8 @@ export async function getCampaignCopilotContext(campaignId: string): Promise<{
     getAutomationReport({ campaignId }).catch(() => null),
     getPrompts(),
     getPlaybooks(),
+    getExternalLinks(),
+    getYouTubeVideosForCampaign(campaignId),
   ])
 
   return buildCampaignCopilotContextFromRecords(
@@ -129,6 +135,8 @@ export async function getCampaignCopilotContext(campaignId: string): Promise<{
       automationReport,
       prompts,
       playbooks,
+      externalLinks,
+      youtubeVideos,
     },
   )
 }

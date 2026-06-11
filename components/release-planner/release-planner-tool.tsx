@@ -60,6 +60,7 @@ import {
   PromptPreviewBlock,
   RECENT_RECORDS_CARD_CLASS,
 } from "@/components/module/form-layout"
+import { IntegrationLinkButton } from "@/components/integrations/integration-link-button"
 import {
   Card,
   CardContent,
@@ -987,6 +988,21 @@ export function ReleasePlannerTool() {
                       >
                         Open
                       </Button>
+                      <IntegrationLinkButton
+                        label="Suno Link"
+                        campaignId={campaignPrefill.campaignId}
+                        sourceRecordType="ReleasePlan"
+                        sourceRecordId={normalized.id}
+                        platform="Suno"
+                        linkType="Suno Project"
+                      />
+                      <IntegrationLinkButton
+                        label="Streaming Link"
+                        campaignId={campaignPrefill.campaignId}
+                        sourceRecordType="ReleasePlan"
+                        sourceRecordId={normalized.id}
+                        linkType="Streaming Link"
+                      />
                       <Button
                         type="button"
                         variant="ghost"

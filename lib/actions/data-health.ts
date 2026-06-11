@@ -36,6 +36,11 @@ import { prismaWorkflowToWorkflow } from "@/lib/data/workflows"
 import { prismaWorkspaceSettingsToRecord } from "@/lib/data/workspace-settings"
 import { prismaYouTubePackageToYouTubePackage } from "@/lib/data/youtube-packages"
 import { prismaYouTubeThumbnailToRecord } from "@/lib/data/youtube-thumbnails"
+import { prismaExternalLinkToRecord } from "@/lib/data/external-links"
+import {
+  getYouTubeConnectionStatus,
+  getYouTubeVideos,
+} from "@/lib/actions/youtube-integration"
 import { prisma } from "@/lib/prisma"
 import { WORKSPACE_SETTINGS_ID } from "@/lib/workspace-settings"
 import type { CampaignLinkedRecordType } from "@/lib/types"
@@ -269,6 +274,9 @@ async function loadScanInput(): Promise<{
     assets,
     qualityReviews,
     learnings,
+    externalLinks,
+    youtubeConnection,
+    youtubeVideos,
     jsonFields,
   ] = await Promise.all([
     safeLoad(
@@ -486,6 +494,22 @@ async function loadScanInput(): Promise<{
       loadIssues,
       [],
     ),
+    safeLoad(
+      "External links",
+      async () => {
+        const rows = await prisma.externalLink.findMany({ orderBy: { updatedAt: "desc" } })
+        return rows.map(prismaExternalLinkToRecord)
+      },
+      loadIssues,
+      [],
+    ),
+    safeLoad(
+      "YouTube connection",
+      async () => getYouTubeConnectionStatus(),
+      loadIssues,
+      null,
+    ),
+    safeLoad("YouTube videos", async () => getYouTubeVideos(), loadIssues, []),
     safeLoad("JSON fields", loadJsonFields, loadIssues, []),
   ])
 
@@ -513,6 +537,9 @@ async function loadScanInput(): Promise<{
       assets,
       qualityReviews,
       learnings,
+      externalLinks,
+      youtubeVideos,
+      youtubeConnection,
       jsonFields,
       aiProviderConfigured: workspaceSettings
         ? resolveProviderStatus({

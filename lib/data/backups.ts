@@ -27,6 +27,8 @@ export type BackupDataKey =
   | "assets"
   | "qualityReviews"
   | "learnings"
+  | "externalLinks"
+  | "youtubeVideos"
   | "workspaceSettings"
 
 export type BackupImportMode = "merge" | "replace"
@@ -53,6 +55,8 @@ export interface BackupRecordCounts {
   assets: number
   qualityReviews: number
   learnings: number
+  externalLinks: number
+  youtubeVideos: number
   workspaceSettings: number
 }
 
@@ -78,6 +82,8 @@ export interface CreatorOpsBackupData {
   assets: unknown[]
   qualityReviews: unknown[]
   learnings: unknown[]
+  externalLinks: unknown[]
+  youtubeVideos: unknown[]
   workspaceSettings: unknown[]
 }
 
@@ -87,6 +93,9 @@ export interface CreatorOpsBackup {
   exportedAt: string
   recordCounts: BackupRecordCounts
   data: CreatorOpsBackupData
+  /** Non-secret YouTube connection metadata — OAuth tokens are never exported */
+  youtubeConnectionMetadata?: unknown
+  securityNotes?: string[]
 }
 
 export interface BackupModuleMeta {
@@ -129,6 +138,18 @@ export const BACKUP_MODULE_META: BackupModuleMeta[] = [
     category: "operations",
   },
   {
+    key: "externalLinks",
+    label: "External Links",
+    exportFilename: "creatorops-external-links.json",
+    category: "operations",
+  },
+  {
+    key: "youtubeVideos",
+    label: "YouTube Videos",
+    exportFilename: "creatorops-youtube-videos.json",
+    category: "youtube",
+  },
+  {
     key: "workspaceSettings",
     label: "Workspace Settings",
     exportFilename: "creatorops-workspace-settings.json",
@@ -161,6 +182,8 @@ export function emptyBackupData(): CreatorOpsBackupData {
     assets: [],
     qualityReviews: [],
     learnings: [],
+    externalLinks: [],
+    youtubeVideos: [],
     workspaceSettings: [],
   }
 }
@@ -188,6 +211,8 @@ export function countBackupData(data: CreatorOpsBackupData): BackupRecordCounts 
     assets: data.assets.length,
     qualityReviews: data.qualityReviews.length,
     learnings: data.learnings.length,
+    externalLinks: data.externalLinks.length,
+    youtubeVideos: data.youtubeVideos.length,
     workspaceSettings: data.workspaceSettings.length,
   }
 }
@@ -247,7 +272,10 @@ export function validateFullBackup(payload: unknown): payload is CreatorOpsBacku
   return true
 }
 
-export function buildFullBackup(data: CreatorOpsBackupData): CreatorOpsBackup {
+export function buildFullBackup(
+  data: CreatorOpsBackupData,
+  extras?: Pick<CreatorOpsBackup, "youtubeConnectionMetadata" | "securityNotes">,
+): CreatorOpsBackup {
   const recordCounts = countBackupData(data)
   return {
     appName: BACKUP_APP_NAME,
@@ -255,6 +283,8 @@ export function buildFullBackup(data: CreatorOpsBackupData): CreatorOpsBackup {
     exportedAt: new Date().toISOString(),
     recordCounts,
     data,
+    youtubeConnectionMetadata: extras?.youtubeConnectionMetadata,
+    securityNotes: extras?.securityNotes,
   }
 }
 

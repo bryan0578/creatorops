@@ -36,6 +36,7 @@ import {
   ClipboardCheck,
   type LucideIcon,
   LayoutGrid,
+  Link2,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -121,6 +122,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { title: "Campaigns", href: "/campaigns", icon: Megaphone },
       { title: "Campaign Copilot", href: "/copilot", icon: Sparkles },
+      { title: "Integrations", href: "/integrations", icon: Link2 },
       { title: "Campaign Board", href: "/campaign-board", icon: LayoutGrid },
       { title: "Tasks", href: "/tasks", icon: ListChecks },
       { title: "Calendar", href: "/calendar", icon: CalendarDays },

@@ -880,3 +880,98 @@ model WorkspaceSettings {
   createdAt             DateTime
   updatedAt             DateTime
 }
+
+/// External platform links — YouTube, Google Drive, Fourthwall, Suno, etc.
+model ExternalLink {
+  id                String   @id
+  name              String
+  platform          String
+  linkType          String
+  url               String
+  status            String   @default("Active")
+  campaignId        String   @default("")
+  campaignName      String   @default("")
+  artistName        String   @default("")
+  songTitle         String   @default("")
+  productName       String   @default("")
+  sourceRecordType  String   @default("")
+  sourceRecordId    String   @default("")
+  assetId           String   @default("")
+  analyticsRecordId String   @default("")
+  notes             String   @default("")
+  /// JSON string[]
+  tags              String   @default("[]")
+  createdAt         DateTime
+  updatedAt         DateTime
+
+  @@index([name])
+  @@index([platform])
+  @@index([linkType])
+  @@index([campaignId])
+  @@index([campaignName])
+  @@index([sourceRecordType])
+  @@index([sourceRecordId])
+  @@index([assetId])
+  @@index([analyticsRecordId])
+  @@index([updatedAt])
+}
+
+/// Local YouTube OAuth connection — tokens encrypted; never exported in backups.
+model YouTubeConnection {
+  id                    String    @id
+  accountEmail          String    @default("")
+  channelId             String    @default("")
+  channelTitle          String    @default("")
+  channelHandle         String    @default("")
+  channelUrl            String    @default("")
+  thumbnailUrl          String    @default("")
+  /// JSON string[]
+  scopes                String    @default("[]")
+  accessTokenEncrypted  String?
+  refreshTokenEncrypted String?
+  tokenType             String    @default("")
+  expiryDate            DateTime?
+  status                String    @default("Disconnected")
+  lastSyncedAt          DateTime?
+  notes                 String    @default("")
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@index([channelId])
+  @@index([status])
+  @@index([updatedAt])
+}
+
+/// Imported YouTube video metadata and sync state.
+model YouTubeVideo {
+  id                String    @id
+  youtubeVideoId    String    @unique
+  title             String
+  description       String    @default("")
+  channelId         String    @default("")
+  channelTitle      String    @default("")
+  publishedAt       DateTime?
+  thumbnailUrl      String    @default("")
+  videoUrl          String    @default("")
+  duration          String    @default("")
+  privacyStatus     String    @default("")
+  campaignId        String    @default("")
+  campaignName      String    @default("")
+  artistName        String    @default("")
+  songTitle         String    @default("")
+  externalLinkId    String    @default("")
+  analyticsRecordId String    @default("")
+  /// Latest API payload including statistics
+  rawJson           String    @default("{}")
+  lastSyncedAt      DateTime?
+  notes             String    @default("")
+  createdAt         DateTime
+  updatedAt         DateTime
+
+  @@index([youtubeVideoId])
+  @@index([channelId])
+  @@index([campaignId])
+  @@index([campaignName])
+  @@index([publishedAt])
+  @@index([updatedAt])
+}

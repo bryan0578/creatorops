@@ -16,6 +16,8 @@ import {
   isPublishedCampaignStatus,
   isReadyToPublishCampaignStatus,
 } from "@/lib/data/publishing-checklist"
+import { isValidExternalUrl } from "@/lib/data/external-links"
+import { filterAssetsForCampaign } from "@/lib/assets"
 import {
   buildMissingAssetRepair,
   buildRemoveBrokenLinkRepair,
@@ -44,6 +46,7 @@ import type {
   Prompt,
   PromptRun,
   LearningRecord,
+  ExternalLinkRecord,
   QualityReviewRecord,
   ReleasePlan,
   SocialRepurposingRecord,
@@ -51,6 +54,8 @@ import type {
   WorkflowRun,
   YouTubePackage,
   YouTubeThumbnailRecord,
+  YouTubeVideoRecord,
+  YouTubeConnectionStatusSummary,
   WorkspaceSettingsRecord,
 } from "@/lib/types"
 
@@ -144,6 +149,9 @@ export interface DataHealthScanInput {
   assets: AssetRecord[]
   qualityReviews: QualityReviewRecord[]
   learnings: LearningRecord[]
+  externalLinks: ExternalLinkRecord[]
+  youtubeVideos: YouTubeVideoRecord[]
+  youtubeConnection: YouTubeConnectionStatusSummary | null
   jsonFields: DataHealthJsonField[]
   /** Server-resolved: preferred AI provider has API key configured. */
   aiProviderConfigured?: boolean
@@ -1546,6 +1554,7 @@ export function countScannableRecords(input: DataHealthScanInput): number {
     input.assets.length +
     input.qualityReviews.length +
     input.learnings.length +
+    input.externalLinks.length +
     (input.workspaceSettings ? 1 : 0)
   )
 }
@@ -2173,6 +2182,422 @@ export function scanLearningWarnings(
   return issues
 }
 
+function externalLinkSourceExists(
+  input: DataHealthScanInput,
+  type: string,
+  id: string,
+): boolean {
+  const normalized = normalizeSourceRecordType(type)
+  if (!id.trim()) return false
+  switch (normalized) {
+    case "youtube-package":
+      return input.youtubePackages.some((record) => record.id === id)
+    case "youtube-thumbnail":
+      return input.youtubeThumbnails.some((record) => record.id === id)
+    case "release-plan":
+      return input.releasePlans.some((record) => record.id === id)
+    case "social-repurposing":
+      return input.socialRepurposing.some((record) => record.id === id)
+    case "email-campaign":
+      return input.emailCampaigns.some((record) => record.id === id)
+    case "merch-idea":
+      return input.merchIdeas.some((record) => record.id === id)
+    case "product-listing":
+      return input.productListings.some((record) => record.id === id)
+    case "mockup-prompt":
+      return input.mockupPrompts.some((record) => record.id === id)
+    case "prompt-run":
+      return input.promptRuns.some((record) => record.id === id)
+    case "experiment":
+      return input.experiments.some((record) => record.id === id)
+    case "asset":
+      return input.assets.some((record) => record.id === id)
+    case "analytics":
+      return input.analyticsRecords.some((record) => record.id === id)
+    case "youtubevideo":
+    case "YouTubeVideo":
+      return input.youtubeVideos.some((record) => record.id === id)
+    default:
+      return false
+  }
+}
+
+export function scanExternalLinkWarnings(
+  input: DataHealthScanInput,
+  sets: RecordIdSets,
+  issues: DataHealthIssue[],
+): void {
+  for (const link of input.externalLinks) {
+    const title = link.name || link.url || link.id
+    const href = `/integrations?recordId=${encodeURIComponent(link.id)}`
+
+    if (!hasText(link.name)) {
+      pushIssue(issues, {
+        id: issueId(["external-link", link.id, "missing-name"]),
+        severity: "warning",
+        category: "incomplete-records",
+        title: "External link missing name",
+        description: `External link ${link.id} has no display name.`,
+        sourceType: "external-link",
+        sourceId: link.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Add a descriptive name in Integrations.",
+      })
+    }
+
+    if (!hasText(link.platform)) {
+      pushIssue(issues, {
+        id: issueId(["external-link", link.id, "missing-platform"]),
+        severity: "warning",
+        category: "incomplete-records",
+        title: "External link missing platform",
+        description: `"${title}" has no platform selected.`,
+        sourceType: "external-link",
+        sourceId: link.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Choose a platform in Integrations.",
+      })
+    }
+
+    if (!hasText(link.url)) {
+      pushIssue(issues, {
+        id: issueId(["external-link", link.id, "missing-url"]),
+        severity: "warning",
+        category: "incomplete-records",
+        title: "External link missing URL",
+        description: `"${title}" has no URL.`,
+        sourceType: "external-link",
+        sourceId: link.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Paste the external URL in Integrations.",
+      })
+    } else if (!isValidExternalUrl(link.url)) {
+      pushIssue(issues, {
+        id: issueId(["external-link", link.id, "invalid-url"]),
+        severity: "warning",
+        category: "data-issues",
+        title: "External link URL format invalid",
+        description: `"${title}" URL does not look like a valid http(s) link.`,
+        sourceType: "external-link",
+        sourceId: link.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Fix the URL format in Integrations.",
+      })
+    }
+
+    if (link.campaignId && !recordExists(sets, "campaign", link.campaignId)) {
+      pushIssue(issues, {
+        id: issueId(["external-link", link.id, "missing-campaign"]),
+        severity: "warning",
+        category: "broken-links",
+        title: "External link references missing campaign",
+        description: `"${title}" is linked to campaign ${link.campaignId}, which was not found.`,
+        sourceType: "external-link",
+        sourceId: link.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Clear or update the campaign link in Integrations.",
+      })
+    }
+
+    if (
+      link.sourceRecordType &&
+      link.sourceRecordId &&
+      !externalLinkSourceExists(input, link.sourceRecordType, link.sourceRecordId)
+    ) {
+      pushIssue(issues, {
+        id: issueId(["external-link", link.id, "missing-source"]),
+        severity: "warning",
+        category: "broken-links",
+        title: "External link references missing source record",
+        description: `"${title}" references ${link.sourceRecordType} ${link.sourceRecordId}, which was not found.`,
+        sourceType: "external-link",
+        sourceId: link.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Update the source record link in Integrations.",
+      })
+    }
+
+    if (link.status === "Broken") {
+      pushIssue(issues, {
+        id: issueId(["external-link", link.id, "broken-status"]),
+        severity: "warning",
+        category: "data-issues",
+        title: "External link marked broken",
+        description: `"${title}" is marked Broken.`,
+        sourceType: "external-link",
+        sourceId: link.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Verify the URL and update status in Integrations.",
+      })
+    }
+  }
+
+  for (const campaign of input.campaigns) {
+    if (!isPublishedCampaignStatus(campaign.status)) continue
+    const campaignLinks = input.externalLinks.filter(
+      (link) =>
+        link.campaignId === campaign.id ||
+        (link.campaignName &&
+          link.campaignName.trim().toLowerCase() ===
+            campaign.campaignName.trim().toLowerCase()),
+    )
+    const hasPublishedVideo = campaignLinks.some(
+      (link) => link.platform === "YouTube" && link.linkType === "Published Video",
+    )
+    const hasImportedYouTubeVideo = input.youtubeVideos.some(
+      (video) =>
+        video.campaignId === campaign.id ||
+        (video.campaignName &&
+          video.campaignName.trim().toLowerCase() ===
+            campaign.campaignName.trim().toLowerCase()),
+    )
+    if (!hasPublishedVideo && !hasImportedYouTubeVideo) {
+      pushIssue(issues, {
+        id: issueId(["campaign", campaign.id, "missing-youtube-video-link"]),
+        severity: "warning",
+        category: "missing-assets",
+        title: "Published campaign missing YouTube video link",
+        description: `"${campaign.campaignName}" is published but has no Published Video link or imported YouTube API video.`,
+        sourceType: "campaign",
+        sourceId: campaign.id,
+        sourceTitle: campaign.campaignName,
+        href: `/integrations?tab=youtube-api&campaignId=${encodeURIComponent(campaign.id)}`,
+        suggestedAction:
+          "Import from YouTube API, add a Published Video link, or use CSV import in Integrations.",
+      })
+    }
+
+    const hasCsvYouTubeLink = campaignLinks.some(
+      (link) =>
+        link.platform === "YouTube" &&
+        link.linkType === "Published Video" &&
+        /csv/i.test(link.notes ?? ""),
+    )
+    if (
+      hasCsvYouTubeLink &&
+      !hasImportedYouTubeVideo &&
+      input.youtubeConnection &&
+      !input.youtubeConnection.oauthConnected
+    ) {
+      pushIssue(issues, {
+        id: issueId(["campaign", campaign.id, "youtube-csv-without-api"]),
+        severity: "info",
+        category: "data-issues",
+        title: "YouTube CSV data without API connection",
+        description: `"${campaign.campaignName}" has CSV-imported YouTube data but YouTube API is not connected.`,
+        sourceType: "campaign",
+        sourceId: campaign.id,
+        sourceTitle: campaign.campaignName,
+        href: `/integrations?tab=youtube-api&campaignId=${encodeURIComponent(campaign.id)}`,
+        suggestedAction: "Connect YouTube API to sync live video stats.",
+      })
+    }
+
+    const campaignAssets = filterAssetsForCampaign(
+      input.assets,
+      campaign.id,
+      campaign.campaignName,
+    )
+    if (campaignAssets.length === 0) continue
+    const hasSourceLink = campaignLinks.some(
+      (link) =>
+        link.platform === "Google Drive" ||
+        link.linkType === "Asset Source" ||
+        link.linkType === "Google Drive File" ||
+        link.linkType === "Google Drive Folder",
+    )
+    if (!hasSourceLink) {
+      pushIssue(issues, {
+        id: issueId(["campaign", campaign.id, "missing-drive-source-link"]),
+        severity: "info",
+        category: "missing-assets",
+        title: "Campaign assets without Google Drive/source link",
+        description: `"${campaign.campaignName}" has assets but no Google Drive or asset source external link.`,
+        sourceType: "campaign",
+        sourceId: campaign.id,
+        sourceTitle: campaign.campaignName,
+        href: `/integrations?campaignId=${encodeURIComponent(campaign.id)}&platform=${encodeURIComponent("Google Drive")}`,
+        suggestedAction: "Add a Google Drive folder or asset source link in Integrations.",
+      })
+    }
+  }
+}
+
+function scanYouTubeApiWarnings(
+  input: DataHealthScanInput,
+  sets: RecordIdSets,
+  issues: DataHealthIssue[],
+): void {
+  const connection = input.youtubeConnection
+  const videos = input.youtubeVideos ?? []
+  const featureUsed =
+    videos.length > 0 ||
+    (connection?.connection?.channelId?.trim().length ?? 0) > 0 ||
+    connection?.oauthConnected === true
+
+  if (connection?.needsChannelSelection) {
+    pushIssue(issues, {
+      id: issueId(["youtube-needs-channel"]),
+      severity: "warning",
+      category: "data-issues",
+      title: "YouTube OAuth connected but channel ID missing",
+      description:
+        "Google OAuth succeeded but no YouTube channel was returned. This can happen with Brand Accounts.",
+      sourceType: "integration",
+      sourceId: "youtube-api",
+      sourceTitle: "YouTube API",
+      href: "/integrations?tab=youtube-api",
+      suggestedAction: "Enter your channel ID manually or reconnect and select the correct Brand Account.",
+    })
+  }
+
+  if (connection?.connection?.status === "ChannelIdSaved") {
+    pushIssue(issues, {
+      id: issueId(["youtube-channel-id-unvalidated"]),
+      severity: "warning",
+      category: "data-issues",
+      title: "YouTube channel ID saved but not validated",
+      description:
+        "A channel ID was saved locally but could not be validated via OAuth or API key.",
+      sourceType: "integration",
+      sourceId: "youtube-api",
+      sourceTitle: "YouTube API",
+      href: "/integrations?tab=youtube-api",
+      suggestedAction: "Add YOUTUBE_API_KEY or reconnect YouTube, then save the channel ID again.",
+    })
+  }
+
+  if (featureUsed && connection && !connection.configured) {
+    pushIssue(issues, {
+      id: issueId(["youtube-env-missing"]),
+      severity: "warning",
+      category: "data-issues",
+      title: "YouTube API credentials missing",
+      description:
+        "YouTube integration is in use but YOUTUBE_CLIENT_ID or YOUTUBE_CLIENT_SECRET is not configured.",
+      sourceType: "integration",
+      sourceId: "youtube-api",
+      sourceTitle: "YouTube API",
+      href: "/integrations?tab=settings",
+      suggestedAction: "Add YouTube OAuth env vars to .env.local and restart the dev server.",
+    })
+  }
+
+  if (
+    connection &&
+    featureUsed &&
+    !connection.oauthConnected &&
+    !connection.needsChannelSelection
+  ) {
+    const status = connection.connection?.status ?? "Disconnected"
+    pushIssue(issues, {
+      id: issueId(["youtube-connection-inactive"]),
+      severity: "warning",
+      category: "data-issues",
+      title: "YouTube connection inactive",
+      description: `YouTube integration status is "${status}". Reconnect to sync video stats.`,
+      sourceType: "integration",
+      sourceId: "youtube-api",
+      sourceTitle: connection.connection?.channelTitle || "YouTube",
+      href: "/integrations?tab=youtube-api",
+      suggestedAction: "Reconnect your YouTube channel in Integrations.",
+    })
+  }
+
+  if (
+    connection?.connection?.tokenExpiry &&
+    connection.connection.tokenExpiry < Date.now() &&
+    connection.oauthConnected
+  ) {
+    pushIssue(issues, {
+      id: issueId(["youtube-token-expired"]),
+      severity: "warning",
+      category: "data-issues",
+      title: "YouTube access token expired",
+      description: "The stored YouTube token has expired. Sync may fail until reconnected or refreshed.",
+      sourceType: "integration",
+      sourceId: "youtube-api",
+      sourceTitle: connection.connection.channelTitle || "YouTube",
+      href: "/integrations?tab=youtube-api",
+      suggestedAction: "Reconnect YouTube or refresh the connection.",
+    })
+  }
+
+  const weekMs = 7 * 24 * 60 * 60 * 1000
+
+  for (const video of videos) {
+    const href = `/integrations?tab=youtube-api&videoId=${encodeURIComponent(video.id)}`
+    const title = video.title || video.youtubeVideoId
+
+    if (!video.externalLinkId) {
+      pushIssue(issues, {
+        id: issueId(["youtube-video", video.id, "missing-external-link"]),
+        severity: "warning",
+        category: "incomplete-records",
+        title: "Imported YouTube video missing external link",
+        description: `"${title}" was imported but has no linked ExternalLink record.`,
+        sourceType: "youtube-video",
+        sourceId: video.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Create an external link from the YouTube API tab.",
+      })
+    }
+
+    if (!video.analyticsRecordId) {
+      pushIssue(issues, {
+        id: issueId(["youtube-video", video.id, "missing-analytics"]),
+        severity: "info",
+        category: "incomplete-records",
+        title: "Imported YouTube video missing analytics record",
+        description: `"${title}" has no linked Analytics record.`,
+        sourceType: "youtube-video",
+        sourceId: video.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Sync stats or create an analytics record explicitly.",
+      })
+    }
+
+    if (video.campaignId && !recordExists(sets, "campaign", video.campaignId)) {
+      pushIssue(issues, {
+        id: issueId(["youtube-video", video.id, "missing-campaign"]),
+        severity: "warning",
+        category: "broken-links",
+        title: "YouTube video linked to missing campaign",
+        description: `"${title}" references campaign ${video.campaignId}, which was not found.`,
+        sourceType: "youtube-video",
+        sourceId: video.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Relink the video to an existing campaign or clear the link.",
+      })
+    }
+
+    if (video.lastSyncedAt && Date.now() - video.lastSyncedAt > weekMs) {
+      pushIssue(issues, {
+        id: issueId(["youtube-video", video.id, "stats-stale"]),
+        severity: "info",
+        category: "data-issues",
+        title: "YouTube video stats not synced recently",
+        description: `"${title}" has not been synced in over 7 days.`,
+        sourceType: "youtube-video",
+        sourceId: video.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Sync YouTube stats from Integrations.",
+      })
+    }
+  }
+}
+
 export function buildDataHealthReport(
   input: DataHealthScanInput,
   preflightIssues: DataHealthIssue[] = [],
@@ -2215,6 +2640,12 @@ export function buildDataHealthReport(
   safeScan("Playbooks", issues, () => scanPlaybookWarnings(input, sets, issues))
   safeScan("Quality reviews", issues, () => scanQualityReviewWarnings(input, sets, issues))
   safeScan("Learnings", issues, () => scanLearningWarnings(input, sets, issues))
+  safeScan("External links", issues, () =>
+    scanExternalLinkWarnings(input, sets, issues),
+  )
+  safeScan("YouTube API", issues, () =>
+    scanYouTubeApiWarnings(input, sets, issues),
+  )
   safeScan("JSON / data issues", issues, () => scanJsonIssues(input, issues))
 
   return {
