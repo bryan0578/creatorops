@@ -10,6 +10,7 @@ import {
   Loader2,
   Plus,
   ScanSearch,
+  Scale,
   Search,
   Trash2,
   Upload,
@@ -536,6 +537,10 @@ export function LearningLibraryPage() {
             <Link href="/patterns" className={buttonVariants({ variant: "outline", size: "sm" })}>
               <ScanSearch className="size-4" />
               Pattern Detection
+            </Link>
+            <Link href="/quality-performance" className={buttonVariants({ variant: "outline", size: "sm" })}>
+              <Scale className="size-4" />
+              Quality vs Performance
             </Link>
             <Button type="button" variant="outline" size="sm" onClick={handleExportJson}>
               <Download className="size-4" />

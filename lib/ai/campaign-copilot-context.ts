@@ -177,6 +177,18 @@ export interface CampaignCopilotStructuredContext {
     earlySignal: boolean
     score: number
   }>
+  qualityPerformanceInsights: Array<{
+    title: string
+    insightType: string
+    confidence: string
+    sampleSize: number
+    qualityScore?: number
+    performanceMetric?: string
+    performanceValue?: number
+    summary: string
+    recommendation: string
+    earlySignal: boolean
+  }>
 }
 
 function isOverdueTask(task: CampaignTask): boolean {
@@ -277,6 +289,7 @@ export interface BuildCampaignCopilotContextInput {
   assets: import("@/lib/types").AssetRecord[]
   patternInsights?: import("@/lib/patterns/types").DetectedPattern[]
   globalPatternInsights?: import("@/lib/patterns/types").DetectedPattern[]
+  qualityPerformanceInsights?: import("@/lib/quality-performance/types").QualityPerformanceInsight[]
 }
 
 export function buildCampaignCopilotStructuredContext(
@@ -613,6 +626,18 @@ export function buildCampaignCopilotStructuredContext(
       earlySignal: Boolean(pattern.earlySignal),
       score: pattern.score,
     })),
+    qualityPerformanceInsights: (input.qualityPerformanceInsights ?? []).slice(0, 8).map((insight) => ({
+      title: insight.title,
+      insightType: insight.insightType,
+      confidence: insight.confidence,
+      sampleSize: insight.sampleSize,
+      qualityScore: insight.qualityScore,
+      performanceMetric: insight.performanceMetric,
+      performanceValue: insight.performanceValue,
+      summary: insight.summary,
+      recommendation: insight.recommendation,
+      earlySignal: Boolean(insight.earlySignal),
+    })),
   }
 }
 
@@ -885,6 +910,27 @@ function formatCampaignCopilotMarkdown(
         `- [${pattern.confidence}] ${pattern.title}${signal}: ${pattern.summary}`,
       )
     }
+  }
+
+  if (ctx.qualityPerformanceInsights.length > 0) {
+    lines.push("", "## Quality vs performance insights")
+    for (const insight of ctx.qualityPerformanceInsights) {
+      const signal =
+        insight.earlySignal || insight.sampleSize < 3
+          ? " (early signal — small sample)"
+          : ""
+      const perf =
+        insight.performanceMetric && insight.performanceValue !== undefined
+          ? ` ${insight.performanceMetric}=${insight.performanceValue}`
+          : ""
+      lines.push(
+        `- [${insight.confidence}/n=${insight.sampleSize}] ${insight.title}${signal}: ${insight.summary}${perf}. Recommendation: ${insight.recommendation}`,
+      )
+    }
+    lines.push(
+      "",
+      "Use 'associated with' language unless sample size is 5+ with a clear metric gap. High quality + low performance may indicate distribution/timing issues.",
+    )
   }
 
   if (ctx.dataHealthWarnings.length > 0) {

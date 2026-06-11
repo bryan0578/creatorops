@@ -13,6 +13,7 @@ import {
 import { getAssets } from "@/lib/actions/assets"
 import { getYouTubeVideosForCampaign } from "@/lib/actions/youtube-integration"
 import { detectPatterns } from "@/lib/actions/patterns"
+import { analyzeQualityPerformance } from "@/lib/actions/quality-performance"
 import { getExperiments } from "@/lib/actions/experiments"
 import { getLearnings } from "@/lib/actions/learnings"
 import { saveLinkedPromptRun } from "@/lib/actions/linked-prompt-runs"
@@ -116,6 +117,7 @@ export async function getCampaignCopilotContext(campaignId: string): Promise<{
     assets,
     patternInsights,
     globalPatternInsights,
+    qualityPerformanceResult,
   ] = await Promise.all([
     loadCampaignRecord(campaignId),
     loadCampaignLinkableStoreSlice(),
@@ -135,6 +137,21 @@ export async function getCampaignCopilotContext(campaignId: string): Promise<{
     getAssets(),
     detectPatterns({ campaignId, limit: 8 }).then((r) => r.patterns).catch(() => []),
     detectPatterns({ limit: 5 }).then((r) => r.patterns).catch(() => []),
+    analyzeQualityPerformance({ campaignId, limit: 8 }).catch(() => ({
+      insights: [],
+      matchedPairs: [],
+      scannedAt: 0,
+      summary: {
+        matchedRecords: 0,
+        averageQualityScore: 0,
+        averagePerformance: 0,
+        highConfidence: 0,
+        earlySignals: 0,
+        outliers: 0,
+        learningGaps: 0,
+        experimentOpportunities: 0,
+      },
+    })),
   ])
 
   return buildCampaignCopilotContextFromRecords(
@@ -158,6 +175,7 @@ export async function getCampaignCopilotContext(campaignId: string): Promise<{
       assets,
       patternInsights,
       globalPatternInsights,
+      qualityPerformanceInsights: qualityPerformanceResult.insights,
     },
   )
 }

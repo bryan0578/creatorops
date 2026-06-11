@@ -16,6 +16,7 @@ import {
 } from "@/lib/video-prefill"
 import { AssetLinkSuggestionsPanel } from "@/components/asset-linking/asset-link-suggestions-panel"
 import { PatternInsightsPanel } from "@/components/patterns/pattern-insights-panel"
+import { QualityPerformancePanel } from "@/components/quality-performance/quality-performance-panel"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -271,6 +272,15 @@ export function VideoDetailSheet({
                 compact
                 title="Pattern Insights"
                 description="Title, thumbnail, learning gap, and experiment signals for this video."
+              />
+
+              <QualityPerformancePanel
+                youtubeVideoId={video.id}
+                campaignId={video.campaignId || undefined}
+                limit={3}
+                compact
+                title="Quality vs Performance"
+                description="Quality review scores compared to video and analytics performance."
               />
 
               <details className="rounded-md border border-border/60 p-3 text-xs">

@@ -11,6 +11,7 @@ import {
   Search,
   Sparkles,
   ScanSearch,
+  Scale,
   Trash2,
   Upload,
   Wand2,
@@ -61,6 +62,7 @@ import { createId, useStore } from "@/lib/store"
 import type { QualityCriterionScore, QualityReviewFormValues, QualityReviewRecord } from "@/lib/types"
 import { ModulePageHeader } from "@/components/app-shell"
 import { CreateLearningButton } from "@/components/learnings/learning-action-link"
+import { QualityPerformancePanel } from "@/components/quality-performance/quality-performance-panel"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { EmptyState } from "@/components/empty-state"
 import {
@@ -586,6 +588,17 @@ export function QualityReviewPage() {
               <ScanSearch className="size-4" />
               Detect Quality Patterns
             </Link>
+            <Link
+              href={
+                recordId
+                  ? `/quality-performance?qualityReviewId=${encodeURIComponent(recordId)}`
+                  : "/quality-performance"
+              }
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <Scale className="size-4" />
+              Analyze Performance
+            </Link>
             <Button type="button" variant="outline" size="sm" onClick={handleExportJson}>
               <Download className="size-4" />
               Export JSON
@@ -645,6 +658,10 @@ export function QualityReviewPage() {
 
       {campaignPrefill.campaign ? (
         <CampaignPrefillBanner campaign={campaignPrefill.campaign} />
+      ) : null}
+
+      {recordId ? (
+        <QualityPerformancePanel qualityReviewId={recordId} limit={2} compact />
       ) : null}
 
       <ModuleWorkflowTabs tabs={QUALITY_TABS} value={activeTab} onValueChange={setActiveTab}>

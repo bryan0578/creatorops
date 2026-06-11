@@ -10,6 +10,7 @@ import {
   Lightbulb,
   Loader2,
   RefreshCw,
+  Scale,
   ScanSearch,
   Video,
 } from "lucide-react"
@@ -206,6 +207,10 @@ export function PatternDetectionPage() {
               )}
               Detect Patterns
             </Button>
+            <Link href="/quality-performance" className={buttonVariants({ variant: "outline", size: "sm" })}>
+              <Scale className="size-4" />
+              Quality vs Performance
+            </Link>
             <Link href="/learnings?sourceType=pattern-engine" className={buttonVariants({ variant: "outline", size: "sm" })}>
               <Lightbulb className="size-4" />
               Create Learning

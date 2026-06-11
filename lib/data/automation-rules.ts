@@ -18,6 +18,7 @@ import {
   type AssetLinkingDataset,
 } from "@/lib/asset-linking/matchers"
 import { buildDetectedPatterns } from "@/lib/patterns/detectors"
+import { buildQualityPerformanceInsights } from "@/lib/quality-performance/detectors"
 import { filterExternalLinksForCampaign } from "@/lib/data/external-links"
 import { normalizeStatusToStage } from "@/lib/data/campaign-board"
 import {
@@ -2290,6 +2291,96 @@ function evaluatePatternDetectionRules(
   }
 }
 
+function evaluateQualityPerformanceRules(
+  ctx: AutomationEvaluationContext,
+  suggestions: AutomationSuggestion[],
+) {
+  try {
+    const dataset = {
+      campaigns: ctx.campaigns,
+      analyticsRecords: ctx.store.analyticsRecords ?? [],
+      youtubeVideos: ctx.store.youtubeVideos ?? [],
+      youtubePackages: ctx.store.youtubePackages ?? [],
+      youtubeThumbnails: ctx.store.youtubeThumbnailRecords ?? [],
+      qualityReviews: ctx.store.qualityReviews ?? [],
+      productListings: ctx.store.productListings ?? [],
+      merchIdeas: ctx.store.merchIdeas ?? [],
+      mockupPrompts: ctx.store.mockupPromptRecords ?? [],
+      externalLinks: ctx.store.externalLinks ?? [],
+      learnings: ctx.store.learnings ?? [],
+    }
+
+    const insights = buildQualityPerformanceInsights(dataset, { limit: 24 })
+    const seen = new Set<string>()
+
+    for (const insight of insights) {
+      if (seen.size >= 10) break
+      if (seen.has(insight.id)) continue
+
+      const isGap = insight.insightType === "learning-gap" || insight.insightType === "review-coverage-gap"
+      const isOutlier =
+        insight.insightType === "high-quality-low-performance" ||
+        insight.insightType === "low-quality-high-performance"
+      const isExperiment = insight.insightType === "experiment-opportunity"
+      const isSignal = insight.insightType === "quality-score-performance"
+
+      if (!isGap && !isOutlier && !isExperiment && !(isSignal && insight.confidence !== "low")) continue
+      if (insight.earlySignal && !isOutlier && !isGap) continue
+
+      seen.add(insight.id)
+
+      const tab = isOutlier ? "outliers" : isGap ? "gaps" : isExperiment ? "recommendations" : "overview"
+      const href = insight.campaignId
+        ? `/quality-performance?campaignId=${encodeURIComponent(insight.campaignId)}&tab=${tab}`
+        : `/quality-performance?tab=${tab}`
+
+      let title = insight.title
+      let actionLabel = "Open Quality vs Performance"
+      let priority: AutomationSuggestion["priority"] = "info"
+      let ruleId = "quality-performance-review"
+
+      if (isSignal && insight.confidence !== "low") {
+        title = `Create learning from quality/performance signal: ${insight.title}`
+        actionLabel = "Review Quality Signal"
+        priority = "medium"
+        ruleId = "quality-performance-learning"
+      } else if (isExperiment) {
+        title = `Experiment from quality signal: ${insight.title}`
+        actionLabel = "Review Experiment Opportunity"
+        ruleId = "quality-performance-experiment"
+      } else if (isOutlier) {
+        title = `Review outlier: ${insight.title}`
+        actionLabel = "Review Outlier"
+        priority = insight.confidence === "high" ? "medium" : "info"
+        ruleId = "quality-performance-outlier"
+      } else if (isGap) {
+        title = `Quality/performance gap: ${insight.title}`
+        actionLabel = "Review Gap"
+        ruleId = "quality-performance-gap"
+      }
+
+      suggestions.push({
+        id: suggestionId(["quality-performance", insight.id]),
+        ruleId,
+        priority,
+        category: isGap ? "Quality" : "Learnings",
+        title,
+        description: `${insight.summary} ${insight.recommendation}`,
+        campaignId: insight.campaignId,
+        campaignName: insight.campaignName,
+        suggestedActionLabel: actionLabel,
+        actionType: "navigate",
+        actionPayload: { href },
+        href,
+        canApply: false,
+        reason: "Quality vs performance insights are derived locally — review before acting.",
+      })
+    }
+  } catch {
+    // must never break automation
+  }
+}
+
 const RULE_EVALUATORS: Array<(ctx: AutomationEvaluationContext, out: AutomationSuggestion[]) => void> = [
   evaluateMissingAssets,
   evaluateMissingAssetLibrary,
@@ -2310,6 +2401,7 @@ const RULE_EVALUATORS: Array<(ctx: AutomationEvaluationContext, out: AutomationS
   evaluateDriveApiRules,
   evaluateAssetLinkingRules,
   evaluatePatternDetectionRules,
+  evaluateQualityPerformanceRules,
   evaluateLearnings,
   evaluateIncompleteCampaignFields,
   evaluatePrePublishChecklist,

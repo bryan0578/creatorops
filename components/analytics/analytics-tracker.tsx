@@ -14,6 +14,7 @@ import {
   Download,
   Search,
   ScanSearch,
+  Scale,
   Trash2,
   Upload,
 } from "lucide-react"
@@ -639,6 +640,17 @@ export function AnalyticsTracker() {
             >
               <ScanSearch className="size-4" />
               Detect Patterns
+            </Link>
+            <Link
+              href={
+                editingId
+                  ? `/quality-performance?analyticsRecordId=${encodeURIComponent(editingId)}`
+                  : "/quality-performance"
+              }
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <Scale className="size-4" />
+              Analyze Quality vs Performance
             </Link>
           </div>
         }
