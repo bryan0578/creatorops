@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { parseImportJsonText } from "@/lib/safe-json"
 import {
@@ -12,6 +13,7 @@ import {
   Database,
   Download,
   Search,
+  ScanSearch,
   Trash2,
   Upload,
 } from "lucide-react"
@@ -71,7 +73,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -627,6 +629,17 @@ export function AnalyticsTracker() {
               campaignName={campaignPrefill.campaignName}
               label="Create Learning from Analytics"
             />
+            <Link
+              href={
+                editingId
+                  ? `/patterns?analyticsRecordId=${encodeURIComponent(editingId)}`
+                  : "/patterns"
+              }
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <ScanSearch className="size-4" />
+              Detect Patterns
+            </Link>
           </div>
         }
       />

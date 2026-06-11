@@ -10,6 +10,7 @@ import {
   Plus,
   Search,
   Sparkles,
+  ScanSearch,
   Trash2,
   Upload,
   Wand2,
@@ -71,7 +72,7 @@ import {
   RECENT_RECORDS_CARD_CLASS,
 } from "@/components/module/form-layout"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -581,6 +582,10 @@ export function QualityReviewPage() {
               <Sparkles className="size-4" />
               AI-assisted Review
             </Button>
+            <Link href="/patterns?tab=gaps" className={buttonVariants({ variant: "outline", size: "sm" })}>
+              <ScanSearch className="size-4" />
+              Detect Quality Patterns
+            </Link>
             <Button type="button" variant="outline" size="sm" onClick={handleExportJson}>
               <Download className="size-4" />
               Export JSON

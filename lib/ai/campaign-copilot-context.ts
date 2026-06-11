@@ -159,6 +159,24 @@ export interface CampaignCopilotStructuredContext {
     score: number
     reason: string
   }>
+  patternInsights: Array<{
+    title: string
+    patternType: string
+    confidence: string
+    summary: string
+    recommendation: string
+    earlySignal: boolean
+    score: number
+  }>
+  globalPatternInsights: Array<{
+    title: string
+    patternType: string
+    confidence: string
+    summary: string
+    recommendation: string
+    earlySignal: boolean
+    score: number
+  }>
 }
 
 function isOverdueTask(task: CampaignTask): boolean {
@@ -257,6 +275,8 @@ export interface BuildCampaignCopilotContextInput {
   driveFolders: import("@/lib/types").DriveFolderRecord[]
   driveFiles: import("@/lib/types").DriveFileRecord[]
   assets: import("@/lib/types").AssetRecord[]
+  patternInsights?: import("@/lib/patterns/types").DetectedPattern[]
+  globalPatternInsights?: import("@/lib/patterns/types").DetectedPattern[]
 }
 
 export function buildCampaignCopilotStructuredContext(
@@ -575,6 +595,24 @@ export function buildCampaignCopilotStructuredContext(
         score: item.score,
         reason: item.reason,
       })),
+    patternInsights: (input.patternInsights ?? []).slice(0, 8).map((pattern) => ({
+      title: pattern.title,
+      patternType: pattern.patternType,
+      confidence: pattern.confidence,
+      summary: pattern.summary,
+      recommendation: pattern.recommendation,
+      earlySignal: Boolean(pattern.earlySignal),
+      score: pattern.score,
+    })),
+    globalPatternInsights: (input.globalPatternInsights ?? []).slice(0, 5).map((pattern) => ({
+      title: pattern.title,
+      patternType: pattern.patternType,
+      confidence: pattern.confidence,
+      summary: pattern.summary,
+      recommendation: pattern.recommendation,
+      earlySignal: Boolean(pattern.earlySignal),
+      score: pattern.score,
+    })),
   }
 }
 
@@ -823,6 +861,30 @@ function formatCampaignCopilotMarkdown(
       "- Attach a Drive folder to the campaign",
       "- Link unlinked Drive files after reviewing confidence",
     )
+  }
+
+  if (ctx.patternInsights.length > 0) {
+    lines.push("", "## Campaign pattern insights")
+    for (const pattern of ctx.patternInsights) {
+      const signal = pattern.earlySignal ? " (early signal — limited sample)" : ""
+      lines.push(
+        `- [${pattern.confidence}/${pattern.score}] ${pattern.title}${signal}: ${pattern.summary} Recommendation: ${pattern.recommendation}`,
+      )
+    }
+    lines.push(
+      "",
+      "Use cautious language when sample size is small. Do not claim a pattern is proven unless confidence is high with multiple supporting records.",
+    )
+  }
+
+  if (ctx.globalPatternInsights.length > 0) {
+    lines.push("", "## Global pattern insights")
+    for (const pattern of ctx.globalPatternInsights) {
+      const signal = pattern.earlySignal ? " (early signal)" : ""
+      lines.push(
+        `- [${pattern.confidence}] ${pattern.title}${signal}: ${pattern.summary}`,
+      )
+    }
   }
 
   if (ctx.dataHealthWarnings.length > 0) {

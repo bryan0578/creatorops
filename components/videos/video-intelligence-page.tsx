@@ -9,6 +9,7 @@ import {
   ExternalLink,
   Loader2,
   RefreshCw,
+  ScanSearch,
   Search,
   Upload,
   Video,
@@ -276,6 +277,13 @@ export function VideoIntelligencePage() {
         {busy === "sync-all" ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
         Sync All Stats
       </Button>
+      <Link
+        href="/patterns"
+        className={buttonVariants({ variant: "outline", size: "sm" })}
+      >
+        <ScanSearch className="size-4" />
+        Open Pattern Detection
+      </Link>
       <Link
         href="/integrations?tab=youtube-api"
         className={buttonVariants({ variant: "outline", size: "sm" })}

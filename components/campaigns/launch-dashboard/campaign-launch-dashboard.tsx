@@ -37,6 +37,7 @@ import { CampaignExportPackSection } from "@/components/campaigns/launch-dashboa
 import { CampaignPublishingChecklistCard } from "@/components/campaigns/launch-dashboard/campaign-publishing-checklist-card"
 import { CampaignPromptHistoryCard } from "@/components/campaigns/launch-dashboard/campaign-prompt-history-card"
 import { CampaignCopilotCard } from "@/components/campaigns/launch-dashboard/campaign-copilot-card"
+import { CampaignPatternInsightsCard } from "@/components/campaigns/launch-dashboard/campaign-pattern-insights-card"
 import { CampaignExternalLinksCard } from "@/components/integrations/campaign-external-links-card"
 import { CampaignAssetLibraryCard } from "@/components/assets/asset-widgets"
 import { CampaignPlaybookCard } from "@/components/playbooks/playbook-widgets"
@@ -399,6 +400,11 @@ export function CampaignLaunchDashboard({
       <CampaignSummaryCard campaign={campaign} />
 
       <CampaignCopilotCard campaign={campaign} launchData={data} />
+
+      <CampaignPatternInsightsCard
+        campaignId={campaign.id}
+        campaignName={campaign.campaignName}
+      />
 
       <CampaignExternalLinksCard campaignId={campaign.id} />
 

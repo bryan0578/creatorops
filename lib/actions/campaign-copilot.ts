@@ -12,6 +12,7 @@ import {
 } from "@/lib/actions/drive-integration"
 import { getAssets } from "@/lib/actions/assets"
 import { getYouTubeVideosForCampaign } from "@/lib/actions/youtube-integration"
+import { detectPatterns } from "@/lib/actions/patterns"
 import { getExperiments } from "@/lib/actions/experiments"
 import { getLearnings } from "@/lib/actions/learnings"
 import { saveLinkedPromptRun } from "@/lib/actions/linked-prompt-runs"
@@ -113,6 +114,8 @@ export async function getCampaignCopilotContext(campaignId: string): Promise<{
     driveFolders,
     driveFiles,
     assets,
+    patternInsights,
+    globalPatternInsights,
   ] = await Promise.all([
     loadCampaignRecord(campaignId),
     loadCampaignLinkableStoreSlice(),
@@ -130,6 +133,8 @@ export async function getCampaignCopilotContext(campaignId: string): Promise<{
     getDriveFoldersForCampaign(campaignId),
     getDriveFilesForCampaign(campaignId),
     getAssets(),
+    detectPatterns({ campaignId, limit: 8 }).then((r) => r.patterns).catch(() => []),
+    detectPatterns({ limit: 5 }).then((r) => r.patterns).catch(() => []),
   ])
 
   return buildCampaignCopilotContextFromRecords(
@@ -151,6 +156,8 @@ export async function getCampaignCopilotContext(campaignId: string): Promise<{
       driveFolders,
       driveFiles,
       assets,
+      patternInsights,
+      globalPatternInsights,
     },
   )
 }

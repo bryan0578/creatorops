@@ -17,6 +17,7 @@ import {
   buildAssetLinkSuggestions,
   type AssetLinkingDataset,
 } from "@/lib/asset-linking/matchers"
+import { buildDetectedPatterns } from "@/lib/patterns/detectors"
 import { filterExternalLinksForCampaign } from "@/lib/data/external-links"
 import { normalizeStatusToStage } from "@/lib/data/campaign-board"
 import {
@@ -2197,6 +2198,98 @@ function evaluateAssetLinkingRules(ctx: AutomationEvaluationContext, suggestions
   }
 }
 
+function evaluatePatternDetectionRules(
+  ctx: AutomationEvaluationContext,
+  suggestions: AutomationSuggestion[],
+) {
+  try {
+    const dataset = {
+      campaigns: ctx.campaigns,
+      analyticsRecords: ctx.store.analyticsRecords ?? [],
+      youtubeVideos: ctx.store.youtubeVideos ?? [],
+      youtubePackages: ctx.store.youtubePackages ?? [],
+      youtubeThumbnails: ctx.store.youtubeThumbnailRecords ?? [],
+      qualityReviews: ctx.store.qualityReviews ?? [],
+      learnings: ctx.store.learnings ?? [],
+      experiments: ctx.store.experiments ?? [],
+      assets: ctx.store.assets ?? [],
+      productListings: ctx.store.productListings ?? [],
+      merchIdeas: ctx.store.merchIdeas ?? [],
+      mockupPrompts: ctx.store.mockupPromptRecords ?? [],
+      releasePlans: ctx.store.releasePlans ?? [],
+      driveFiles: ctx.store.driveFiles ?? [],
+    }
+
+    const patterns = buildDetectedPatterns(dataset, { limit: 30 })
+    const seen = new Set<string>()
+
+    for (const pattern of patterns) {
+      if (seen.size >= 10) break
+      if (seen.has(pattern.id)) continue
+
+      const isHighConfidence = pattern.confidence === "high"
+      const isLearningGap = pattern.patternType === "learning-gap"
+      const isRepeatedIssue = pattern.patternType === "repeated-issue"
+      const isEarly = pattern.earlySignal
+
+      if (!isHighConfidence && !isLearningGap && !isRepeatedIssue) continue
+      if (isEarly && !isLearningGap && !isRepeatedIssue) continue
+
+      seen.add(pattern.id)
+
+      const href = pattern.campaignId
+        ? `/patterns?campaignId=${encodeURIComponent(pattern.campaignId)}&tab=${isLearningGap || isRepeatedIssue ? "gaps" : pattern.patternType === "youtube-title" ? "youtube" : pattern.patternType === "thumbnail" ? "thumbnail" : "overview"}`
+        : `/patterns?tab=${isLearningGap || isRepeatedIssue ? "gaps" : "overview"}`
+
+      let title = pattern.title
+      let actionLabel = "Open Pattern Detection"
+      let priority: AutomationSuggestion["priority"] = "info"
+      let ruleId = "pattern-detection-review"
+
+      if (isHighConfidence && !isLearningGap && !isRepeatedIssue) {
+        title = `Create learning from pattern: ${pattern.title}`
+        actionLabel = "Review High-Confidence Pattern"
+        priority = "medium"
+        ruleId = "pattern-create-learning"
+      } else if (isEarly && isLearningGap) {
+        title = `Experiment opportunity: ${pattern.title}`
+        actionLabel = "Review Early Signal"
+        priority = "info"
+        ruleId = "pattern-create-experiment"
+      } else if (isRepeatedIssue) {
+        title = `Review repeated issue: ${pattern.title}`
+        actionLabel = "Review Quality Pattern"
+        priority = pattern.confidence === "high" ? "medium" : "info"
+        ruleId = "pattern-repeated-issue"
+      } else if (isLearningGap) {
+        title = `Analytics missing learning: ${pattern.title}`
+        actionLabel = "Review Learning Gap"
+        priority = "info"
+        ruleId = "pattern-missing-learning"
+      }
+
+      suggestions.push({
+        id: suggestionId(["pattern-detection", pattern.id]),
+        ruleId,
+        priority,
+        category: isRepeatedIssue ? "Quality" : "Learnings",
+        title,
+        description: `${pattern.summary} ${pattern.recommendation}`,
+        campaignId: pattern.campaignId,
+        campaignName: pattern.campaignName,
+        suggestedActionLabel: actionLabel,
+        actionType: "navigate",
+        actionPayload: { href },
+        href,
+        canApply: false,
+        reason: "Patterns are derived locally — review before creating learnings or experiments.",
+      })
+    }
+  } catch {
+    // Pattern automation must never break evaluation
+  }
+}
+
 const RULE_EVALUATORS: Array<(ctx: AutomationEvaluationContext, out: AutomationSuggestion[]) => void> = [
   evaluateMissingAssets,
   evaluateMissingAssetLibrary,
@@ -2216,6 +2309,7 @@ const RULE_EVALUATORS: Array<(ctx: AutomationEvaluationContext, out: AutomationS
   evaluateYouTubeApiRules,
   evaluateDriveApiRules,
   evaluateAssetLinkingRules,
+  evaluatePatternDetectionRules,
   evaluateLearnings,
   evaluateIncompleteCampaignFields,
   evaluatePrePublishChecklist,

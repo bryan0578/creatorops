@@ -9,6 +9,7 @@ import {
   Lightbulb,
   Loader2,
   Plus,
+  ScanSearch,
   Search,
   Trash2,
   Upload,
@@ -420,7 +421,9 @@ export function LearningLibraryPage() {
 
   const filteredSaved = React.useMemo(() => {
     const q = savedSearch.trim().toLowerCase()
+    const sourceTypeFilter = searchParams.get("sourceType")?.trim()
     return learnings.filter((item) => {
+      if (sourceTypeFilter && item.sourceType !== sourceTypeFilter) return false
       if (filterType !== "all" && item.learningType !== filterType) return false
       if (filterCategory !== "all" && item.category !== filterCategory) return false
       if (filterStatus !== "all" && item.status !== filterStatus) return false
@@ -439,7 +442,7 @@ export function LearningLibraryPage() {
         .toLowerCase()
         .includes(q)
     })
-  }, [learnings, savedSearch, filterType, filterCategory, filterStatus])
+  }, [learnings, savedSearch, filterType, filterCategory, filterStatus, searchParams])
 
   function renderSelectField(
     fieldKey: keyof LearningFormValues,
@@ -530,6 +533,10 @@ export function LearningLibraryPage() {
               <Plus className="size-4" />
               New Learning
             </Button>
+            <Link href="/patterns" className={buttonVariants({ variant: "outline", size: "sm" })}>
+              <ScanSearch className="size-4" />
+              Pattern Detection
+            </Link>
             <Button type="button" variant="outline" size="sm" onClick={handleExportJson}>
               <Download className="size-4" />
               Export JSON

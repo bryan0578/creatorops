@@ -15,6 +15,7 @@ import {
   buildQualityReviewUrlFromVideo,
 } from "@/lib/video-prefill"
 import { AssetLinkSuggestionsPanel } from "@/components/asset-linking/asset-link-suggestions-panel"
+import { PatternInsightsPanel } from "@/components/patterns/pattern-insights-panel"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -261,6 +262,15 @@ export function VideoDetailSheet({
                 compact
                 title="Suggested Drive & Asset Links"
                 description="Thumbnail and video file matches from synced Google Drive files."
+              />
+
+              <PatternInsightsPanel
+                youtubeVideoId={video.id}
+                campaignId={video.campaignId || undefined}
+                limit={4}
+                compact
+                title="Pattern Insights"
+                description="Title, thumbnail, learning gap, and experiment signals for this video."
               />
 
               <details className="rounded-md border border-border/60 p-3 text-xs">

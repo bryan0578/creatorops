@@ -3,6 +3,7 @@
  */
 
 import { scanAssetLinkingWarnings } from "@/lib/data/asset-linking-health"
+import { scanPatternDetectionWarnings } from "@/lib/data/pattern-health"
 import { normalizeSourceRecordType } from "@/lib/quality-prefill"
 import { extractPlaybookIdFromNotes } from "@/lib/playbooks"
 import { isValidJsonString } from "@/lib/safe-json"
@@ -2916,6 +2917,7 @@ export function buildDataHealthReport(
     scanDriveApiWarnings(input, sets, issues),
   )
   safeScan("Asset linking", issues, () => scanAssetLinkingWarnings(input, issues))
+  safeScan("Pattern detection", issues, () => scanPatternDetectionWarnings(input, issues))
   safeScan("JSON / data issues", issues, () => scanJsonIssues(input, issues))
 
   return {
