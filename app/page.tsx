@@ -3,7 +3,7 @@ import { DashboardHome } from "@/components/dashboard/dashboard-home"
 
 export default function Page() {
   return (
-    <AppShell breadcrumb="Dashboard">
+    <AppShell breadcrumb="Control Center">
       <DashboardHome />
     </AppShell>
   )

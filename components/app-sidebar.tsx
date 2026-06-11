@@ -2,41 +2,16 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import {
-  BookOpen,
-  BarChart3,
-  CalendarDays,
-  Calendar,
-  FlaskConical,
+  Check,
   ChevronDown,
-  FolderOpen,
-  HardDrive,
-  ImageIcon,
-  ImagePlus,
   LayoutDashboard,
-  Library,
-  Lightbulb,
-  Mail,
-  ListChecks,
+  Megaphone,
   Music2,
-  Play,
   Search,
   Settings,
-  Share2,
   ShieldCheck,
-  ShoppingBag,
-  Shirt,
-  Users,
-  Video,
-  Workflow as WorkflowIcon,
-  Zap,
-  Megaphone,
-  Sparkles,
-  ClipboardCheck,
-  type LucideIcon,
-  LayoutGrid,
-  Link2,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -44,11 +19,27 @@ import { focusRing } from "@/lib/ui-classes"
 import { useStore } from "@/lib/store"
 import { ThemeToggle } from "@/components/theme-toggle"
 import {
+  getAllDomains,
+  getDomainForPath,
+  type CreatorOpsDomain,
+  type CreatorOpsNavItem,
+} from "@/lib/navigation/domains"
+import { isNavItemActive } from "@/lib/navigation/nav-active"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -56,225 +47,258 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 
-const SIDEBAR_GROUPS_STORAGE_KEY = "creatorops-sidebar-groups"
-
-type NavItem = {
-  title: string
-  href: string
-  icon: LucideIcon
-}
-
-type NavGroup = {
-  id: string
-  label: string
-  items: NavItem[]
-}
-
-const NAV_GROUPS: NavGroup[] = [
-  {
-    id: "core",
-    label: "Core",
-    items: [
-      { title: "Dashboard", href: "/", icon: LayoutDashboard },
-      { title: "Global Search", href: "/search", icon: Search },
-      { title: "Prompt Library", href: "/prompts", icon: Library },
-      { title: "Workflow Hub", href: "/workflows", icon: WorkflowIcon },
-      { title: "Prompt Runner", href: "/runner", icon: Play },
-      { title: "Workflow Runner", href: "/workflow-runner", icon: ListChecks },
-      { title: "Presets", href: "/presets", icon: Sparkles },
-      { title: "Playbooks", href: "/playbooks", icon: BookOpen },
-    ],
-  },
-  {
-    id: "youtube",
-    label: "YouTube",
-    items: [
-      { title: "YouTube Packaging", href: "/youtube-packaging", icon: Video },
-      {
-        title: "YouTube Thumbnails",
-        href: "/youtube-thumbnails",
-        icon: ImagePlus,
-      },
-      { title: "Release Planner", href: "/release-planner", icon: CalendarDays },
-    ],
-  },
-  {
-    id: "commerce",
-    label: "Commerce",
-    items: [
-      { title: "Merch Ideas", href: "/merch-ideas", icon: Shirt },
-      { title: "Product Listings", href: "/product-listings", icon: ShoppingBag },
-      { title: "Mockup Prompts", href: "/mockup-prompts", icon: ImageIcon },
-    ],
-  },
-  {
-    id: "marketing",
-    label: "Marketing",
-    items: [
-      { title: "Social Repurposing", href: "/social-repurposing", icon: Share2 },
-      { title: "Email Campaigns", href: "/email-campaigns", icon: Mail },
-      { title: "Experiments", href: "/experiments", icon: FlaskConical },
-    ],
-  },
-  {
-    id: "operations",
-    label: "Operations",
-    items: [
-      { title: "Campaigns", href: "/campaigns", icon: Megaphone },
-      { title: "Campaign Copilot", href: "/copilot", icon: Sparkles },
-      { title: "Integrations", href: "/integrations", icon: Link2 },
-      { title: "Campaign Board", href: "/campaign-board", icon: LayoutGrid },
-      { title: "Tasks", href: "/tasks", icon: ListChecks },
-      { title: "Calendar", href: "/calendar", icon: CalendarDays },
-      { title: "Asset Library", href: "/assets", icon: FolderOpen },
-      { title: "Quality Review", href: "/quality", icon: ClipboardCheck },
-      { title: "Learnings", href: "/learnings", icon: Lightbulb },
-      { title: "Analytics Tracker", href: "/analytics", icon: BarChart3 },
-      { title: "Artist CRM", href: "/artist-crm", icon: Users },
-      { title: "Backup Center", href: "/backups", icon: HardDrive },
-      { title: "Data Health", href: "/data-health", icon: ShieldCheck },
-      { title: "Automation", href: "/automation", icon: Zap },
-      { title: "Settings", href: "/settings", icon: Settings },
-    ],
-  },
+const GLOBAL_NAV: CreatorOpsNavItem[] = [
+  { label: "Control Center", href: "/", icon: LayoutDashboard },
+  { label: "Global Search", href: "/search", icon: Search },
+  { label: "Campaigns", href: "/campaigns", icon: Megaphone },
+  { label: "Settings", href: "/settings", icon: Settings },
 ]
 
-const DEFAULT_GROUP_OPEN: Record<string, boolean> = {
-  core: true,
+function NavLinkItem({
+  item,
+  pathname,
+  search,
+}: {
+  item: CreatorOpsNavItem
+  pathname: string
+  search: string
+}) {
+  const Icon = item.icon
+  const active = isNavItemActive(item.href, pathname, search)
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        isActive={active}
+        tooltip={item.label}
+        disabled={item.disabled}
+        className={cn(
+          active &&
+            "bg-sidebar-accent text-sidebar-accent-foreground data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground",
+        )}
+        render={<Link href={item.href} />}
+      >
+        {Icon ? <Icon className="size-4 shrink-0" /> : null}
+        <span className="truncate">{item.label}</span>
+        {item.badge ? (
+          <span className="ml-auto rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+            {item.badge}
+          </span>
+        ) : null}
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  )
 }
 
-function isNavActive(href: string, pathname: string): boolean {
-  if (href === "/") return pathname === "/"
-  if (href === "/runner") return pathname === "/runner"
-  return pathname.startsWith(href)
-}
+function DomainSwitcher({
+  currentDomain,
+  onControlCenter,
+}: {
+  currentDomain: CreatorOpsDomain | null
+  onControlCenter: boolean
+}) {
+  const domains = getAllDomains()
+  const DomainIcon = onControlCenter ? LayoutDashboard : (currentDomain?.icon ?? LayoutDashboard)
+  const switcherTitle = onControlCenter
+    ? "Control Center — all domains"
+    : (currentDomain?.label ?? "All Domains")
 
-function groupContainsActiveRoute(items: NavItem[], pathname: string): boolean {
-  return items.some((item) => isNavActive(item.href, pathname))
-}
-
-function loadGroupState(): Record<string, boolean> {
-  if (typeof window === "undefined") return {}
-  try {
-    const raw = localStorage.getItem(SIDEBAR_GROUPS_STORAGE_KEY)
-    if (!raw) return {}
-    const parsed = JSON.parse(raw) as unknown
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return parsed as Record<string, boolean>
-    }
-  } catch {
-    // ignore invalid storage
-  }
-  return {}
-}
-
-function isGroupOpen(
-  group: NavGroup,
-  pathname: string,
-  groupState: Record<string, boolean>,
-): boolean {
-  if (groupContainsActiveRoute(group.items, pathname)) return true
-  if (group.id in groupState) return groupState[group.id]
-  return DEFAULT_GROUP_OPEN[group.id] ?? false
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        title={switcherTitle}
+        aria-label={`Switch workspace domain. Current: ${switcherTitle}`}
+        className={cn(
+          "flex w-full items-center gap-2 rounded-lg border border-sidebar-border/80 bg-sidebar-accent/30 px-2.5 py-2 text-left text-sm transition-colors hover:bg-sidebar-accent/60",
+          focusRing,
+        )}
+      >
+        <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary">
+          <DomainIcon className="size-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs font-medium text-muted-foreground">
+            {onControlCenter ? "Control Center" : "Workspace"}
+          </p>
+          <p className="truncate text-sm font-semibold" title={switcherTitle}>
+            {onControlCenter ? "All Domains" : (currentDomain?.label ?? "All Domains")}
+          </p>
+        </div>
+        <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="max-h-[min(70vh,28rem)] w-72 overflow-y-auto">
+        <DropdownMenuLabel>Switch domain</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem className="p-0">
+          <Link
+            href="/"
+            className="flex w-full items-center gap-2 rounded-md px-1.5 py-1.5"
+          >
+            <LayoutDashboard className="size-4 shrink-0 text-muted-foreground" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-medium">Control Center</p>
+              <p className="truncate text-xs text-muted-foreground">All Domains</p>
+            </div>
+            {onControlCenter ? <Check className="size-4 shrink-0 text-primary" /> : null}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        {domains.map((domain) => {
+          const Icon = domain.icon
+          const active = !onControlCenter && currentDomain?.id === domain.id
+          return (
+            <DropdownMenuItem key={domain.id} className="p-0">
+              <Link
+                href={domain.homeHref}
+                title={domain.label}
+                className="flex w-full items-center gap-2 rounded-md px-1.5 py-1.5"
+              >
+                <Icon className="size-4 shrink-0 text-muted-foreground" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">{domain.label}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {domain.navItems.length} modules
+                  </p>
+                </div>
+                {active ? <Check className="size-4 shrink-0 text-primary" /> : null}
+              </Link>
+            </DropdownMenuItem>
+          )
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 }
 
 export function AppSidebar() {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const search = searchParams.toString()
   const { campaignsUseDatabase } = useStore()
-  const [groupState, setGroupState] = React.useState<Record<string, boolean>>({})
-  const [groupsHydrated, setGroupsHydrated] = React.useState(false)
 
-  React.useEffect(() => {
-    setGroupState(loadGroupState())
-    setGroupsHydrated(true)
-  }, [])
+  const currentDomain = React.useMemo(
+    () => getDomainForPath(pathname, search),
+    [pathname, search],
+  )
 
-  React.useEffect(() => {
-    if (!groupsHydrated) return
-    localStorage.setItem(
-      SIDEBAR_GROUPS_STORAGE_KEY,
-      JSON.stringify(groupState),
-    )
-  }, [groupState, groupsHydrated])
-
-  function toggleGroup(group: NavGroup) {
-    const currentlyOpen = isGroupOpen(group, pathname, groupState)
-    setGroupState((prev) => ({
-      ...prev,
-      [group.id]: !currentlyOpen,
-    }))
-  }
+  const onControlCenter = pathname === "/"
 
   return (
     <Sidebar>
-      <SidebarHeader className="shrink-0">
-        <div className="flex items-center gap-2 px-2 py-1.5">
+      <SidebarHeader className="shrink-0 space-y-3 px-2 py-2">
+        <div className="flex items-center gap-2 px-1">
           <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_16px_-4px] shadow-primary/50">
             <Music2 className="size-4" />
           </div>
-          <div className="flex flex-col leading-tight">
-            <span className="text-sm font-semibold">CreatorOps</span>
-            <span className="text-xs text-muted-foreground">Local workspace</span>
+          <div className="flex min-w-0 flex-col leading-tight">
+            <span className="truncate text-sm font-semibold">CreatorOps</span>
+            <span className="truncate text-xs text-muted-foreground">Platform workspace</span>
           </div>
         </div>
+        <DomainSwitcher
+          currentDomain={currentDomain}
+          onControlCenter={onControlCenter}
+        />
       </SidebarHeader>
-      <SidebarContent className="min-h-0 flex-1 gap-0.5 overflow-y-auto">
-        {NAV_GROUPS.map((group) => {
-          const open = isGroupOpen(group, pathname, groupState)
-          const contentId = `sidebar-group-${group.id}`
 
-          return (
-            <SidebarGroup key={group.id} className="py-0.5">
-              <button
-                type="button"
-                id={`${contentId}-trigger`}
-                aria-expanded={open}
-                aria-controls={contentId}
-                onClick={() => toggleGroup(group)}
-                className={cn(
-                  "flex h-8 w-full items-center justify-between gap-2 rounded-lg px-2 text-xs font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                  focusRing,
-                )}
-              >
-                <span className="truncate">{group.label}</span>
-                <ChevronDown
-                  className={cn(
-                    "size-3.5 shrink-0 opacity-70 transition-transform duration-200",
-                    open && "rotate-180",
-                  )}
-                  aria-hidden
+      <SidebarContent className="min-h-0 flex-1 gap-1 overflow-y-auto overflow-x-hidden">
+        <SidebarGroup className="py-0.5">
+          <SidebarGroupLabel className="text-[11px] uppercase tracking-wide text-sidebar-foreground/60">
+            Global
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {GLOBAL_NAV.map((item) => (
+                <NavLinkItem
+                  key={item.href}
+                  item={item}
+                  pathname={pathname}
+                  search={search}
                 />
-              </button>
-              {open ? (
-                <SidebarGroupContent id={contentId} className="pt-0.5">
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {onControlCenter ? (
+          <SidebarGroup className="py-0.5">
+            <SidebarGroupLabel className="text-[11px] uppercase tracking-wide text-sidebar-foreground/60">
+              Domains
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {getAllDomains().map((domain) => {
+                  const Icon = domain.icon
+                  return (
+                    <SidebarMenuItem key={domain.id}>
+                      <SidebarMenuButton
+                        tooltip={domain.label}
+                        title={domain.label}
+                        render={<Link href={domain.homeHref} />}
+                      >
+                        <Icon className="size-4 shrink-0" />
+                        <span className="truncate">{domain.label}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : currentDomain ? (
+          <>
+            <SidebarGroup className="py-0.5">
+              <SidebarGroupLabel
+                className="truncate text-[11px] uppercase tracking-wide text-sidebar-foreground/60"
+                title={currentDomain.label}
+              >
+                {currentDomain.label}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {currentDomain.navItems.map((item) => (
+                    <NavLinkItem
+                      key={`${item.href}-${item.label}`}
+                      item={item}
+                      pathname={pathname}
+                      search={search}
+                    />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            {currentDomain.relatedItems?.length ? (
+              <SidebarGroup className="py-0.5">
+                <SidebarGroupLabel className="text-[11px] uppercase tracking-wide text-sidebar-foreground/60">
+                  Related
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
                   <SidebarMenu>
-                    {group.items.map((item) => {
-                      const active = isNavActive(item.href, pathname)
-                      return (
-                        <SidebarMenuItem key={item.href}>
-                          <SidebarMenuButton
-                            isActive={active}
-                            tooltip={item.title}
-                            className={cn(
-                              active &&
-                                "bg-sidebar-accent text-sidebar-accent-foreground data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground",
-                            )}
-                            render={<Link href={item.href} />}
-                          >
-                            <item.icon className="size-4 shrink-0" />
-                            <span className="truncate">{item.title}</span>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      )
-                    })}
+                    {currentDomain.relatedItems.map((item) => (
+                      <NavLinkItem
+                        key={`related-${item.href}-${item.label}`}
+                        item={item}
+                        pathname={pathname}
+                        search={search}
+                      />
+                    ))}
                   </SidebarMenu>
                 </SidebarGroupContent>
-              ) : null}
-            </SidebarGroup>
-          )
-        })}
+              </SidebarGroup>
+            ) : null}
+          </>
+        ) : null}
       </SidebarContent>
+
       <SidebarFooter className="mt-auto shrink-0 gap-2.5 border-t border-sidebar-border/80 px-3 pb-4 pt-3">
+        <Link
+          href="/data-health"
+          className="flex items-center gap-2 rounded-md px-1 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ShieldCheck className="size-3.5 shrink-0" />
+          <span className="truncate">Data Health</span>
+        </Link>
         <p className="text-[11px] leading-relaxed text-muted-foreground">
           Press{" "}
           <kbd className="rounded border border-sidebar-border bg-sidebar px-1 py-0.5 font-mono text-[10px]">

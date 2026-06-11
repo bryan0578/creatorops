@@ -7,6 +7,7 @@ import { ArrowRight, Loader2, Search } from "lucide-react"
 import { searchGlobal } from "@/lib/actions/global-search"
 import { getRecentActivity } from "@/lib/actions/recent-activity"
 import {
+  COMMAND_PALETTE_DOMAINS,
   COMMAND_PALETTE_GROUP_LABELS,
   COMMAND_PALETTE_MODULES,
   COMMAND_PALETTE_QUICK_ACTIONS,
@@ -80,6 +81,7 @@ function groupItems(items: CommandPaletteItem[]): {
   items: CommandPaletteItem[]
 }[] {
   const order: CommandPaletteGroupId[] = [
+    "domains",
     "quick-actions",
     "modules",
     "campaigns",
@@ -163,13 +165,16 @@ export function CommandPalette({
   const [selectedIndex, setSelectedIndex] = React.useState(0)
 
   const staticItems = React.useMemo(() => {
+    const domains = filterStaticCommandItems(COMMAND_PALETTE_DOMAINS, query).map(
+      (item) => ({ ...item, kind: "static" as const }),
+    )
     const quick = filterStaticCommandItems(COMMAND_PALETTE_QUICK_ACTIONS, query).map(
       (item) => ({ ...item, kind: "static" as const }),
     )
     const modules = filterStaticCommandItems(COMMAND_PALETTE_MODULES, query).map(
       (item) => ({ ...item, kind: "static" as const }),
     )
-    return [...quick, ...modules]
+    return [...domains, ...quick, ...modules]
   }, [query])
 
   const visibleItems = React.useMemo(() => {

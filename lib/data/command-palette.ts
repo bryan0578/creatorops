@@ -17,11 +17,13 @@ import {
   Lightbulb,
   Mail,
   Megaphone,
+  Music2,
   Play,
   Search,
   Settings,
   Share2,
   ShieldCheck,
+  Store,
   Upload,
   Video,
   RefreshCw,
@@ -36,6 +38,7 @@ import {
 import { normalizeSearchQuery } from "@/lib/data/global-search"
 
 export type CommandPaletteGroupId =
+  | "domains"
   | "quick-actions"
   | "modules"
   | "campaigns"
@@ -54,6 +57,7 @@ export type CommandPaletteStaticItem = {
 }
 
 export const COMMAND_PALETTE_GROUP_LABELS: Record<CommandPaletteGroupId, string> = {
+  domains: "Domains",
   "quick-actions": "Quick Actions",
   modules: "Modules",
   campaigns: "Campaigns",
@@ -61,6 +65,90 @@ export const COMMAND_PALETTE_GROUP_LABELS: Record<CommandPaletteGroupId, string>
   records: "Records",
   recent: "Recent Activity",
 }
+
+export const COMMAND_PALETTE_DOMAINS: CommandPaletteStaticItem[] = [
+  {
+    id: "domain-campaign-command",
+    group: "domains",
+    title: "Open Campaign Command",
+    subtitle: "Plan, launch, track, and manage creator campaigns",
+    href: "/campaigns",
+    icon: Megaphone,
+    keywords: "campaign command launch board tasks calendar copilot",
+  },
+  {
+    id: "domain-youtube-studio",
+    group: "domains",
+    title: "Open YouTube Studio",
+    subtitle: "Package, import, analyze, and optimize YouTube content",
+    href: "/integrations?tab=youtube-api",
+    icon: Video,
+    keywords: "youtube studio packaging thumbnails analytics api",
+  },
+  {
+    id: "domain-ai-studio",
+    group: "domains",
+    title: "Open AI Studio",
+    subtitle: "Prompts, workflows, presets, playbooks, and AI generation",
+    href: "/runner",
+    icon: Sparkles,
+    keywords: "ai studio prompt workflow runner presets playbooks",
+  },
+  {
+    id: "domain-music-artist-ops",
+    group: "domains",
+    title: "Open Artist Ops",
+    subtitle: "AI artists, releases, brand identity, and music projects",
+    href: "/artist-crm",
+    icon: Music2,
+    keywords: "music artist crm releases lore brand",
+  },
+  {
+    id: "domain-product-factory",
+    group: "domains",
+    title: "Open Product Factory",
+    subtitle: "Merch, listings, mockups, and digital products",
+    href: "/product-listings",
+    icon: ShoppingBag,
+    keywords: "product factory merch listings mockup prompts",
+  },
+  {
+    id: "domain-commerce",
+    group: "domains",
+    title: "Open Commerce",
+    subtitle: "Store links, launches, revenue, and sales channels",
+    href: "/integrations",
+    icon: Store,
+    keywords: "commerce store revenue fourthwall listings merch",
+  },
+  {
+    id: "domain-analytics-learnings",
+    group: "domains",
+    title: "Open Analytics",
+    subtitle: "Performance, experiments, quality, and insights",
+    href: "/analytics",
+    icon: BarChart3,
+    keywords: "analytics learnings experiments quality insights",
+  },
+  {
+    id: "domain-assets-integrations",
+    group: "domains",
+    title: "Open Assets & Integrations",
+    subtitle: "Files, external links, YouTube, Drive, and connections",
+    href: "/assets",
+    icon: FolderOpen,
+    keywords: "assets integrations external links backups drive suno",
+  },
+  {
+    id: "domain-admin-system",
+    group: "domains",
+    title: "Open Admin",
+    subtitle: "Settings, backups, data health, and automation",
+    href: "/settings",
+    icon: Settings,
+    keywords: "admin system settings backups data health automation",
+  },
+]
 
 export const COMMAND_PALETTE_QUICK_ACTIONS: CommandPaletteStaticItem[] = [
   {

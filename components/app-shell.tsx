@@ -1,6 +1,8 @@
 "use client"
 
-import type * as React from "react"
+import * as React from "react"
+import { Suspense } from "react"
+import { usePathname, useSearchParams } from "next/navigation"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { CommandPaletteHeaderButton } from "@/components/command-palette/command-palette-header-button"
@@ -9,9 +11,10 @@ import {
   useCommandPalette,
 } from "@/components/command-palette/command-palette-provider"
 import { ModuleShell } from "@/components/module/form-layout"
+import { getDomainForPath } from "@/lib/navigation/domains"
 import { cn } from "@/lib/utils"
 
-function AppShellHeader({ breadcrumb }: { breadcrumb: string }) {
+function AppShellHeaderFallback({ breadcrumb }: { breadcrumb: string }) {
   const { shortcutLabel } = useCommandPalette()
 
   return (
@@ -22,8 +25,40 @@ function AppShellHeader({ breadcrumb }: { breadcrumb: string }) {
           aria-label="Breadcrumb"
           className="flex min-w-0 items-center gap-2 text-sm"
         >
-          <span className="font-medium text-muted-foreground">CreatorOps</span>
-          <span className="text-muted-foreground/60">/</span>
+          <span className="shrink-0 font-medium text-muted-foreground">CreatorOps</span>
+          <span className="shrink-0 text-muted-foreground/60">/</span>
+          <span className="truncate font-medium text-foreground">{breadcrumb}</span>
+        </nav>
+      </div>
+      <CommandPaletteHeaderButton shortcutLabel={shortcutLabel} />
+    </header>
+  )
+}
+
+function AppShellHeader({ breadcrumb }: { breadcrumb: string }) {
+  const { shortcutLabel } = useCommandPalette()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const domain = getDomainForPath(pathname, searchParams.toString())
+
+  return (
+    <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border/80 bg-background/90 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/70 md:px-6">
+      <div className="flex min-w-0 items-center gap-3">
+        <SidebarTrigger />
+        <nav
+          aria-label="Breadcrumb"
+          className="flex min-w-0 items-center gap-2 text-sm"
+        >
+          <span className="shrink-0 font-medium text-muted-foreground">CreatorOps</span>
+          {domain ? (
+            <>
+              <span className="shrink-0 text-muted-foreground/60">/</span>
+              <span className="hidden truncate font-medium text-muted-foreground sm:inline">
+                {domain.label}
+              </span>
+            </>
+          ) : null}
+          <span className="shrink-0 text-muted-foreground/60">/</span>
           <span className="truncate font-medium text-foreground">{breadcrumb}</span>
         </nav>
       </div>
@@ -42,9 +77,13 @@ export function AppShell({
   return (
     <SidebarProvider>
       <CommandPaletteProvider>
-        <AppSidebar />
+        <Suspense fallback={null}>
+          <AppSidebar />
+        </Suspense>
         <SidebarInset>
-          <AppShellHeader breadcrumb={breadcrumb} />
+          <Suspense fallback={<AppShellHeaderFallback breadcrumb={breadcrumb} />}>
+            <AppShellHeader breadcrumb={breadcrumb} />
+          </Suspense>
           <main className="flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-x-hidden p-4 md:p-6">
             <ModuleShell>{children}</ModuleShell>
           </main>
