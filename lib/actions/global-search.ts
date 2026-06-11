@@ -1144,6 +1144,7 @@ async function searchYouTubeVideos(query: string): Promise<GlobalSearchResult[]>
       "artistName",
       "songTitle",
       "youtubeVideoId",
+      "videoUrl",
       "notes",
     ],
     {
@@ -1154,6 +1155,7 @@ async function searchYouTubeVideos(query: string): Promise<GlobalSearchResult[]>
       artistName: "Artist",
       songTitle: "Song",
       youtubeVideoId: "YouTube ID",
+      videoUrl: "Video URL",
       notes: "Notes",
     },
     (row, matchedFields) =>

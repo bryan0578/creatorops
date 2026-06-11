@@ -368,6 +368,25 @@ async function fetchLearningActivities() {
   )
 }
 
+async function fetchYouTubeVideoActivities() {
+  const rows = await prisma.youTubeVideo.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: RECENT_ACTIVITY_PER_MODULE,
+  })
+  return rows.map((row) =>
+    buildActivityItem({
+      id: row.id,
+      type: "youtube-video",
+      title: row.title || "YouTube video",
+      subtitle: [row.channelTitle, row.campaignName, row.youtubeVideoId]
+        .filter(Boolean)
+        .join(" · "),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }),
+  )
+}
+
 async function fetchExternalLinkActivities() {
   const rows = await prisma.externalLink.findMany({
     orderBy: { updatedAt: "desc" },
@@ -412,6 +431,7 @@ export async function getRecentActivity(
     fetchQualityReviewActivities(),
     fetchLearningActivities(),
     fetchExternalLinkActivities(),
+    fetchYouTubeVideoActivities(),
   ])
 
   return mergeAndLimitActivities(batches.flat(), limit)

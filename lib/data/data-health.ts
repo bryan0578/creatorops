@@ -2368,9 +2368,9 @@ export function scanExternalLinkWarnings(
         sourceType: "campaign",
         sourceId: campaign.id,
         sourceTitle: campaign.campaignName,
-        href: `/integrations?tab=youtube-api&campaignId=${encodeURIComponent(campaign.id)}`,
+        href: `/videos?campaignId=${encodeURIComponent(campaign.id)}`,
         suggestedAction:
-          "Import from YouTube API, add a Published Video link, or use CSV import in Integrations.",
+          "Import from YouTube API in Integrations, then link the video in Video Intelligence.",
       })
     }
 
@@ -2533,7 +2533,7 @@ function scanYouTubeApiWarnings(
   const weekMs = 7 * 24 * 60 * 60 * 1000
 
   for (const video of videos) {
-    const href = `/integrations?tab=youtube-api&videoId=${encodeURIComponent(video.id)}`
+    const href = `/videos?recordId=${encodeURIComponent(video.id)}`
     const title = video.title || video.youtubeVideoId
 
     if (!video.externalLinkId) {
@@ -2547,7 +2547,7 @@ function scanYouTubeApiWarnings(
         sourceId: video.id,
         sourceTitle: title,
         href,
-        suggestedAction: "Create an external link from the YouTube API tab.",
+        suggestedAction: "Create an external link from Video Intelligence.",
       })
     }
 
@@ -2581,6 +2581,21 @@ function scanYouTubeApiWarnings(
       })
     }
 
+    if (!video.campaignId?.trim()) {
+      pushIssue(issues, {
+        id: issueId(["youtube-video", video.id, "unlinked"]),
+        severity: "info",
+        category: "incomplete-records",
+        title: "Imported YouTube video unlinked",
+        description: `"${title}" is imported but not linked to a campaign.`,
+        sourceType: "youtube-video",
+        sourceId: video.id,
+        sourceTitle: title,
+        href,
+        suggestedAction: "Link the video to a campaign in Video Intelligence.",
+      })
+    }
+
     if (video.lastSyncedAt && Date.now() - video.lastSyncedAt > weekMs) {
       pushIssue(issues, {
         id: issueId(["youtube-video", video.id, "stats-stale"]),
@@ -2592,7 +2607,7 @@ function scanYouTubeApiWarnings(
         sourceId: video.id,
         sourceTitle: title,
         href,
-        suggestedAction: "Sync YouTube stats from Integrations.",
+        suggestedAction: "Sync YouTube stats from Video Intelligence.",
       })
     }
   }

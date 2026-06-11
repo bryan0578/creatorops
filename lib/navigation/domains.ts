@@ -105,17 +105,23 @@ const DOMAINS: CreatorOpsDomain[] = [
     openButtonLabel: "Open YouTube Studio",
     description: "Package, import, analyze, and optimize YouTube content.",
     icon: Video,
-    homeHref: "/integrations?tab=youtube-api",
+    homeHref: "/videos",
     matchRoutes: [
+      "/videos",
       "/youtube-packaging",
       "/youtube-thumbnails",
       "/release-planner",
     ],
     navItems: [
       {
+        label: "Video Intelligence",
+        href: "/videos",
+        icon: Video,
+      },
+      {
         label: "YouTube API",
         href: "/integrations?tab=youtube-api",
-        icon: Video,
+        icon: Link2,
       },
       { label: "YouTube Packaging", href: "/youtube-packaging", icon: Video },
       {
@@ -362,6 +368,7 @@ const PATH_DOMAIN_RULES: PathDomainRule[] = [
   { path: "/copilot", domainId: "campaign-command" },
   { path: "/tasks", domainId: "campaign-command" },
   { path: "/calendar", domainId: "campaign-command" },
+  { path: "/videos", domainId: "youtube-studio" },
   { path: "/youtube-packaging", domainId: "youtube-studio" },
   { path: "/youtube-thumbnails", domainId: "youtube-studio" },
   { path: "/prompt-runner", domainId: "ai-studio" },

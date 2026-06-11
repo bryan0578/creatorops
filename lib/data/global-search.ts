@@ -177,7 +177,7 @@ export const GLOBAL_SEARCH_TYPE_META: Record<
   "youtube-video": {
     typeLabel: "YouTube Video",
     category: "youtube",
-    href: "/integrations",
+    href: "/videos",
   },
 }
 
@@ -291,7 +291,7 @@ export function buildResultHref(
 
   if (type === "youtube-video") {
     return {
-      href: `${base}?tab=youtube-api&videoId=${encodeURIComponent(id)}`,
+      href: `${base}?recordId=${encodeURIComponent(id)}`,
       directOpen: true,
     }
   }

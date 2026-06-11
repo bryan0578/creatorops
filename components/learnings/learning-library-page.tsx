@@ -311,6 +311,10 @@ export function LearningLibraryPage() {
       playbookId: searchParams.get("playbookId"),
       sourceType: searchParams.get("sourceType"),
       sourceId: searchParams.get("sourceId"),
+      insight: searchParams.get("insight"),
+      evidence: searchParams.get("evidence"),
+      recommendation: searchParams.get("recommendation"),
+      platform: searchParams.get("platform"),
     })
 
     if (campaignPrefill.campaign && !shouldSkipCampaignUrlPrefill(searchParams)) {

@@ -22,7 +22,7 @@ export function buildPrettyWiseDemoYouTubeVideo(): YouTubeVideoRecord {
     externalLinkId: DEMO_IDS.extLinkYoutube,
     analyticsRecordId: DEMO_IDS.analytics,
     rawJson: JSON.stringify({
-      statistics: { viewCount: "1240", likeCount: "89", commentCount: "12" },
+      statistics: { viewCount: "1240", likeCount: "118", commentCount: "24" },
       marker: DEMO_DATA_MARKER,
     }),
     lastSyncedAt: ts,
@@ -30,7 +30,7 @@ export function buildPrettyWiseDemoYouTubeVideo(): YouTubeVideoRecord {
     createdAt: ts,
     updatedAt: ts,
     viewCount: 1240,
-    likeCount: 89,
-    commentCount: 12,
+    likeCount: 118,
+    commentCount: 24,
   }
 }

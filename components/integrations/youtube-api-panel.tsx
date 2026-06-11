@@ -238,6 +238,11 @@ export function YouTubeApiPanel({
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap justify-end gap-2">
+        <Link href="/videos" className={buttonVariants({ variant: "outline", size: "sm" })}>
+          Open Video Intelligence
+        </Link>
+      </div>
       <Card className="border-border/80">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
@@ -536,17 +541,42 @@ export function YouTubeApiPanel({
                                   onClick={() =>
                                     void runAction(
                                       `import-${video.youtubeVideoId}`,
-                                      () =>
-                                        importYouTubeVideo(
+                                      async () => {
+                                        const result = await importYouTubeVideo(
                                           video.youtubeVideoId,
                                           selectedCampaignId || undefined,
-                                        ),
-                                      (result) => toast[result.success ? "success" : "error"](result.message),
+                                        )
+                                        if (result.success) {
+                                          await refresh()
+                                          toast.success(result.message, {
+                                            action: result.video
+                                              ? {
+                                                  label: "Open in Video Intelligence",
+                                                  onClick: () =>
+                                                    router.push(
+                                                      `/videos?recordId=${encodeURIComponent(result.video!.id)}`,
+                                                    ),
+                                                }
+                                              : undefined,
+                                          })
+                                        } else {
+                                          toast.error(result.message)
+                                        }
+                                        return result
+                                      },
                                     )
                                   }
                                 >
                                   {imported ? "Update" : "Import"}
                                 </Button>
+                                {imported ? (
+                                  <Link
+                                    href={`/videos?recordId=${encodeURIComponent(imported.id)}`}
+                                    className={buttonVariants({ variant: "ghost", size: "sm" })}
+                                  >
+                                    Video Intelligence
+                                  </Link>
+                                ) : null}
                                 <Link
                                   href={video.videoUrl}
                                   target="_blank"
@@ -624,10 +654,18 @@ export function YouTubeApiPanel({
 
           <Card className="border-border/80">
             <CardHeader>
-              <CardTitle className="text-base">Imported Videos & Sync</CardTitle>
-              <CardDescription>
-                Sync stats into Analytics Tracker and keep External Links up to date.
-              </CardDescription>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <CardTitle className="text-base">Imported Videos & Sync</CardTitle>
+                  <CardDescription>
+                    Sync stats into Analytics Tracker and keep External Links up to date. Manage
+                    imported videos in Video Intelligence.
+                  </CardDescription>
+                </div>
+                <Link href="/videos" className={buttonVariants({ variant: "outline", size: "sm" })}>
+                  Open Video Intelligence
+                </Link>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-wrap gap-2">
@@ -728,6 +766,12 @@ export function YouTubeApiPanel({
                             Create Learning
                           </Link>
                         ) : null}
+                        <Link
+                          href={`/videos?recordId=${encodeURIComponent(video.id)}`}
+                          className={buttonVariants({ variant: "ghost", size: "sm" })}
+                        >
+                          Video Intelligence
+                        </Link>
                       </div>
                     </div>
                   ))}

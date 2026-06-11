@@ -116,13 +116,18 @@ export interface CampaignCopilotStructuredContext {
   missingExternalLinks: string[]
   importedYouTubeAnalyticsSummary: string
   youtubeVideos: Array<{
+    id: string
     title: string
     viewCount: number
     likeCount: number
     commentCount: number
     lastSyncedAt: number | null
     videoUrl: string
+    campaignLinked: boolean
+    hasAnalytics: boolean
+    issues: string[]
   }>
+  youtubeVideoIssues: string[]
 }
 
 function isOverdueTask(task: CampaignTask): boolean {
@@ -404,14 +409,35 @@ export function buildCampaignCopilotStructuredContext(
     externalLinksByPlatform,
     missingExternalLinks,
     importedYouTubeAnalyticsSummary,
-    youtubeVideos: input.youtubeVideos.map((video) => ({
-      title: video.title,
-      viewCount: video.viewCount ?? 0,
-      likeCount: video.likeCount ?? 0,
-      commentCount: video.commentCount ?? 0,
-      lastSyncedAt: video.lastSyncedAt,
-      videoUrl: video.videoUrl,
-    })),
+    youtubeVideos: input.youtubeVideos.map((video) => {
+      const issues: string[] = []
+      if (!video.campaignId?.trim()) issues.push("unlinked to campaign")
+      if (!video.analyticsRecordId?.trim()) issues.push("missing analytics record")
+      if (!video.externalLinkId?.trim()) issues.push("missing external link")
+      if (!video.lastSyncedAt) issues.push("never synced stats")
+      else if (Date.now() - video.lastSyncedAt > 7 * 24 * 60 * 60 * 1000) {
+        issues.push("stale stats")
+      }
+      return {
+        id: video.id,
+        title: video.title,
+        viewCount: video.viewCount ?? 0,
+        likeCount: video.likeCount ?? 0,
+        commentCount: video.commentCount ?? 0,
+        lastSyncedAt: video.lastSyncedAt,
+        videoUrl: video.videoUrl,
+        campaignLinked: Boolean(video.campaignId?.trim()),
+        hasAnalytics: Boolean(video.analyticsRecordId?.trim()),
+        issues,
+      }
+    }),
+    youtubeVideoIssues: input.youtubeVideos.flatMap((video) => {
+      const issues: string[] = []
+      if (!video.campaignId?.trim()) issues.push(`${video.title}: unlinked`)
+      if (!video.analyticsRecordId?.trim()) issues.push(`${video.title}: missing analytics`)
+      if (!video.lastSyncedAt) issues.push(`${video.title}: not synced`)
+      return issues
+    }),
   }
 }
 
@@ -594,16 +620,23 @@ function formatCampaignCopilotMarkdown(
     lines.push("", "## YouTube API videos")
     for (const video of ctx.youtubeVideos) {
       lines.push(
-        `- ${video.title}: ${video.viewCount.toLocaleString()} views, ${video.likeCount.toLocaleString()} likes, ${video.commentCount.toLocaleString()} comments (last synced ${video.lastSyncedAt ? new Date(video.lastSyncedAt).toLocaleDateString() : "never"})`,
+        `- ${video.title}: ${video.viewCount.toLocaleString()} views, ${video.likeCount.toLocaleString()} likes, ${video.commentCount.toLocaleString()} comments (last synced ${video.lastSyncedAt ? new Date(video.lastSyncedAt).toLocaleDateString() : "never"})${video.issues.length ? ` — issues: ${video.issues.join(", ")}` : ""}`,
       )
     }
     lines.push(
       "",
       "Suggested actions:",
+      "- Open Video Intelligence (/videos)",
       "- Sync stats",
+      "- Link video to campaign if unlinked",
       "- Create learning from YouTube analytics",
-      "- Run quality review if performance is weak",
+      "- Run quality review or experiment on title/thumbnail",
+      "- Import recent videos from YouTube Integration",
     )
+  }
+
+  if (ctx.youtubeVideoIssues.length > 0) {
+    lines.push("", "## Video Intelligence attention", ...ctx.youtubeVideoIssues.map((item) => `- ${item}`))
   }
 
   if (ctx.dataHealthWarnings.length > 0) {

@@ -1773,14 +1773,48 @@ function evaluateYouTubeApiRules(ctx: AutomationEvaluationContext, suggestions: 
         description: `"${video.title}" is imported but has no analytics record.`,
         campaignId: video.campaignId,
         campaignName: video.campaignName,
-        suggestedActionLabel: "Open YouTube Integration",
+        suggestedActionLabel: "Open Video Intelligence",
         actionType: "navigate",
         actionPayload: {
-          href: `/integrations?tab=youtube-api&videoId=${encodeURIComponent(video.id)}`,
+          href: `/videos?recordId=${encodeURIComponent(video.id)}`,
         },
-        href: `/integrations?tab=youtube-api&videoId=${encodeURIComponent(video.id)}`,
+        href: `/videos?recordId=${encodeURIComponent(video.id)}`,
         canApply: false,
         reason: "Sync stats or create analytics record explicitly.",
+      })
+    }
+
+    if (!video.campaignId?.trim()) {
+      suggestions.push({
+        id: suggestionId(["youtube-video-unlinked", video.id]),
+        ruleId: "youtube-video-unlinked",
+        priority: "medium",
+        category: "Campaign",
+        title: "Link unlinked YouTube video to campaign",
+        description: `"${video.title}" is imported but not linked to a campaign.`,
+        suggestedActionLabel: "Open Unlinked Videos",
+        actionType: "navigate",
+        actionPayload: { href: `/videos?filter=unlinked&recordId=${encodeURIComponent(video.id)}` },
+        href: `/videos?filter=unlinked&recordId=${encodeURIComponent(video.id)}`,
+        canApply: false,
+        reason: "Confirm campaign match before linking.",
+      })
+    }
+
+    if (!video.externalLinkId?.trim()) {
+      suggestions.push({
+        id: suggestionId(["youtube-video-missing-external-link", video.id]),
+        ruleId: "youtube-video-missing-external-link",
+        priority: "info",
+        category: "Integrations",
+        title: "Add ExternalLink for imported video",
+        description: `"${video.title}" has no published video external link.`,
+        suggestedActionLabel: "Open Video Intelligence",
+        actionType: "navigate",
+        actionPayload: { href: `/videos?recordId=${encodeURIComponent(video.id)}` },
+        href: `/videos?recordId=${encodeURIComponent(video.id)}`,
+        canApply: false,
+        reason: "Create or update the external link explicitly.",
       })
     }
 
@@ -1801,13 +1835,79 @@ function evaluateYouTubeApiRules(ctx: AutomationEvaluationContext, suggestions: 
         suggestedActionLabel: "Sync YouTube Stats",
         actionType: "navigate",
         actionPayload: {
-          href: `/integrations?tab=youtube-api&campaignId=${encodeURIComponent(video.campaignId)}`,
+          href: `/videos?campaignId=${encodeURIComponent(video.campaignId)}`,
         },
-        href: `/integrations?tab=youtube-api&campaignId=${encodeURIComponent(video.campaignId)}`,
+        href: `/videos?campaignId=${encodeURIComponent(video.campaignId)}`,
         canApply: false,
         reason: "Refresh views, likes, and comments from YouTube.",
       })
     }
+
+    const hasLearning = (ctx.store.learnings ?? []).some(
+      (learning) =>
+        (learning.sourceType === "YouTubeVideo" && learning.sourceId === video.id) ||
+        (video.analyticsRecordId && learning.analyticsRecordId === video.analyticsRecordId),
+    )
+    if (video.analyticsRecordId && video.campaignId && !hasLearning) {
+      suggestions.push({
+        id: suggestionId(["youtube-video-create-learning", video.id]),
+        ruleId: "youtube-video-create-learning",
+        priority: "info",
+        category: "Learnings",
+        title: "Create learning from video performance",
+        description: `"${video.title}" has analytics — capture what worked for future campaigns.`,
+        campaignId: video.campaignId,
+        campaignName: video.campaignName,
+        suggestedActionLabel: "Open Video Intelligence",
+        actionType: "navigate",
+        actionPayload: { href: `/videos?recordId=${encodeURIComponent(video.id)}` },
+        href: `/videos?recordId=${encodeURIComponent(video.id)}`,
+        canApply: false,
+        reason: "Create a learning from synced video stats.",
+      })
+    }
+
+    const hasQualityReview = (ctx.store.qualityReviews ?? []).some(
+      (review) =>
+        (review.sourceRecordType === "YouTubeVideo" &&
+          review.sourceRecordId === video.id) ||
+        (video.campaignId && review.campaignId === video.campaignId),
+    )
+    if (video.campaignId && video.privacyStatus === "public" && !hasQualityReview) {
+      suggestions.push({
+        id: suggestionId(["youtube-video-quality-review", video.id]),
+        ruleId: "youtube-video-quality-review",
+        priority: "info",
+        category: "Quality",
+        title: "Create quality review for published video",
+        description: `Review title, thumbnail, and packaging for "${video.title}".`,
+        campaignId: video.campaignId,
+        campaignName: video.campaignName,
+        suggestedActionLabel: "Open Video Intelligence",
+        actionType: "navigate",
+        actionPayload: { href: `/videos?recordId=${encodeURIComponent(video.id)}` },
+        href: `/videos?recordId=${encodeURIComponent(video.id)}`,
+        canApply: false,
+        reason: "Score YouTube package or thumbnail quality.",
+      })
+    }
+  }
+
+  if (videos.length > 0) {
+    suggestions.push({
+      id: suggestionId(["open-video-intelligence"]),
+      ruleId: "open-video-intelligence",
+      priority: "info",
+      category: "YouTube",
+      title: "Open Video Intelligence for YouTube optimization",
+      description: `${videos.length} imported video(s) are ready for campaign linking, sync, and analysis.`,
+      suggestedActionLabel: "Open Video Intelligence",
+      actionType: "navigate",
+      actionPayload: { href: "/videos" },
+      href: "/videos",
+      canApply: false,
+      reason: "Central workspace for imported YouTube videos.",
+    })
   }
 }
 

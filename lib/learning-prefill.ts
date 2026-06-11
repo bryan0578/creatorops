@@ -16,6 +16,10 @@ export function buildLearningUrl(params: {
   sourceType?: string
   sourceId?: string
   title?: string
+  insight?: string
+  evidence?: string
+  recommendation?: string
+  platform?: string
 }): string {
   const search = new URLSearchParams()
   if (params.recordId) search.set("recordId", params.recordId)
@@ -32,6 +36,10 @@ export function buildLearningUrl(params: {
   if (params.sourceType) search.set("sourceType", params.sourceType)
   if (params.sourceId) search.set("sourceId", params.sourceId)
   if (params.title) search.set("title", params.title)
+  if (params.insight) search.set("insight", params.insight)
+  if (params.evidence) search.set("evidence", params.evidence)
+  if (params.recommendation) search.set("recommendation", params.recommendation)
+  if (params.platform) search.set("platform", params.platform)
   const qs = search.toString()
   return qs ? `/learnings?${qs}` : "/learnings"
 }
@@ -70,11 +78,19 @@ export function newLearningFormFromParams(params: {
   playbookId?: string | null
   sourceType?: string | null
   sourceId?: string | null
+  insight?: string | null
+  evidence?: string | null
+  recommendation?: string | null
+  platform?: string | null
 }): LearningFormValues {
   const form = emptyLearningForm(params.learningType?.trim() || "Other")
   return {
     ...form,
     title: params.title?.trim() ?? "",
+    platform: params.platform?.trim() ?? form.platform,
+    insight: params.insight?.trim() ?? "",
+    evidence: params.evidence?.trim() ?? "",
+    recommendation: params.recommendation?.trim() ?? "",
     category: params.category?.trim() ?? form.category,
     campaignId: params.campaignId?.trim() ?? "",
     campaignName: params.campaignName?.trim() ?? "",

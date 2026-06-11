@@ -7,6 +7,7 @@ import { getLearnings } from "@/lib/actions/learnings"
 import { getQualityReviews } from "@/lib/actions/quality-reviews"
 import { getCampaigns } from "@/lib/actions/campaigns"
 import { getExternalLinks } from "@/lib/actions/external-links"
+import { getYouTubeVideos, importYouTubeVideoRecords } from "@/lib/actions/youtube-integration"
 import { assetToPrismaCreate } from "@/lib/data/assets"
 import { learningToPrismaCreate } from "@/lib/data/learnings"
 import { qualityReviewToPrismaCreate } from "@/lib/data/quality-reviews"
@@ -86,6 +87,7 @@ const REVALIDATE_PATHS = [
   "/quality",
   "/learnings",
   "/integrations",
+  "/videos",
   "/data-health",
 ]
 
@@ -98,7 +100,7 @@ function revalidateBundleRoutes() {
 async function loadCampaignBundleStore(): Promise<
   CampaignBundleStore & { campaigns: CampaignRecord[] }
 > {
-  const [linkable, experiments, promptRuns, workflowRuns, presets, assets, qualityReviews, learnings, externalLinks, campaigns] =
+  const [linkable, experiments, promptRuns, workflowRuns, presets, assets, qualityReviews, learnings, externalLinks, youtubeVideos, campaigns] =
     await Promise.all([
       loadCampaignLinkableStoreSlice(),
       prisma.experiment.findMany({ orderBy: { updatedAt: "desc" } }),
@@ -109,6 +111,7 @@ async function loadCampaignBundleStore(): Promise<
       getQualityReviews(),
       getLearnings(),
       getExternalLinks(),
+      getYouTubeVideos(),
       getCampaigns(),
     ])
 
@@ -120,6 +123,7 @@ async function loadCampaignBundleStore(): Promise<
     qualityReviews,
     learnings,
     externalLinks,
+    youtubeVideos,
     runs: promptRuns.map(prismaPromptRunToPromptRun),
     workflowRuns: workflowRuns.map(prismaWorkflowRunToWorkflowRun),
     campaigns,
@@ -417,6 +421,10 @@ export async function importCampaignBundle(
         await tx.campaign.create({ data: campaignToPrismaCreate(remapped.campaign) })
       }
     })
+
+    if ((remapped.linkedRecords.youtubeVideos ?? []).length > 0) {
+      await importYouTubeVideoRecords(remapped.linkedRecords.youtubeVideos)
+    }
 
     revalidateBundleRoutes()
 

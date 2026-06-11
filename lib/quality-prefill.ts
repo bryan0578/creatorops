@@ -15,6 +15,7 @@ export function normalizeSourceRecordType(value: string | undefined | null): str
   if (lower === "promptrun" || lower === "prompt-run") return "prompt-run"
   if (lower === "experiment") return "experiment"
   if (lower === "asset") return "asset"
+  if (lower === "youtubevideo" || lower === "youtube-video") return "YouTubeVideo"
   return trimmed
 }
 
@@ -58,6 +59,7 @@ export function reviewTypeForSource(sourceRecordType: string, variant?: string):
   if (type === "prompt-run") return "Prompt Quality"
   if (type === "experiment") return "Experiment Variant"
   if (type === "asset") return "Thumbnail"
+  if (type === "YouTubeVideo") return "YouTube Package"
   return "Other"
 }
 
@@ -129,6 +131,7 @@ export function newQualityReviewFormFromParams(params: {
     reviewName,
     campaignId: params.campaignId?.trim() ?? "",
     campaignName: params.campaignName?.trim() ?? "",
+    platform: sourceRecordType === "YouTubeVideo" ? "YouTube" : form.platform,
     sourceRecordType,
     sourceRecordId: params.sourceRecordId?.trim() ?? "",
     sourcePromptRunId: params.sourcePromptRunId?.trim() ?? "",

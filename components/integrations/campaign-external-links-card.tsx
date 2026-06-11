@@ -1,14 +1,16 @@
 "use client"
 
 import * as React from "react"
+import Image from "next/image"
 import Link from "next/link"
-import { ExternalLink, Link2, Loader2, Plus, Upload } from "lucide-react"
+import { ExternalLink, Link2, Loader2, Plus, Upload, Video } from "lucide-react"
 
 import { getExternalLinksForCampaign } from "@/lib/actions/external-links"
 import {
   getYouTubeVideosForCampaign,
   syncCampaignYouTubeVideos,
 } from "@/lib/actions/youtube-integration"
+import { syncVideoStats } from "@/lib/actions/videos"
 import { groupExternalLinksByPlatform } from "@/lib/data/external-links"
 import type { ExternalLinkRecord, YouTubeVideoRecord } from "@/lib/types"
 import { Badge } from "@/components/ui/badge"
@@ -22,7 +24,8 @@ import {
 } from "@/components/ui/card"
 import { RECENT_RECORDS_CARD_CLASS } from "@/components/module/form-layout"
 
-function formatDate(ts: number) {
+function formatDate(ts: number | null) {
+  if (!ts) return "—"
   return new Date(ts).toLocaleString(undefined, {
     dateStyle: "medium",
     timeStyle: "short",
@@ -39,6 +42,7 @@ export function CampaignExternalLinksCard({ campaignId }: { campaignId: string }
   const [youtubeVideos, setYoutubeVideos] = React.useState<YouTubeVideoRecord[]>([])
   const [loading, setLoading] = React.useState(true)
   const [syncing, setSyncing] = React.useState(false)
+  const [syncingVideoId, setSyncingVideoId] = React.useState<string | null>(null)
 
   const refresh = React.useCallback(async () => {
     setLoading(true)
@@ -85,6 +89,18 @@ export function CampaignExternalLinksCard({ campaignId }: { campaignId: string }
     }
   }
 
+  async function handleSyncVideo(videoId: string) {
+    setSyncingVideoId(videoId)
+    try {
+      const result = await syncVideoStats(videoId)
+      if (result.success) {
+        await refresh()
+      }
+    } finally {
+      setSyncingVideoId(null)
+    }
+  }
+
   return (
     <Card className={RECENT_RECORDS_CARD_CLASS}>
       <CardHeader className="pb-2">
@@ -92,10 +108,10 @@ export function CampaignExternalLinksCard({ campaignId }: { campaignId: string }
           <div>
             <CardTitle className="flex items-center gap-2 text-base">
               <Link2 className="size-4 text-primary" />
-              External Links
+              External Links & YouTube Video
             </CardTitle>
             <CardDescription>
-              YouTube, Google Drive, Fourthwall, Suno, and other platform URLs
+              YouTube API videos, published links, Drive, Fourthwall, Suno, and other platform URLs
             </CardDescription>
           </div>
           <Badge variant="secondary">{links.length}</Badge>
@@ -109,28 +125,47 @@ export function CampaignExternalLinksCard({ campaignId }: { campaignId: string }
           </div>
         ) : links.length === 0 && youtubeVideos.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No links for this campaign yet. Add published video, import from YouTube API, import CSV,
-            or add asset folders and product links.
+            No links for this campaign yet. Link a YouTube video in Video Intelligence, import from
+            YouTube API, import CSV, or add asset folders and product links.
           </p>
         ) : (
           <ul className="space-y-2 text-sm">
             {primaryYoutubeVideo ? (
-              <li className="rounded-md border border-border/60 p-2">
-                <p className="font-medium">{primaryYoutubeVideo.title}</p>
-                <p className="text-xs text-muted-foreground">
-                  YouTube API · {(primaryYoutubeVideo.viewCount ?? 0).toLocaleString()} views ·{" "}
-                  {(primaryYoutubeVideo.likeCount ?? 0).toLocaleString()} likes ·{" "}
-                  {(primaryYoutubeVideo.commentCount ?? 0).toLocaleString()} comments
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Published {formatDate(primaryYoutubeVideo.publishedAt)} · Last synced{" "}
-                  {formatDate(primaryYoutubeVideo.lastSyncedAt)}
-                </p>
+              <li className="rounded-md border border-border/60 p-3">
+                <div className="flex gap-3">
+                  <div className="relative size-16 shrink-0 overflow-hidden rounded-md border border-border/60 bg-muted">
+                    {primaryYoutubeVideo.thumbnailUrl ? (
+                      <Image
+                        src={primaryYoutubeVideo.thumbnailUrl}
+                        alt=""
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      <div className="flex size-full items-center justify-center text-[10px] text-muted-foreground">
+                        No thumb
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <p className="font-medium">{primaryYoutubeVideo.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(primaryYoutubeVideo.viewCount ?? 0).toLocaleString()} views ·{" "}
+                      {(primaryYoutubeVideo.likeCount ?? 0).toLocaleString()} likes ·{" "}
+                      {(primaryYoutubeVideo.commentCount ?? 0).toLocaleString()} comments
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Published {formatDate(primaryYoutubeVideo.publishedAt)} · Last synced{" "}
+                      {formatDate(primaryYoutubeVideo.lastSyncedAt)}
+                    </p>
+                  </div>
+                </div>
               </li>
             ) : null}
             {youtubeVideo ? (
               <li>
-                <span className="text-muted-foreground">YouTube: </span>
+                <span className="text-muted-foreground">YouTube link: </span>
                 <Link href={youtubeVideo.url} target="_blank" rel="noopener noreferrer" className="underline">
                   {youtubeVideo.name}
                 </Link>
@@ -174,9 +209,70 @@ export function CampaignExternalLinksCard({ campaignId }: { campaignId: string }
         )}
 
         <div className="flex flex-wrap gap-2">
+          {primaryYoutubeVideo ? (
+            <>
+              <Link
+                href={`/videos?recordId=${encodeURIComponent(primaryYoutubeVideo.id)}&campaignId=${encodeURIComponent(campaignId)}`}
+                className={buttonVariants({ size: "sm" })}
+              >
+                <Video className="size-4" />
+                Open in Video Intelligence
+              </Link>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={syncingVideoId === primaryYoutubeVideo.id}
+                onClick={() => void handleSyncVideo(primaryYoutubeVideo.id)}
+              >
+                {syncingVideoId === primaryYoutubeVideo.id ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : null}
+                Sync Stats
+              </Button>
+              <Link
+                href={primaryYoutubeVideo.videoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                <ExternalLink className="size-4" />
+                Open YouTube
+              </Link>
+              {primaryYoutubeVideo.analyticsRecordId ? (
+                <Link
+                  href={`/analytics?recordId=${encodeURIComponent(primaryYoutubeVideo.analyticsRecordId)}`}
+                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                >
+                  Open Analytics
+                </Link>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <Link
+                href={`/videos?campaignId=${encodeURIComponent(campaignId)}&filter=unlinked`}
+                className={buttonVariants({ size: "sm" })}
+              >
+                Link YouTube Video
+              </Link>
+              <Link
+                href={`/videos?campaignId=${encodeURIComponent(campaignId)}`}
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                Open Video Intelligence
+              </Link>
+              <Link
+                href={integrationsHref(campaignId, { tab: "youtube-api" })}
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                Open YouTube Integration
+              </Link>
+            </>
+          )}
           <Link
             href={integrationsHref(campaignId, { tab: "details" })}
-            className={buttonVariants({ size: "sm" })}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
           >
             <Plus className="size-4" />
             Add External Link
@@ -188,12 +284,6 @@ export function CampaignExternalLinksCard({ campaignId }: { campaignId: string }
             Open Integrations
           </Link>
           <Link
-            href={integrationsHref(campaignId, { tab: "youtube-api" })}
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            Import from YouTube
-          </Link>
-          <Link
             href={integrationsHref(campaignId, { tab: "youtube-csv" })}
             className={buttonVariants({ variant: "outline", size: "sm" })}
           >
@@ -203,27 +293,8 @@ export function CampaignExternalLinksCard({ campaignId }: { campaignId: string }
           {youtubeVideos.length > 0 ? (
             <Button type="button" variant="outline" size="sm" disabled={syncing} onClick={() => void handleSyncYouTube()}>
               {syncing ? <Loader2 className="size-4 animate-spin" /> : null}
-              Sync YouTube Stats
+              Sync Campaign Videos
             </Button>
-          ) : null}
-          {primaryYoutubeVideo?.analyticsRecordId ? (
-            <Link
-              href={`/analytics?recordId=${encodeURIComponent(primaryYoutubeVideo.analyticsRecordId)}`}
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              View Analytics
-            </Link>
-          ) : null}
-          {(primaryYoutubeVideo?.videoUrl || youtubeVideo?.url) ? (
-            <Link
-              href={primaryYoutubeVideo?.videoUrl || youtubeVideo!.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              <ExternalLink className="size-4" />
-              Open YouTube
-            </Link>
           ) : null}
         </div>
       </CardContent>

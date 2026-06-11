@@ -54,7 +54,12 @@ import type {
   WorkflowRun,
   YouTubePackage,
   YouTubeThumbnailRecord,
+  YouTubeVideoRecord,
 } from "@/lib/types"
+import {
+  filterYouTubeVideosForCampaign,
+  normalizeYouTubeVideoRecord,
+} from "@/lib/youtube/mappers"
 
 export const CAMPAIGN_BUNDLE_TYPE = "creatorops-campaign-bundle"
 export const CAMPAIGN_BUNDLE_VERSION = 1
@@ -89,6 +94,7 @@ export interface CampaignBundleLinkedRecords {
   qualityReviews: QualityReviewRecord[]
   learnings: LearningRecord[]
   externalLinks: ExternalLinkRecord[]
+  youtubeVideos: YouTubeVideoRecord[]
 }
 
 export interface CampaignBundleRelationship {
@@ -144,6 +150,7 @@ export interface CampaignBundleSummaryCounts {
   qualityReviews: number
   learnings: number
   externalLinks: number
+  youtubeVideos: number
 }
 
 export interface CampaignBundleConflict {
@@ -190,6 +197,7 @@ export interface CampaignBundleStore extends CampaignLinkableStoreSlice {
   qualityReviews: QualityReviewRecord[]
   learnings: LearningRecord[]
   externalLinks: ExternalLinkRecord[]
+  youtubeVideos: YouTubeVideoRecord[]
 }
 
 function norm(value: string | undefined | null): string {
@@ -222,6 +230,7 @@ export function emptyCampaignBundleLinkedRecords(): CampaignBundleLinkedRecords 
     qualityReviews: [],
     learnings: [],
     externalLinks: [],
+    youtubeVideos: [],
   }
 }
 
@@ -248,6 +257,7 @@ export function countCampaignBundleLinkedRecords(
     qualityReviews: linked.qualityReviews.length,
     learnings: linked.learnings.length,
     externalLinks: linked.externalLinks.length,
+    youtubeVideos: linked.youtubeVideos.length,
   }
 }
 
@@ -271,7 +281,8 @@ export function totalLinkedBundleRecords(linked: CampaignBundleLinkedRecords): n
     counts.assets +
     counts.qualityReviews +
     counts.learnings +
-    counts.externalLinks
+    counts.externalLinks +
+    counts.youtubeVideos
   )
 }
 
@@ -706,6 +717,18 @@ function collectCampaignScopedRecords(
       recordTitle: link.name,
     })
   }
+
+  const campaignYoutubeVideos = filterYouTubeVideosForCampaign(
+    store.youtubeVideos ?? [],
+    campaign.id,
+    campaign.campaignName,
+  )
+  for (const video of campaignYoutubeVideos) {
+    collector.track("youtubeVideos", video, {
+      source: "campaign-field",
+      recordTitle: video.title,
+    })
+  }
 }
 
 /** Build a portable campaign bundle without mutating source records. */
@@ -863,6 +886,7 @@ export function parseCampaignBundleJson(
     "qualityReviews",
     "learnings",
     "externalLinks",
+    "youtubeVideos",
   ]
 
   for (const key of arrayKeys) {
@@ -1521,6 +1545,20 @@ export function remapCampaignBundleForImport(
           ? remapId(idMap, r.sourceRecordId)
           : r.sourceRecordId,
         assetId: r.assetId ? remapId(idMap, r.assetId) : r.assetId,
+        analyticsRecordId: r.analyticsRecordId
+          ? remapId(idMap, r.analyticsRecordId)
+          : r.analyticsRecordId,
+      }),
+    ),
+    youtubeVideos: (bundle.linkedRecords.youtubeVideos ?? []).map((r) =>
+      normalizeYouTubeVideoRecord({
+        ...r,
+        id: remapId(idMap, r.id),
+        campaignId: newCampaignId,
+        campaignName,
+        externalLinkId: r.externalLinkId
+          ? remapId(idMap, r.externalLinkId)
+          : r.externalLinkId,
         analyticsRecordId: r.analyticsRecordId
           ? remapId(idMap, r.analyticsRecordId)
           : r.analyticsRecordId,

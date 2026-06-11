@@ -69,6 +69,7 @@ import {
 import { normalizeExternalLinkRecord } from "@/lib/data/external-links"
 
 const YOUTUBE_PATHS = [
+  "/videos",
   "/integrations",
   "/campaigns",
   "/analytics",

@@ -178,7 +178,13 @@ export function ExperimentTracker() {
   React.useEffect(() => {
     if (prefillApplied.current || shouldSkipCampaignUrlPrefill(editingId)) return
     const { campaignId, campaignName } = campaignPrefill
-    if (!campaignId && !campaignName) return
+    const experimentType = searchParams.get("experimentType")
+    const hypothesis = searchParams.get("hypothesis")
+    const notes = searchParams.get("notes")
+    const platform = searchParams.get("platform")
+    const hasVideoPrefill =
+      experimentType || hypothesis || notes || platform || campaignId || campaignName
+    if (!hasVideoPrefill) return
 
     const campaign = campaignId
       ? campaigns.find((item) => item.id === campaignId)
@@ -192,9 +198,13 @@ export function ExperimentTracker() {
       ...prev,
       campaignId: campaign?.id ?? campaignId ?? prev.campaignId,
       campaignName: campaign?.campaignName ?? campaignName ?? prev.campaignName,
+      experimentType: experimentType ?? prev.experimentType,
+      hypothesis: hypothesis ?? prev.hypothesis,
+      notes: notes ?? prev.notes,
+      platform: platform ?? prev.platform,
     }))
     prefillApplied.current = true
-  }, [campaignPrefill, campaigns, editingId])
+  }, [campaignPrefill, campaigns, editingId, searchParams])
 
   const filteredRecords = React.useMemo(() => {
     const q = recordSearch.trim().toLowerCase()

@@ -53,6 +53,7 @@ import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-b
 import { CampaignPromptOutputSection } from "@/components/campaigns/campaign-context-prompt-controls"
 import { PresetPrefillBanner } from "@/components/presets/preset-prefill-banner"
 import { RelatedExperimentsPanel } from "@/components/experiments/related-experiments-panel"
+import { RelatedYouTubeVideoPanel } from "@/components/videos/related-youtube-video-panel"
 import { buildExperimentAnalyticsLink } from "@/lib/experiment-analytics"
 import { RelationshipPanel } from "@/components/relationships/relationship-panel"
 import {
@@ -884,6 +885,7 @@ export function AnalyticsTracker() {
         </ModuleTabPanel>
 
         <ModuleTabPanel value="related">
+          <RelatedYouTubeVideoPanel analyticsRecordId={editingId ?? undefined} />
           <RelatedExperimentsPanel
             experimentId={form.experimentId || experimentPrefillId || undefined}
             relatedCampaign={form.relatedCampaign}
