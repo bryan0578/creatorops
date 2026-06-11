@@ -548,6 +548,15 @@ export const COMMAND_PALETTE_QUICK_ACTIONS: CommandPaletteStaticItem[] = [
     keywords: "drive files synced assets google integration",
   },
   {
+    id: "qa-asset-link-suggestions",
+    group: "quick-actions",
+    title: "Open Asset Link Suggestions",
+    subtitle: "Assets — review suggested Drive, campaign, and video links",
+    href: "/assets",
+    icon: Link2,
+    keywords: "asset link suggestions drive campaign video thumbnail mockup",
+  },
+  {
     id: "qa-unlinked-videos",
     group: "quick-actions",
     title: "Open Unlinked Videos",

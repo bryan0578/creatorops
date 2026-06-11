@@ -25,6 +25,7 @@ import {
   validateDriveFolderUrl,
 } from "@/lib/actions/drive-integration"
 import { countDriveFilesForFolder } from "@/lib/drive/mappers"
+import { AssetLinkSuggestionsPanel } from "@/components/asset-linking/asset-link-suggestions-panel"
 import type {
   CampaignRecord,
   DriveConnectionStatusSummary,
@@ -88,6 +89,8 @@ export function GoogleDriveApiPanel({
   const [selectedCampaignId, setSelectedCampaignId] = React.useState(defaultCampaignId)
   const [previewMessage, setPreviewMessage] = React.useState<string | null>(null)
   const [selectedFolderId, setSelectedFolderId] = React.useState<string>("all")
+  const highlightFileId = searchParams.get("fileId") ?? ""
+  const highlightAssetId = searchParams.get("assetId") ?? ""
 
   const refresh = React.useCallback(async () => {
     setLoading(true)
@@ -216,6 +219,15 @@ export function GoogleDriveApiPanel({
           <Card><CardContent className="pt-4"><p className="text-xs text-muted-foreground">Unlinked files</p><p className="text-2xl font-semibold">{summary.unlinkedFiles}</p></CardContent></Card>
         </div>
       ) : null}
+
+      <AssetLinkSuggestionsPanel
+        campaignId={selectedCampaignId || defaultCampaignId || undefined}
+        driveFileId={highlightFileId || undefined}
+        assetId={highlightAssetId || undefined}
+        limit={12}
+        onApplied={() => void refresh()}
+        description="Unlinked Drive files and related records with deterministic name/campaign matches. Nothing is linked until you click Apply."
+      />
 
       {connected ? (
         <>

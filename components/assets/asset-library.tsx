@@ -62,6 +62,7 @@ import {
   RECENT_RECORDS_CARD_CLASS,
 } from "@/components/module/form-layout"
 import { IntegrationLinkButton } from "@/components/integrations/integration-link-button"
+import { AssetLinkSuggestionsPanel } from "@/components/asset-linking/asset-link-suggestions-panel"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -863,6 +864,18 @@ export function AssetLibrary() {
               ) : null}
             </CardContent>
           </Card>
+
+          {form.id ? (
+            <AssetLinkSuggestionsPanel
+              assetId={form.id}
+              campaignId={form.campaignId || undefined}
+              limit={6}
+              compact
+              onApplied={() => {
+                void getDriveFilesForAsset(form.id).then(setDriveLinkedFiles)
+              }}
+            />
+          ) : null}
 
           <Card className={RECENT_RECORDS_CARD_CLASS}>
             <CardHeader>

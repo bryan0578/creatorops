@@ -2,7 +2,7 @@
  * Data Health — read-only scan types and report builder.
  */
 
-import { buildRecordHref } from "@/lib/data/related-records"
+import { scanAssetLinkingWarnings } from "@/lib/data/asset-linking-health"
 import { normalizeSourceRecordType } from "@/lib/quality-prefill"
 import { extractPlaybookIdFromNotes } from "@/lib/playbooks"
 import { isValidJsonString } from "@/lib/safe-json"
@@ -2915,6 +2915,7 @@ export function buildDataHealthReport(
   safeScan("Google Drive API", issues, () =>
     scanDriveApiWarnings(input, sets, issues),
   )
+  safeScan("Asset linking", issues, () => scanAssetLinkingWarnings(input, issues))
   safeScan("JSON / data issues", issues, () => scanJsonIssues(input, issues))
 
   return {

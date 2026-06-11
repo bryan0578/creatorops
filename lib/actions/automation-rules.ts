@@ -15,7 +15,10 @@ import { getLearnings } from "@/lib/actions/learnings"
 import { getQualityReviews } from "@/lib/actions/quality-reviews"
 import { getCampaigns, upsertCampaign } from "@/lib/actions/campaigns"
 import { getDataHealthReport } from "@/lib/actions/data-health"
-import { getExperiments } from "@/lib/actions/experiments"
+import { getMerchIdeas } from "@/lib/actions/merch-ideas"
+import { getMockupPromptRecords } from "@/lib/actions/mockup-prompts"
+import { getProductListings } from "@/lib/actions/product-listings"
+import { getReleasePlans } from "@/lib/actions/release-plans"
 import { getPromptRuns } from "@/lib/actions/prompt-runs"
 import { normalizeCampaignRecord } from "@/lib/campaigns"
 import {
@@ -93,6 +96,10 @@ async function loadAutomationContext() {
     driveConnection,
     driveFolders,
     driveFiles,
+    productListings,
+    merchIdeas,
+    mockupPrompts,
+    releasePlans,
     dataHealth,
     workspaceSettings,
   ] = await Promise.all([
@@ -124,6 +131,10 @@ async function loadAutomationContext() {
     }),
     safeLoad("driveFolders", () => getDriveFolders(), []),
     safeLoad("driveFiles", () => getDriveFiles(), []),
+    safeLoad("productListings", () => getProductListings(), []),
+    safeLoad("merchIdeas", () => getMerchIdeas(), []),
+    safeLoad("mockupPrompts", () => getMockupPromptRecords(), []),
+    safeLoad("releasePlans", () => getReleasePlans(), []),
     getDataHealthReport().catch(() => null),
     getWorkspaceSettings(),
   ])
@@ -147,6 +158,10 @@ async function loadAutomationContext() {
       youtubeVideos,
       driveFolders,
       driveFiles,
+      productListings,
+      merchIdeas,
+      mockupPrompts,
+      releasePlans,
     },
     youtubeConnectionConnected: youtubeConnection.oauthConnected,
     driveConnectionConnected: driveConnection.oauthConnected,

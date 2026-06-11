@@ -14,6 +14,7 @@ import {
   buildLearningUrlFromVideo,
   buildQualityReviewUrlFromVideo,
 } from "@/lib/video-prefill"
+import { AssetLinkSuggestionsPanel } from "@/components/asset-linking/asset-link-suggestions-panel"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -252,6 +253,15 @@ export function VideoDetailSheet({
               >
                 {video.hasExternalLink ? "Update External Link" : "Add External Link"}
               </Button>
+
+              <AssetLinkSuggestionsPanel
+                youtubeVideoId={video.id}
+                campaignId={video.campaignId || undefined}
+                limit={5}
+                compact
+                title="Suggested Drive & Asset Links"
+                description="Thumbnail and video file matches from synced Google Drive files."
+              />
 
               <details className="rounded-md border border-border/60 p-3 text-xs">
                 <summary className="cursor-pointer font-medium">Raw metadata</summary>

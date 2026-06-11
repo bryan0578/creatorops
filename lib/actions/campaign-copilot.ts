@@ -10,6 +10,7 @@ import {
   getDriveFilesForCampaign,
   getDriveFoldersForCampaign,
 } from "@/lib/actions/drive-integration"
+import { getAssets } from "@/lib/actions/assets"
 import { getYouTubeVideosForCampaign } from "@/lib/actions/youtube-integration"
 import { getExperiments } from "@/lib/actions/experiments"
 import { getLearnings } from "@/lib/actions/learnings"
@@ -111,6 +112,7 @@ export async function getCampaignCopilotContext(campaignId: string): Promise<{
     youtubeVideos,
     driveFolders,
     driveFiles,
+    assets,
   ] = await Promise.all([
     loadCampaignRecord(campaignId),
     loadCampaignLinkableStoreSlice(),
@@ -127,6 +129,7 @@ export async function getCampaignCopilotContext(campaignId: string): Promise<{
     getYouTubeVideosForCampaign(campaignId),
     getDriveFoldersForCampaign(campaignId),
     getDriveFilesForCampaign(campaignId),
+    getAssets(),
   ])
 
   return buildCampaignCopilotContextFromRecords(
@@ -147,6 +150,7 @@ export async function getCampaignCopilotContext(campaignId: string): Promise<{
       youtubeVideos,
       driveFolders,
       driveFiles,
+      assets,
     },
   )
 }

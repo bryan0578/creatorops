@@ -17,6 +17,7 @@ import {
 import { syncVideoStats } from "@/lib/actions/videos"
 import { groupExternalLinksByPlatform } from "@/lib/data/external-links"
 import type { DriveFileRecord, DriveFolderRecord, ExternalLinkRecord, YouTubeVideoRecord } from "@/lib/types"
+import { AssetLinkSuggestionsPanel } from "@/components/asset-linking/asset-link-suggestions-panel"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -372,6 +373,15 @@ export function CampaignExternalLinksCard({ campaignId }: { campaignId: string }
             </Button>
           ) : null}
         </div>
+
+        <AssetLinkSuggestionsPanel
+          campaignId={campaignId}
+          limit={6}
+          compact
+          title="Suggested Assets & Links"
+          description="High-confidence matches for Drive files, assets, and videos on this campaign."
+          onApplied={() => void refresh()}
+        />
       </CardContent>
     </Card>
   )

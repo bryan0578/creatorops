@@ -13,6 +13,10 @@ import type { DataHealthReport } from "@/lib/data/data-health"
 import { filterAssetsForCampaign } from "@/lib/assets"
 import { filterLearningsForCampaign } from "@/lib/learnings"
 import { filterQualityReviewsForCampaign } from "@/lib/quality-reviews"
+import {
+  buildAssetLinkSuggestions,
+  type AssetLinkingDataset,
+} from "@/lib/asset-linking/matchers"
 import { filterExternalLinksForCampaign } from "@/lib/data/external-links"
 import { normalizeStatusToStage } from "@/lib/data/campaign-board"
 import {
@@ -114,6 +118,10 @@ export interface AutomationEvaluationContext {
     youtubeVideos: import("@/lib/types").YouTubeVideoRecord[]
     driveFolders: import("@/lib/types").DriveFolderRecord[]
     driveFiles: import("@/lib/types").DriveFileRecord[]
+    productListings: import("@/lib/types").ProductListing[]
+    merchIdeas: import("@/lib/types").MerchIdea[]
+    mockupPrompts: import("@/lib/types").MockupPromptRecord[]
+    releasePlans: import("@/lib/types").ReleasePlan[]
   }
   youtubeConnectionConnected: boolean
   driveConnectionConnected: boolean
@@ -441,6 +449,14 @@ export const BUILTIN_AUTOMATION_RULES: BuiltinAutomationRule[] = [
     description: "Campaigns with assets but no Google Drive folder link.",
     category: "Missing Asset",
     priority: "low",
+    enabled: true,
+  },
+  {
+    id: "asset-linking-suggestion",
+    name: "Asset Linking Suggestion",
+    description: "Deterministic matches between Drive files, assets, campaigns, and videos.",
+    category: "Missing Asset",
+    priority: "info",
     enabled: true,
   },
   {
@@ -2126,6 +2142,61 @@ function evaluateDriveApiRules(ctx: AutomationEvaluationContext, suggestions: Au
   }
 }
 
+function evaluateAssetLinkingRules(ctx: AutomationEvaluationContext, suggestions: AutomationSuggestion[]) {
+  const dataset: AssetLinkingDataset = {
+    campaigns: ctx.campaigns,
+    assets: ctx.store.assets ?? [],
+    driveFiles: ctx.store.driveFiles ?? [],
+    driveFolders: ctx.store.driveFolders ?? [],
+    youtubeVideos: ctx.store.youtubeVideos ?? [],
+    productListings: ctx.store.productListings ?? [],
+    merchIdeas: ctx.store.merchIdeas ?? [],
+    mockupPrompts: ctx.store.mockupPrompts ?? [],
+    releasePlans: ctx.store.releasePlans ?? [],
+  }
+
+  const matches = buildAssetLinkSuggestions(dataset, { limit: 24 })
+  const seen = new Set<string>()
+
+  for (const match of matches) {
+    if (match.confidence === "low" && match.score < 45) continue
+    if (seen.has(match.id)) continue
+    seen.add(match.id)
+
+    const href =
+      match.href ??
+      (match.sourceType === "drive-file"
+        ? `/integrations?tab=google-drive&fileId=${encodeURIComponent(match.sourceId)}`
+        : match.sourceType === "asset"
+          ? `/assets?recordId=${encodeURIComponent(match.sourceId)}`
+          : match.sourceType === "youtube-video"
+            ? `/videos?recordId=${encodeURIComponent(match.sourceId)}`
+            : "/assets")
+
+    suggestions.push({
+      id: suggestionId(["asset-linking", match.id]),
+      ruleId: "asset-linking-suggestion",
+      priority: match.confidence === "high" ? "medium" : "info",
+      category: "Missing Asset",
+      title: match.suggestedAction,
+      description: `${match.sourceName} → ${match.targetName}. ${match.reason}`,
+      campaignId:
+        match.targetType === "campaign"
+          ? match.targetId
+          : ctx.campaigns.find((c) => c.campaignName === match.targetName)?.id,
+      campaignName: match.targetType === "campaign" ? match.targetName : undefined,
+      suggestedActionLabel: match.suggestedAction,
+      actionType: "navigate",
+      actionPayload: { href },
+      href,
+      canApply: false,
+      reason: "Review and apply the link explicitly — no silent auto-linking.",
+    })
+
+    if (seen.size >= 12) break
+  }
+}
+
 const RULE_EVALUATORS: Array<(ctx: AutomationEvaluationContext, out: AutomationSuggestion[]) => void> = [
   evaluateMissingAssets,
   evaluateMissingAssetLibrary,
@@ -2144,6 +2215,7 @@ const RULE_EVALUATORS: Array<(ctx: AutomationEvaluationContext, out: AutomationS
   evaluateExternalIntegrations,
   evaluateYouTubeApiRules,
   evaluateDriveApiRules,
+  evaluateAssetLinkingRules,
   evaluateLearnings,
   evaluateIncompleteCampaignFields,
   evaluatePrePublishChecklist,

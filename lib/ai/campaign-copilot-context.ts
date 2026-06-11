@@ -1,5 +1,6 @@
 import { buildLaunchDashboardData, type LaunchDashboardData } from "@/lib/campaign-launch-dashboard"
 import type { CampaignLinkableStoreSlice } from "@/lib/campaigns"
+import { filterAssetsForCampaign } from "@/lib/assets"
 import { buildCampaignContext, type CampaignContextBundle } from "@/lib/data/campaign-context"
 import {
   filterSuggestionsForCampaign,
@@ -15,6 +16,7 @@ import {
   filterDriveFilesForCampaign,
   filterDriveFoldersForCampaign,
 } from "@/lib/drive/mappers"
+import { buildAssetLinkSuggestions } from "@/lib/asset-linking/matchers"
 import { extractPlaybookIdFromNotes } from "@/lib/playbooks"
 import { isAIGenerationTemplate } from "@/lib/ai-templates/utils"
 import { getCampaignPromptRuns } from "@/lib/prompt-run-linking"
@@ -149,6 +151,14 @@ export interface CampaignCopilotStructuredContext {
   }>
   driveSummary: string
   driveIssues: string[]
+  assetLinkSuggestions: Array<{
+    sourceName: string
+    targetName: string
+    suggestedAction: string
+    confidence: string
+    score: number
+    reason: string
+  }>
 }
 
 function isOverdueTask(task: CampaignTask): boolean {
@@ -246,6 +256,7 @@ export interface BuildCampaignCopilotContextInput {
   youtubeVideos: import("@/lib/types").YouTubeVideoRecord[]
   driveFolders: import("@/lib/types").DriveFolderRecord[]
   driveFiles: import("@/lib/types").DriveFileRecord[]
+  assets: import("@/lib/types").AssetRecord[]
 }
 
 export function buildCampaignCopilotStructuredContext(
@@ -537,6 +548,33 @@ export function buildCampaignCopilotStructuredContext(
       }
       return issues
     })(),
+    assetLinkSuggestions: buildAssetLinkSuggestions(
+      {
+        campaigns: [campaign],
+        assets: filterAssetsForCampaign(
+          input.assets ?? [],
+          campaign.id,
+          campaign.campaignName,
+        ),
+        driveFiles: input.driveFiles ?? [],
+        driveFolders: input.driveFolders ?? [],
+        youtubeVideos: input.youtubeVideos ?? [],
+        productListings: input.store.productListings ?? [],
+        merchIdeas: input.store.merchIdeas ?? [],
+        mockupPrompts: input.store.mockupPromptRecords ?? [],
+        releasePlans: input.store.releasePlans ?? [],
+      },
+      { campaignId: campaign.id, limit: 10 },
+    )
+      .filter((item) => item.confidence !== "low" || item.score >= 40)
+      .map((item) => ({
+        sourceName: item.sourceName,
+        targetName: item.targetName,
+        suggestedAction: item.suggestedAction,
+        confidence: item.confidence,
+        score: item.score,
+        reason: item.reason,
+      })),
   }
 }
 
@@ -768,6 +806,23 @@ function formatCampaignCopilotMarkdown(
 
   if (ctx.driveIssues.length > 0) {
     lines.push("", "## Drive attention", ...ctx.driveIssues.map((item) => `- ${item}`))
+  }
+
+  if (ctx.assetLinkSuggestions.length > 0) {
+    lines.push("", "## Asset link suggestions")
+    for (const item of ctx.assetLinkSuggestions) {
+      lines.push(
+        `- [${item.confidence}/${item.score}] ${item.sourceName} → ${item.targetName}: ${item.reason} (${item.suggestedAction})`,
+      )
+    }
+    lines.push(
+      "",
+      "Suggested actions:",
+      "- Link thumbnail file to YouTube video",
+      "- Create an Asset from a Drive mockup file",
+      "- Attach a Drive folder to the campaign",
+      "- Link unlinked Drive files after reviewing confidence",
+    )
   }
 
   if (ctx.dataHealthWarnings.length > 0) {
