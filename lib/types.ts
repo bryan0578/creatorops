@@ -80,6 +80,7 @@ export type PromptRunModuleType =
   | "Mockup Prompt"
   | "Analytics"
   | "Campaign Context"
+  | "Campaign Copilot"
   | "Experiment"
   | "Other"
 
@@ -94,6 +95,7 @@ export const PROMPT_RUN_MODULE_TYPES: PromptRunModuleType[] = [
   "Mockup Prompt",
   "Analytics",
   "Campaign Context",
+  "Campaign Copilot",
   "Experiment",
   "Other",
 ]

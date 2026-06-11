@@ -1330,6 +1330,39 @@ function scanAIGenerationTemplateWarnings(
   }
 }
 
+function scanCampaignCopilotWarnings(
+  input: DataHealthScanInput,
+  issues: DataHealthIssue[],
+): void {
+  for (const campaign of input.campaigns) {
+    if (campaign.status !== "Ready to Publish") continue
+
+    const hasCopilot = input.promptRuns.some(
+      (run) =>
+        run.campaignId === campaign.id &&
+        (run.moduleType === "Campaign Copilot" ||
+          run.tags.includes("campaign-copilot") ||
+          run.runType === "Copilot"),
+    )
+    if (hasCopilot) continue
+
+    const title = campaign.campaignName || "Untitled campaign"
+    pushIssue(issues, {
+      id: issueId(["campaign-copilot-missing", campaign.id]),
+      severity: "info",
+      category: "incomplete-records",
+      title: "No Campaign Copilot analysis before publish",
+      description: `"${title}" is Ready to Publish but has no saved Copilot run yet.`,
+      sourceType: "campaign",
+      sourceId: campaign.id,
+      sourceTitle: title,
+      href: `${campaignHref(campaign.id)}&tab=launch`,
+      suggestedAction: "Run Campaign Copilot from the Launch Dashboard when ready.",
+      relatedHref: `/copilot?campaignId=${encodeURIComponent(campaign.id)}`,
+    })
+  }
+}
+
 function recordFinalFieldsEmpty(
   record: Record<string, unknown>,
   keys: string[],
@@ -2171,6 +2204,9 @@ export function buildDataHealthReport(
   )
   safeScan("AI generation templates", issues, () =>
     scanAIGenerationTemplateWarnings(input, issues),
+  )
+  safeScan("Campaign Copilot", issues, () =>
+    scanCampaignCopilotWarnings(input, issues),
   )
   safeScan("AI response final fields", issues, () =>
     scanAiResponseWithoutFinalFields(input, issues),

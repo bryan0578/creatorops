@@ -911,6 +911,45 @@ function evaluatePromptHistory(ctx: AutomationEvaluationContext, suggestions: Au
   }
 }
 
+function evaluateCampaignCopilot(
+  ctx: AutomationEvaluationContext,
+  suggestions: AutomationSuggestion[],
+) {
+  if (!ctx.aiProviderConfigured) return
+
+  for (const campaign of ctx.campaigns) {
+    if (campaign.status !== "Ready to Publish") continue
+
+    const hasCopilot = ctx.store.runs.some(
+      (run) =>
+        run.campaignId === campaign.id &&
+        (run.moduleType === "Campaign Copilot" ||
+          run.tags.includes("campaign-copilot") ||
+          run.runType === "Copilot"),
+    )
+    if (hasCopilot) continue
+
+    suggestions.push({
+      id: suggestionId(["campaign-copilot-suggested", campaign.id]),
+      ruleId: "campaign-copilot-suggested",
+      priority: "info",
+      category: "Campaign Copilot",
+      title: "Run Campaign Copilot before publish",
+      description: `${campaign.campaignName || "Campaign"} is Ready to Publish but has no Copilot analysis yet.`,
+      campaignId: campaign.id,
+      campaignName: campaign.campaignName,
+      suggestedActionLabel: "Open Campaign Copilot",
+      actionType: "navigate",
+      actionPayload: {
+        href: `/copilot?campaignId=${encodeURIComponent(campaign.id)}`,
+      },
+      href: `/copilot?campaignId=${encodeURIComponent(campaign.id)}`,
+      canApply: false,
+      reason: "Copilot can surface blockers, missing assets, and next actions before launch.",
+    })
+  }
+}
+
 function evaluateExportBundle(ctx: AutomationEvaluationContext, suggestions: AutomationSuggestion[]) {
   for (const campaign of ctx.campaigns) {
     if (!isPublishedCampaignStatus(campaign.status)) continue
@@ -1488,6 +1527,7 @@ const RULE_EVALUATORS: Array<(ctx: AutomationEvaluationContext, out: AutomationS
   evaluateAIGeneration,
   evaluateExperiments,
   evaluatePromptHistory,
+  evaluateCampaignCopilot,
   evaluateExportBundle,
   evaluateQualityReviews,
   evaluateLearnings,

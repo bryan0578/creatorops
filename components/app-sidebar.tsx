@@ -120,6 +120,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Operations",
     items: [
       { title: "Campaigns", href: "/campaigns", icon: Megaphone },
+      { title: "Campaign Copilot", href: "/copilot", icon: Sparkles },
       { title: "Campaign Board", href: "/campaign-board", icon: LayoutGrid },
       { title: "Tasks", href: "/tasks", icon: ListChecks },
       { title: "Calendar", href: "/calendar", icon: CalendarDays },
