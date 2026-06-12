@@ -157,6 +157,9 @@ export function QualityPerformanceCard({ insight }: { insight: QualityPerformanc
           <Link href="/patterns" className={buttonVariants({ variant: "outline", size: "sm" })}>
             Pattern Detection
           </Link>
+          <Link href="/feedback-loop?tab=quality" className={buttonVariants({ variant: "outline", size: "sm" })}>
+            Open Feedback Loop
+          </Link>
           <Link href="/playbooks" className={buttonVariants({ variant: "outline", size: "sm" })}>
             Suggest Playbook Update
           </Link>

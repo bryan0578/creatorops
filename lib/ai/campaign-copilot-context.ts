@@ -189,6 +189,15 @@ export interface CampaignCopilotStructuredContext {
     recommendation: string
     earlySignal: boolean
   }>
+  feedbackLoopSuggestions: Array<{
+    title: string
+    suggestionType: string
+    confidence: string
+    summary: string
+    recommendation: string
+    sourceType: string
+    sourceName: string
+  }>
 }
 
 function isOverdueTask(task: CampaignTask): boolean {
@@ -290,6 +299,7 @@ export interface BuildCampaignCopilotContextInput {
   patternInsights?: import("@/lib/patterns/types").DetectedPattern[]
   globalPatternInsights?: import("@/lib/patterns/types").DetectedPattern[]
   qualityPerformanceInsights?: import("@/lib/quality-performance/types").QualityPerformanceInsight[]
+  feedbackLoopSuggestions?: import("@/lib/feedback-loop/types").FeedbackSuggestion[]
 }
 
 export function buildCampaignCopilotStructuredContext(
@@ -638,6 +648,15 @@ export function buildCampaignCopilotStructuredContext(
       recommendation: insight.recommendation,
       earlySignal: Boolean(insight.earlySignal),
     })),
+    feedbackLoopSuggestions: (input.feedbackLoopSuggestions ?? []).slice(0, 6).map((item) => ({
+      title: item.title,
+      suggestionType: item.suggestionType,
+      confidence: item.confidence,
+      summary: item.summary,
+      recommendation: item.recommendedLearning.recommendation,
+      sourceType: item.sourceType,
+      sourceName: item.sourceName,
+    })),
   }
 }
 
@@ -930,6 +949,23 @@ function formatCampaignCopilotMarkdown(
     lines.push(
       "",
       "Use 'associated with' language unless sample size is 5+ with a clear metric gap. High quality + low performance may indicate distribution/timing issues.",
+    )
+  }
+
+  if (ctx.feedbackLoopSuggestions.length > 0) {
+    lines.push("", "## Learning feedback loop")
+    for (const item of ctx.feedbackLoopSuggestions) {
+      lines.push(
+        `- [${item.confidence}] ${item.title}: ${item.summary} Recommendation: ${item.recommendation}`,
+      )
+    }
+    lines.push(
+      "",
+      "Suggested actions:",
+      "- Create a campaign retrospective learning",
+      "- Turn experiment results into reusable learnings",
+      "- Convert high-confidence patterns into learnings",
+      "- Add winning quality patterns to your playbook",
     )
   }
 

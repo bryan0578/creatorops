@@ -17,6 +17,7 @@ import {
 import { AssetLinkSuggestionsPanel } from "@/components/asset-linking/asset-link-suggestions-panel"
 import { PatternInsightsPanel } from "@/components/patterns/pattern-insights-panel"
 import { QualityPerformancePanel } from "@/components/quality-performance/quality-performance-panel"
+import { FeedbackLoopPanel } from "@/components/feedback-loop/feedback-loop-panel"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -281,6 +282,14 @@ export function VideoDetailSheet({
                 compact
                 title="Quality vs Performance"
                 description="Quality review scores compared to video and analytics performance."
+              />
+
+              <FeedbackLoopPanel
+                youtubeVideoId={video.id}
+                campaignId={video.campaignId || undefined}
+                limit={2}
+                compact
+                title="Learning Feedback"
               />
 
               <details className="rounded-md border border-border/60 p-3 text-xs">

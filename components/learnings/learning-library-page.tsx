@@ -11,6 +11,7 @@ import {
   Plus,
   ScanSearch,
   Scale,
+  Repeat,
   Search,
   Trash2,
   Upload,
@@ -537,6 +538,10 @@ export function LearningLibraryPage() {
             <Link href="/patterns" className={buttonVariants({ variant: "outline", size: "sm" })}>
               <ScanSearch className="size-4" />
               Pattern Detection
+            </Link>
+            <Link href="/feedback-loop" className={buttonVariants({ variant: "outline", size: "sm" })}>
+              <Repeat className="size-4" />
+              Open Feedback Loop
             </Link>
             <Link href="/quality-performance" className={buttonVariants({ variant: "outline", size: "sm" })}>
               <Scale className="size-4" />

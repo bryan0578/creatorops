@@ -19,6 +19,7 @@ import {
 } from "@/lib/asset-linking/matchers"
 import { buildDetectedPatterns } from "@/lib/patterns/detectors"
 import { buildQualityPerformanceInsights } from "@/lib/quality-performance/detectors"
+import { buildFeedbackSuggestions } from "@/lib/feedback-loop/suggestions"
 import { filterExternalLinksForCampaign } from "@/lib/data/external-links"
 import { normalizeStatusToStage } from "@/lib/data/campaign-board"
 import {
@@ -2381,6 +2382,63 @@ function evaluateQualityPerformanceRules(
   }
 }
 
+function evaluateFeedbackLoopRules(
+  ctx: AutomationEvaluationContext,
+  suggestions: AutomationSuggestion[],
+) {
+  try {
+    const dataset = {
+      campaigns: ctx.campaigns,
+      analyticsRecords: ctx.store.analyticsRecords ?? [],
+      youtubeVideos: ctx.store.youtubeVideos ?? [],
+      youtubePackages: ctx.store.youtubePackages ?? [],
+      youtubeThumbnails: ctx.store.youtubeThumbnailRecords ?? [],
+      qualityReviews: ctx.store.qualityReviews ?? [],
+      learnings: ctx.store.learnings ?? [],
+      experiments: ctx.store.experiments ?? [],
+      assets: ctx.store.assets ?? [],
+      productListings: ctx.store.productListings ?? [],
+      merchIdeas: ctx.store.merchIdeas ?? [],
+      mockupPrompts: ctx.store.mockupPromptRecords ?? [],
+      releasePlans: ctx.store.releasePlans ?? [],
+      driveFiles: ctx.store.driveFiles ?? [],
+      externalLinks: ctx.store.externalLinks ?? [],
+    }
+
+    const feedback = buildFeedbackSuggestions(dataset, { limit: 24 })
+    const seen = new Set<string>()
+
+    for (const item of feedback) {
+      if (seen.size >= 12) break
+      if (seen.has(item.id)) continue
+      seen.add(item.id)
+
+      const href = item.campaignId
+        ? `/feedback-loop?campaignId=${encodeURIComponent(item.campaignId)}&tab=${item.suggestionType === "campaign-retrospective" ? "retrospective" : item.suggestionType === "playbook-update" ? "playbook" : "learning"}`
+        : `/feedback-loop?tab=${item.suggestionType === "playbook-update" ? "playbook" : "learning"}`
+
+      suggestions.push({
+        id: suggestionId(["feedback-loop", item.id]),
+        ruleId: "feedback-loop-suggestion",
+        priority: item.confidence === "high" ? "medium" : "info",
+        category: item.suggestionType === "playbook-update" ? "Learnings" : "Learnings",
+        title: item.title,
+        description: `${item.summary} ${item.recommendedLearning.recommendation}`,
+        campaignId: item.campaignId,
+        campaignName: item.campaignName,
+        suggestedActionLabel: "Open Feedback Loop",
+        actionType: "navigate",
+        actionPayload: { href },
+        href,
+        canApply: false,
+        reason: "Review and create learnings explicitly — no automatic record creation.",
+      })
+    }
+  } catch {
+    // must never break automation
+  }
+}
+
 const RULE_EVALUATORS: Array<(ctx: AutomationEvaluationContext, out: AutomationSuggestion[]) => void> = [
   evaluateMissingAssets,
   evaluateMissingAssetLibrary,
@@ -2402,6 +2460,7 @@ const RULE_EVALUATORS: Array<(ctx: AutomationEvaluationContext, out: AutomationS
   evaluateAssetLinkingRules,
   evaluatePatternDetectionRules,
   evaluateQualityPerformanceRules,
+  evaluateFeedbackLoopRules,
   evaluateLearnings,
   evaluateIncompleteCampaignFields,
   evaluatePrePublishChecklist,

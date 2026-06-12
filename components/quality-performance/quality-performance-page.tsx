@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   Loader2,
   RefreshCw,
+  Repeat,
   ScanSearch,
   Scale,
   Video,
@@ -157,6 +158,10 @@ export function QualityPerformancePage() {
             <Link href="/patterns" className={buttonVariants({ variant: "outline", size: "sm" })}>
               <ScanSearch className="size-4" />
               Pattern Detection
+            </Link>
+            <Link href="/feedback-loop?tab=quality" className={buttonVariants({ variant: "outline", size: "sm" })}>
+              <Repeat className="size-4" />
+              Open Feedback Loop
             </Link>
             <Link
               href="/learnings?sourceType=quality-performance"

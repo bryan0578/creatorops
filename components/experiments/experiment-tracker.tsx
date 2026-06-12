@@ -1,11 +1,13 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import {
   Download,
   FlaskConical,
   Plus,
+  Repeat,
   Search,
   Trash2,
   Upload,
@@ -46,7 +48,7 @@ import {
   RECENT_RECORDS_CARD_CLASS,
 } from "@/components/module/form-layout"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -478,6 +480,17 @@ export function ExperimentTracker() {
               <Upload className="size-4" />
               Import JSON
             </Button>
+            <Link
+              href={
+                editingId
+                  ? `/feedback-loop?experimentId=${encodeURIComponent(editingId)}`
+                  : "/feedback-loop?tab=experiment"
+              }
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <Repeat className="size-4" />
+              Open Feedback Loop
+            </Link>
             <input
               ref={fileInputRef}
               type="file"

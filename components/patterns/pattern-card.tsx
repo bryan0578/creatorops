@@ -153,6 +153,9 @@ export function PatternCard({
             )}
             Create Experiment
           </Button>
+          <Link href="/feedback-loop" className={buttonVariants({ variant: "outline", size: "sm" })}>
+            Open Feedback Loop
+          </Link>
           <Link href="/playbooks" className={buttonVariants({ variant: "outline", size: "sm" })}>
             Suggest Playbook Update
           </Link>

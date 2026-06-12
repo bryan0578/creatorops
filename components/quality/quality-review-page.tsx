@@ -9,9 +9,9 @@ import {
   Loader2,
   Plus,
   Search,
-  Sparkles,
   ScanSearch,
   Scale,
+  Repeat,
   Trash2,
   Upload,
   Wand2,
@@ -63,6 +63,7 @@ import type { QualityCriterionScore, QualityReviewFormValues, QualityReviewRecor
 import { ModulePageHeader } from "@/components/app-shell"
 import { CreateLearningButton } from "@/components/learnings/learning-action-link"
 import { QualityPerformancePanel } from "@/components/quality-performance/quality-performance-panel"
+import { FeedbackLoopPanel } from "@/components/feedback-loop/feedback-loop-panel"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { EmptyState } from "@/components/empty-state"
 import {
@@ -599,6 +600,17 @@ export function QualityReviewPage() {
               <Scale className="size-4" />
               Analyze Performance
             </Link>
+            <Link
+              href={
+                recordId
+                  ? `/feedback-loop?qualityReviewId=${encodeURIComponent(recordId)}`
+                  : "/feedback-loop?tab=quality"
+              }
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <Repeat className="size-4" />
+              Open Feedback Loop
+            </Link>
             <Button type="button" variant="outline" size="sm" onClick={handleExportJson}>
               <Download className="size-4" />
               Export JSON
@@ -661,7 +673,10 @@ export function QualityReviewPage() {
       ) : null}
 
       {recordId ? (
-        <QualityPerformancePanel qualityReviewId={recordId} limit={2} compact />
+        <>
+          <QualityPerformancePanel qualityReviewId={recordId} limit={2} compact />
+          <FeedbackLoopPanel qualityReviewId={recordId} limit={2} compact />
+        </>
       ) : null}
 
       <ModuleWorkflowTabs tabs={QUALITY_TABS} value={activeTab} onValueChange={setActiveTab}>

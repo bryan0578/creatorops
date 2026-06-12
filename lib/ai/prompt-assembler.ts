@@ -6,6 +6,10 @@ import { buildCampaignContextBlock } from "@/lib/prompt-context-builder"
 import type { ModulePromptContextType } from "@/lib/prompt-context-builder"
 import { MODULE_TASK_SEPARATOR } from "@/lib/prompt-context-builder"
 import { filterLearningsForCampaign, filterReusableLearnings } from "@/lib/learnings"
+import {
+  formatFeedbackLoopLearningsBlock,
+  prioritizeLearningsForAIContext,
+} from "@/lib/feedback-loop/context"
 import { filterQualityReviewsForCampaign } from "@/lib/quality-reviews"
 import { buildParserFriendlyOutputHint, isParserFriendlyModule } from "@/lib/ai-output/output-format-hints"
 import type { GenerateAITextInput } from "@/lib/ai/types"
@@ -145,16 +149,17 @@ export async function assembleAIPrompt(
     const scoped = input.campaignId
       ? filterLearningsForCampaign(allLearnings, input.campaignId, campaignName)
       : allLearnings
-    const top = filterReusableLearnings(scoped, {
+    const top = prioritizeLearningsForAIContext(scoped.length > 0 ? scoped : allLearnings, {
       campaignId: input.campaignId,
       campaignName,
-      limit: 5,
+      moduleType: input.moduleType,
+      limit: 8,
     }).filter(
       (l) =>
-        (l.confidence === "High" || l.impact === "High") &&
+        (l.confidence === "High" || l.impact === "High" || l.tags.includes("feedback-loop")) &&
         l.status !== "Archived",
     )
-    const block = formatLearningsBlock(top)
+    const block = formatFeedbackLoopLearningsBlock(top) || formatLearningsBlock(top)
     if (block) contextBlocks.push(block)
   }
 

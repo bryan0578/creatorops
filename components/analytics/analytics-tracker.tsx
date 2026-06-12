@@ -15,6 +15,7 @@ import {
   Search,
   ScanSearch,
   Scale,
+  Repeat,
   Trash2,
   Upload,
 } from "lucide-react"
@@ -651,6 +652,17 @@ export function AnalyticsTracker() {
             >
               <Scale className="size-4" />
               Analyze Quality vs Performance
+            </Link>
+            <Link
+              href={
+                editingId
+                  ? `/feedback-loop?analyticsRecordId=${encodeURIComponent(editingId)}`
+                  : "/feedback-loop"
+              }
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <Repeat className="size-4" />
+              Open Feedback Loop
             </Link>
           </div>
         }

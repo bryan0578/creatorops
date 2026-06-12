@@ -5,6 +5,7 @@
 import { scanAssetLinkingWarnings } from "@/lib/data/asset-linking-health"
 import { scanPatternDetectionWarnings } from "@/lib/data/pattern-health"
 import { scanQualityPerformanceWarnings } from "@/lib/data/quality-performance-health"
+import { scanFeedbackLoopWarnings } from "@/lib/data/feedback-loop-health"
 import { normalizeSourceRecordType } from "@/lib/quality-prefill"
 import { extractPlaybookIdFromNotes } from "@/lib/playbooks"
 import { isValidJsonString } from "@/lib/safe-json"
@@ -2920,6 +2921,7 @@ export function buildDataHealthReport(
   safeScan("Asset linking", issues, () => scanAssetLinkingWarnings(input, issues))
   safeScan("Pattern detection", issues, () => scanPatternDetectionWarnings(input, issues))
   safeScan("Quality vs performance", issues, () => scanQualityPerformanceWarnings(input, issues))
+  safeScan("Learning feedback loop", issues, () => scanFeedbackLoopWarnings(input, issues))
   safeScan("JSON / data issues", issues, () => scanJsonIssues(input, issues))
 
   return {

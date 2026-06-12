@@ -11,6 +11,7 @@ import {
   Loader2,
   RefreshCw,
   Scale,
+  Repeat,
   ScanSearch,
   Video,
 } from "lucide-react"
@@ -210,6 +211,10 @@ export function PatternDetectionPage() {
             <Link href="/quality-performance" className={buttonVariants({ variant: "outline", size: "sm" })}>
               <Scale className="size-4" />
               Quality vs Performance
+            </Link>
+            <Link href="/feedback-loop?tab=pattern" className={buttonVariants({ variant: "outline", size: "sm" })}>
+              <Repeat className="size-4" />
+              Open Feedback Loop
             </Link>
             <Link href="/learnings?sourceType=pattern-engine" className={buttonVariants({ variant: "outline", size: "sm" })}>
               <Lightbulb className="size-4" />

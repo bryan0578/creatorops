@@ -10,6 +10,7 @@ import {
   Loader2,
   RefreshCw,
   ScanSearch,
+  Repeat,
   Search,
   Upload,
   Video,
@@ -277,6 +278,13 @@ export function VideoIntelligencePage() {
         {busy === "sync-all" ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
         Sync All Stats
       </Button>
+      <Link
+        href="/feedback-loop"
+        className={buttonVariants({ variant: "outline", size: "sm" })}
+      >
+        <Repeat className="size-4" />
+        Open Feedback Loop
+      </Link>
       <Link
         href="/patterns"
         className={buttonVariants({ variant: "outline", size: "sm" })}
