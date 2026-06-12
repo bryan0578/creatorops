@@ -5,9 +5,8 @@ import { Sparkles } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { FormField, FormTextarea, FORM_HINTS } from "@/components/ui/form-field"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 
 export type ArtistBibleFormState = {
   artistName: string
@@ -53,24 +52,6 @@ const SECTION_IDS: Record<ArtistBibleFormSection, string> = {
   visual: "artist-bible-section-visual",
   references: "artist-bible-section-references",
   boundaries: "artist-bible-section-boundaries",
-}
-
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string
-  hint?: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      {hint ? <p className="text-xs text-muted-foreground text-pretty">{hint}</p> : null}
-      {children}
-    </div>
-  )
 }
 
 function SectionCard({
@@ -127,55 +108,55 @@ export function ArtistBibleForm({
         description="Core artist and project identity for campaigns, packaging, and AI context."
       >
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Artist name *">
+          <FormField fieldKey="artistName" required>
             <Input value={values.artistName} onChange={set("artistName")} />
-          </Field>
-          <Field label="Project name">
+          </FormField>
+          <FormField fieldKey="projectName">
             <Input value={values.projectName} onChange={set("projectName")} />
-          </Field>
-          <Field label="Label name">
+          </FormField>
+          <FormField fieldKey="labelName">
             <Input value={values.labelName} onChange={set("labelName")} />
-          </Field>
-          <Field label="Status">
+          </FormField>
+          <FormField fieldKey="status">
             <Input value={values.status} onChange={set("status")} placeholder="Active" />
-          </Field>
-          <Field label="Genre">
+          </FormField>
+          <FormField fieldKey="genre">
             <Input value={values.genre} onChange={set("genre")} />
-          </Field>
-          <Field label="Subgenre">
+          </FormField>
+          <FormField fieldKey="subgenre">
             <Input value={values.subgenre} onChange={set("subgenre")} />
-          </Field>
+          </FormField>
           <div className="md:col-span-2">
-            <Field label="Mood">
-              <Textarea value={values.mood} onChange={set("mood")} rows={3} className="min-h-[5rem]" />
-            </Field>
+            <FormField fieldKey="mood">
+              <FormTextarea value={values.mood} onChange={set("mood")} rows={3} />
+            </FormField>
           </div>
           <div className="md:col-span-2">
-            <Field label="Aesthetic">
-              <Textarea value={values.aesthetic} onChange={set("aesthetic")} rows={3} className="min-h-[5rem]" />
-            </Field>
+            <FormField fieldKey="aesthetic">
+              <FormTextarea value={values.aesthetic} onChange={set("aesthetic")} rows={3} />
+            </FormField>
           </div>
           <div className="md:col-span-2">
-            <Field label="Target audience">
-              <Textarea value={values.targetAudience} onChange={set("targetAudience")} rows={3} className="min-h-[5rem]" />
-            </Field>
+            <FormField fieldKey="targetAudience">
+              <FormTextarea value={values.targetAudience} onChange={set("targetAudience")} rows={3} />
+            </FormField>
           </div>
           <div className="md:col-span-2">
-            <Field label="Brand promise">
-              <Textarea value={values.brandPromise} onChange={set("brandPromise")} rows={4} className="min-h-[6rem]" />
-            </Field>
+            <FormField fieldKey="brandPromise">
+              <FormTextarea value={values.brandPromise} onChange={set("brandPromise")} rows={4} size="lg" />
+            </FormField>
           </div>
         </div>
       </SectionCard>
 
       <SectionCard id={SECTION_IDS.bio} title="Bio" description="Short and long-form positioning for releases and profiles.">
         <div className="grid gap-4">
-          <Field label="Short bio" hint="One paragraph for overview cards and quick context.">
-            <Textarea value={values.shortBio} onChange={set("shortBio")} rows={5} className="min-h-[7rem]" />
-          </Field>
-          <Field label="Long bio" hint="Extended artist story, positioning, and background.">
-            <Textarea value={values.longBio} onChange={set("longBio")} rows={10} className="min-h-[12rem]" />
-          </Field>
+          <FormField fieldKey="shortBio" hint="One paragraph for overview cards and quick context.">
+            <FormTextarea value={values.shortBio} onChange={set("shortBio")} rows={5} size="lg" />
+          </FormField>
+          <FormField fieldKey="longBio" hint="Extended artist story, positioning, and background.">
+            <FormTextarea value={values.longBio} onChange={set("longBio")} rows={10} size="xl" />
+          </FormField>
         </div>
       </SectionCard>
 
@@ -185,12 +166,12 @@ export function ArtistBibleForm({
         description="Personality, vocal presentation, and lyrical territory."
       >
         <div className="grid gap-4">
-          <Field label="Voice rules" hint="How the artist speaks, performs, and presents personality.">
-            <Textarea value={values.voiceRules} onChange={set("voiceRules")} rows={6} className="min-h-[8rem]" />
-          </Field>
-          <Field label="Lyrical themes" hint="Recurring lyrical ideas, motifs, and emotional territory.">
-            <Textarea value={values.lyricalThemes} onChange={set("lyricalThemes")} rows={6} className="min-h-[8rem]" />
-          </Field>
+          <FormField fieldKey="voiceRules" hint="How the artist speaks, performs, and presents personality.">
+            <FormTextarea value={values.voiceRules} onChange={set("voiceRules")} rows={6} size="lg" />
+          </FormField>
+          <FormField fieldKey="lyricalThemes" hint="Recurring lyrical ideas, motifs, and emotional territory.">
+            <FormTextarea value={values.lyricalThemes} onChange={set("lyricalThemes")} rows={6} size="lg" />
+          </FormField>
         </div>
       </SectionCard>
 
@@ -199,9 +180,9 @@ export function ArtistBibleForm({
         title="Sonic Rules"
         description="Production, tempo, instrumentation, and sound design boundaries."
       >
-        <Field label="Sonic rules">
-          <Textarea value={values.sonicRules} onChange={set("sonicRules")} rows={10} className="min-h-[12rem]" />
-        </Field>
+        <FormField fieldKey="sonicRules">
+          <FormTextarea value={values.sonicRules} onChange={set("sonicRules")} rows={10} size="xl" />
+        </FormField>
       </SectionCard>
 
       <SectionCard
@@ -210,12 +191,18 @@ export function ArtistBibleForm({
         description="Thumbnail, video, cover, merch, and brand visual constraints."
       >
         <div className="grid gap-4">
-          <Field label="Visual rules">
-            <Textarea value={values.visualRules} onChange={set("visualRules")} rows={8} className="min-h-[10rem]" />
-          </Field>
-          <Field label="Color palette" hint="One color per line (hex codes or names).">
-            <Textarea value={values.colorPalette} onChange={set("colorPalette")} rows={5} className="min-h-[6rem] font-mono text-sm" />
-          </Field>
+          <FormField fieldKey="visualRules">
+            <FormTextarea value={values.visualRules} onChange={set("visualRules")} rows={8} size="xl" />
+          </FormField>
+          <FormField fieldKey="colorPalette" hint={FORM_HINTS.colors}>
+            <FormTextarea
+              value={values.colorPalette}
+              onChange={set("colorPalette")}
+              rows={5}
+              size="lg"
+              className="font-mono text-sm"
+            />
+          </FormField>
         </div>
       </SectionCard>
 
@@ -225,18 +212,18 @@ export function ArtistBibleForm({
         description="Artists, media, keywords, and tags that shape the IP."
       >
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Reference artists" hint="One per line.">
-            <Textarea value={values.referenceArtists} onChange={set("referenceArtists")} rows={6} className="min-h-[8rem]" />
-          </Field>
-          <Field label="Reference media" hint="Films, games, aesthetics, playlists — one per line.">
-            <Textarea value={values.referenceMedia} onChange={set("referenceMedia")} rows={6} className="min-h-[8rem]" />
-          </Field>
-          <Field label="Keywords" hint="Comma-separated search and discovery terms.">
-            <Textarea value={values.keywords} onChange={set("keywords")} rows={4} className="min-h-[5rem]" />
-          </Field>
-          <Field label="Tags" hint="Comma-separated internal tags.">
-            <Textarea value={values.tags} onChange={set("tags")} rows={4} className="min-h-[5rem]" />
-          </Field>
+          <FormField fieldKey="referenceArtists" hint={FORM_HINTS.arrayPerLine}>
+            <FormTextarea value={values.referenceArtists} onChange={set("referenceArtists")} rows={6} size="lg" />
+          </FormField>
+          <FormField fieldKey="referenceMedia" hint="Films, games, aesthetics, playlists — one per line.">
+            <FormTextarea value={values.referenceMedia} onChange={set("referenceMedia")} rows={6} size="lg" />
+          </FormField>
+          <FormField fieldKey="keywords" hint={FORM_HINTS.commaSeparated}>
+            <FormTextarea value={values.keywords} onChange={set("keywords")} rows={4} />
+          </FormField>
+          <FormField fieldKey="tags" hint={FORM_HINTS.commaSeparated}>
+            <FormTextarea value={values.tags} onChange={set("tags")} rows={4} />
+          </FormField>
         </div>
       </SectionCard>
 
@@ -246,16 +233,16 @@ export function ArtistBibleForm({
         description="Do/don't rules and internal notes for consistent creative decisions."
       >
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Do list" hint="Creative boundaries to embrace — one per line.">
-            <Textarea value={values.doList} onChange={set("doList")} rows={8} className="min-h-[10rem]" />
-          </Field>
-          <Field label="Don't list" hint="Things to avoid — one per line.">
-            <Textarea value={values.dontList} onChange={set("dontList")} rows={8} className="min-h-[10rem]" />
-          </Field>
+          <FormField fieldKey="doList" hint="Creative boundaries to embrace — one per line.">
+            <FormTextarea value={values.doList} onChange={set("doList")} rows={8} size="xl" />
+          </FormField>
+          <FormField fieldKey="dontList" hint="Things to avoid — one per line.">
+            <FormTextarea value={values.dontList} onChange={set("dontList")} rows={8} size="xl" />
+          </FormField>
           <div className="md:col-span-2">
-            <Field label="Notes" hint="Internal notes, canon reminders, or operating context.">
-              <Textarea value={values.notes} onChange={set("notes")} rows={6} className="min-h-[8rem]" />
-            </Field>
+            <FormField fieldKey="notes" hint="Internal notes, canon reminders, or operating context.">
+              <FormTextarea value={values.notes} onChange={set("notes")} rows={6} size="lg" />
+            </FormField>
           </div>
         </div>
       </SectionCard>

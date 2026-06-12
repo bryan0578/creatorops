@@ -59,11 +59,10 @@ export function mergePromptVariables(
   return result
 }
 
+import { formatFieldLabel } from "@/lib/ui/labels"
+
 export function variableToLabel(name: string): string {
-  return name
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/[_-]/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase())
+  return formatFieldLabel(name)
 }
 
 export function variablePlaceholder(name: string): string {

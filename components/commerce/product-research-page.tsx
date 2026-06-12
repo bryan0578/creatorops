@@ -27,9 +27,8 @@ import { ModuleShell, ModuleTabPanel, ModuleWorkflowTabs } from "@/components/mo
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { FormField, FormTextarea, FORM_HINTS } from "@/components/ui/form-field"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import type { LearningRecord } from "@/lib/types"
 
 const TABS = [
@@ -133,53 +132,60 @@ function ResearchQuickCreateForm({
   onSubmit: (e: React.FormEvent) => void
 }) {
   return (
-    <form onSubmit={onSubmit} className="space-y-3 rounded-lg border border-border/80 p-4">
-      <h3 className="font-medium">New product research item</h3>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1 sm:col-span-2">
-          <Label htmlFor="title">Title *</Label>
-          <Input id="title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+    <form onSubmit={onSubmit} className="space-y-4 rounded-lg border border-border/80 p-4">
+      <h3 className="font-medium">New Product Research Item</h3>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <FormField fieldKey="title" required>
+            <Input id="title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          </FormField>
         </div>
         {(
           [
-            ["productType", "Product type"],
-            ["category", "Category"],
-            ["niche", "Niche"],
-            ["audience", "Audience"],
-            ["platform", "Platform"],
-            ["competitorName", "Competitor / source"],
-            ["priceRange", "Price range"],
-            ["demandSignal", "Demand signal"],
-            ["difficulty", "Difficulty"],
-            ["opportunityScore", "Opportunity score"],
-            ["campaignName", "Campaign"],
-            ["artistName", "Artist / project"],
+            "productType",
+            "category",
+            "niche",
+            "audience",
+            "platform",
+            "competitorName",
+            "priceRange",
+            "demandSignal",
+            "difficulty",
+            "opportunityScore",
+            "campaignName",
+            "artistName",
           ] as const
-        ).map(([key, label]) => (
-          <div key={key} className="space-y-1">
-            <Label htmlFor={key}>{label}</Label>
+        ).map((key) => (
+          <FormField
+            key={key}
+            fieldKey={key}
+            label={key === "competitorName" ? "Competitor / Source" : key === "artistName" ? "Artist / Project" : undefined}
+          >
             <Input
               id={key}
               value={form[key]}
               onChange={(e) => setForm({ ...form, [key]: e.target.value })}
             />
-          </div>
+          </FormField>
         ))}
-        <div className="space-y-1 sm:col-span-2">
-          <Label htmlFor="inspirationUrl">Inspiration URL</Label>
-          <Input
-            id="inspirationUrl"
-            value={form.inspirationUrl}
-            onChange={(e) => setForm({ ...form, inspirationUrl: e.target.value })}
-          />
+        <div className="sm:col-span-2">
+          <FormField fieldKey="inspirationUrl">
+            <Input
+              id="inspirationUrl"
+              value={form.inspirationUrl}
+              onChange={(e) => setForm({ ...form, inspirationUrl: e.target.value })}
+            />
+          </FormField>
         </div>
-        <div className="space-y-1 sm:col-span-2">
-          <Label htmlFor="tags">Tags (comma-separated)</Label>
-          <Input id="tags" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} />
+        <div className="sm:col-span-2">
+          <FormField fieldKey="tags" hint={FORM_HINTS.commaSeparated}>
+            <Input id="tags" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} />
+          </FormField>
         </div>
-        <div className="space-y-1 sm:col-span-2">
-          <Label htmlFor="notes">Notes</Label>
-          <Textarea id="notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+        <div className="sm:col-span-2">
+          <FormField fieldKey="notes">
+            <FormTextarea id="notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+          </FormField>
         </div>
       </div>
       <Button type="submit" size="sm" disabled={saving}>

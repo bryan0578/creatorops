@@ -12,6 +12,8 @@ import {
   Upload,
 } from "lucide-react"
 import { toast } from "sonner"
+import { formatFieldLabel } from "@/lib/ui/labels"
+import { formLabelClassName } from "@/components/ui/form-field"
 
 import { useStore, createId } from "@/lib/store"
 import type { MerchIdea, MerchIdeaFormValues } from "@/lib/types"
@@ -520,14 +522,14 @@ export function MerchIdeaGenerator() {
               >
             {FORM_FIELD_ORDER.map((field) => {
               const id = `merch-${field}`
-              const label = FIELD_LABELS[field]
+              const label = formatFieldLabel(field)
 
               if (field in SELECT_FIELDS) {
                 const options =
                   SELECT_FIELDS[field as keyof typeof SELECT_FIELDS]
                 return (
                   <div key={field} className="space-y-2">
-                    <Label htmlFor={id} className="text-sm font-medium">
+                    <Label htmlFor={id} className={formLabelClassName}>
                       {SELECT_LABELS[field as keyof typeof SELECT_FIELDS]}
                     </Label>
                     <Select
@@ -561,7 +563,7 @@ export function MerchIdeaGenerator() {
 
               return (
                 <div key={field} className="space-y-2">
-                  <Label htmlFor={id} className="text-sm font-medium">
+                  <Label htmlFor={id} className={formLabelClassName}>
                     {label}
                   </Label>
                   {TEXTAREA_FIELDS.has(field) ? (
@@ -689,7 +691,7 @@ export function MerchIdeaGenerator() {
                 return (
                   <div key={key} className="space-y-2">
                     <div className="flex items-center justify-between gap-2">
-                      <Label htmlFor={id} className="text-sm font-medium">
+                      <Label htmlFor={id} className={formLabelClassName}>
                         {label}
                       </Label>
                       {value.trim() ? (

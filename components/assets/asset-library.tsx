@@ -16,6 +16,8 @@ import {
   Upload,
 } from "lucide-react"
 import { toast } from "sonner"
+import { formatFieldLabel } from "@/lib/ui/labels"
+import { formLabelClassName } from "@/components/ui/form-field"
 
 import {
   createAsset,
@@ -588,7 +590,7 @@ export function AssetLibrary() {
   }
 
   function renderField(key: keyof AssetFormValues) {
-    const label = FIELD_LABELS[key]
+    const label = formatFieldLabel(key)
     const value = form[key]
     const id = `asset-${key}`
 

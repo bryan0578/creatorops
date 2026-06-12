@@ -117,3 +117,35 @@ export async function markLoreFlexible(id: string): Promise<LoreEntryRecord> {
 export async function archiveLoreEntry(id: string): Promise<LoreEntryRecord> {
   return updateLoreEntry(id, { status: "Archived", canonStatus: "Deprecated" })
 }
+
+export async function createPrettyWiseStarterLore(): Promise<{
+  created: number
+  skipped: number
+  message: string
+}> {
+  const { PRETTYWISE_STARTER_LORE } = await import("@/lib/artist-universe/lore-prefill")
+  const existing = await getLoreEntriesForArtist("PrettyWise")
+  const existingTitles = new Set(
+    existing.map((e) => e.title.trim().toLowerCase().replace(/\s+/g, " ")),
+  )
+
+  let created = 0
+  let skipped = 0
+  for (const entry of PRETTYWISE_STARTER_LORE) {
+    if (existingTitles.has(entry.title.trim().toLowerCase().replace(/\s+/g, " "))) {
+      skipped += 1
+      continue
+    }
+    await createLoreEntry(entry)
+    created += 1
+  }
+
+  if (created === 0) {
+    return { created: 0, skipped, message: "Starter lore already exists." }
+  }
+  return {
+    created,
+    skipped,
+    message: `Created ${created} PrettyWise starter lore ${created === 1 ? "entry" : "entries"}.`,
+  }
+}

@@ -12,6 +12,8 @@ import {
   Upload,
 } from "lucide-react"
 import { toast } from "sonner"
+import { formatFieldLabel } from "@/lib/ui/labels"
+import { formLabelClassName } from "@/components/ui/form-field"
 
 import { useStore, createId } from "@/lib/store"
 import type { ProductListing, ProductListingFormValues } from "@/lib/types"
@@ -537,12 +539,12 @@ export function ProductListingGenerator() {
               >
             {FORM_FIELD_ORDER.map((field) => {
               const id = `listing-${field}`
-              const label = FIELD_LABELS[field]
+              const label = formatFieldLabel(field)
 
               if (field === "productType") {
                 return (
                   <div key={field} className="space-y-2">
-                    <Label htmlFor={id} className="text-sm font-medium">
+                    <Label htmlFor={id} className={formLabelClassName}>
                       Product type
                     </Label>
                     <Select
@@ -576,7 +578,7 @@ export function ProductListingGenerator() {
 
               return (
                 <div key={field} className="space-y-2">
-                  <Label htmlFor={id} className="text-sm font-medium">
+                  <Label htmlFor={id} className={formLabelClassName}>
                     {label}
                   </Label>
                   {TEXTAREA_FIELDS.has(field) ? (
@@ -704,7 +706,7 @@ export function ProductListingGenerator() {
                 return (
                   <div key={key} className="space-y-2">
                     <div className="flex items-center justify-between gap-2">
-                      <Label htmlFor={id} className="text-sm font-medium">
+                      <Label htmlFor={id} className={formLabelClassName}>
                         {label}
                       </Label>
                       {value.trim() ? (

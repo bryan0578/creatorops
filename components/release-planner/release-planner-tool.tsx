@@ -12,6 +12,8 @@ import {
   Upload,
 } from "lucide-react"
 import { toast } from "sonner"
+import { formatFieldLabel } from "@/lib/ui/labels"
+import { formLabelClassName } from "@/components/ui/form-field"
 
 import { useStore, createId } from "@/lib/store"
 import type { ReleasePlan, ReleasePlanFormValues } from "@/lib/types"
@@ -582,12 +584,12 @@ export function ReleasePlannerTool() {
               >
             {FORM_FIELD_ORDER.map((field) => {
               const id = `release-${field}`
-              const label = FIELD_LABELS[field]
+              const label = formatFieldLabel(field)
 
               if (field === "primaryGoal") {
                 return (
                   <div key={field} className="space-y-2">
-                    <Label htmlFor={id} className="text-sm font-medium">
+                    <Label htmlFor={id} className={formLabelClassName}>
                       Primary goal
                     </Label>
                     <Select
@@ -621,7 +623,7 @@ export function ReleasePlannerTool() {
 
               return (
                 <div key={field} className="space-y-2">
-                  <Label htmlFor={id} className="text-sm font-medium">
+                  <Label htmlFor={id} className={formLabelClassName}>
                     {label}
                   </Label>
                   {TEXTAREA_FIELDS.has(field) ? (
@@ -754,7 +756,7 @@ export function ReleasePlannerTool() {
                   return (
                     <div key={key} className="space-y-2">
                       <div className="flex items-center justify-between gap-2">
-                        <Label htmlFor={id} className="text-sm font-medium">
+                        <Label htmlFor={id} className={formLabelClassName}>
                           {label}
                         </Label>
                         {value.trim() ? (

@@ -12,6 +12,8 @@ import {
   Upload,
 } from "lucide-react"
 import { toast } from "sonner"
+import { formatFieldLabel } from "@/lib/ui/labels"
+import { formLabelClassName } from "@/components/ui/form-field"
 
 import { useStore, createId } from "@/lib/store"
 import type {
@@ -555,12 +557,12 @@ export function SocialRepurposingEngine() {
               >
             {FORM_FIELD_ORDER.map((field) => {
               const id = `social-${field}`
-              const label = FIELD_LABELS[field]
+              const label = formatFieldLabel(field)
 
               if (field === "contentType") {
                 return (
                   <div key={field} className="space-y-2">
-                    <Label htmlFor={id} className="text-sm font-medium">
+                    <Label htmlFor={id} className={formLabelClassName}>
                       Content type
                     </Label>
                     <Select
@@ -585,7 +587,7 @@ export function SocialRepurposingEngine() {
               if (field === "businessArea") {
                 return (
                   <div key={field} className="space-y-2">
-                    <Label htmlFor={id} className="text-sm font-medium">
+                    <Label htmlFor={id} className={formLabelClassName}>
                       Business area
                     </Label>
                     <Select
@@ -619,7 +621,7 @@ export function SocialRepurposingEngine() {
 
               return (
                 <div key={field} className="space-y-2">
-                  <Label htmlFor={id} className="text-sm font-medium">
+                  <Label htmlFor={id} className={formLabelClassName}>
                     {label}
                   </Label>
                   {TEXTAREA_FIELDS.has(field) ? (
@@ -751,7 +753,7 @@ export function SocialRepurposingEngine() {
                 return (
                   <div key={key} className="space-y-2">
                     <div className="flex items-center justify-between gap-2">
-                      <Label htmlFor={id} className="text-sm font-medium">
+                      <Label htmlFor={id} className={formLabelClassName}>
                         {label}
                       </Label>
                       {value.trim() ? (

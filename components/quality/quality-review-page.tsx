@@ -18,6 +18,8 @@ import {
   Wand2,
 } from "lucide-react"
 import { toast } from "sonner"
+import { formatFieldLabel } from "@/lib/ui/labels"
+import { formLabelClassName } from "@/components/ui/form-field"
 
 import {
   createQualityReview,
@@ -185,7 +187,7 @@ function CriterionRow({
     <div className="rounded-md border border-border/80 p-3 space-y-2">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <p className="text-sm font-medium">{criterion.label}</p>
+          <p className={formLabelClassName}>{criterion.label}</p>
           {criterion.description ? (
             <p className="text-xs text-muted-foreground">{criterion.description}</p>
           ) : null}
@@ -689,7 +691,7 @@ export function QualityReviewPage() {
               if (fieldKey === "reviewType") {
                 return (
                   <div key={fieldKey} className="space-y-2">
-                    <Label htmlFor={fieldKey}>{FIELD_LABELS[fieldKey]}</Label>
+                    <Label htmlFor={fieldKey}>{formatFieldLabel(fieldKey)}</Label>
                     <Select
                       value={form.reviewType}
                       onValueChange={(value) => patchForm({ reviewType: value })}
@@ -711,7 +713,7 @@ export function QualityReviewPage() {
               if (fieldKey === "status") {
                 return (
                   <div key={fieldKey} className="space-y-2">
-                    <Label htmlFor={fieldKey}>{FIELD_LABELS[fieldKey]}</Label>
+                    <Label htmlFor={fieldKey}>{formatFieldLabel(fieldKey)}</Label>
                     <Select value={form.status} onValueChange={(value) => patchForm({ status: value })}>
                       <SelectTrigger id={fieldKey}>
                         <SelectValue />
@@ -730,7 +732,7 @@ export function QualityReviewPage() {
               const isLong = fieldKey === "reviewerNotes"
               return (
                 <div key={fieldKey} className={isLong ? "sm:col-span-2 space-y-2" : "space-y-2"}>
-                  <Label htmlFor={fieldKey}>{FIELD_LABELS[fieldKey]}</Label>
+                  <Label htmlFor={fieldKey}>{formatFieldLabel(fieldKey)}</Label>
                   {isLong ? (
                     <Textarea
                       id={fieldKey}
@@ -809,7 +811,7 @@ export function QualityReviewPage() {
           <FormGrid>
             {RECOMMENDATION_FIELDS.map((fieldKey) => (
               <div key={fieldKey} className="sm:col-span-2 space-y-2">
-                <Label htmlFor={fieldKey}>{FIELD_LABELS[fieldKey]}</Label>
+                <Label htmlFor={fieldKey}>{formatFieldLabel(fieldKey)}</Label>
                 <Textarea
                   id={fieldKey}
                   value={form[fieldKey] as string}

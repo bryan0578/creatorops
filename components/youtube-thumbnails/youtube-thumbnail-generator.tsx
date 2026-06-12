@@ -12,6 +12,8 @@ import {
   Upload,
 } from "lucide-react"
 import { toast } from "sonner"
+import { formatFieldLabel } from "@/lib/ui/labels"
+import { formLabelClassName } from "@/components/ui/form-field"
 
 import { migrateLocalYouTubeThumbnailsToDatabase } from "@/lib/actions/youtube-thumbnails"
 import { createAsset } from "@/lib/actions/assets"
@@ -641,7 +643,7 @@ export function YouTubeThumbnailGenerator() {
               >
             {FORM_FIELD_ORDER.map((field) => {
               const id = `thumbnail-${field}`
-              const label = FIELD_LABELS[field]
+              const label = formatFieldLabel(field)
 
               if (field === "contentFormat") {
                 return (

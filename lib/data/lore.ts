@@ -1,4 +1,4 @@
-import { parseStringList } from "@/lib/artist-universe/utils"
+import { parseStringList, dedupeStringsCaseInsensitive } from "@/lib/artist-universe/utils"
 import type { LoreEntryRecord } from "@/lib/artist-universe/types"
 import type { LoreEntry as PrismaLoreEntry } from "@/lib/generated/prisma/client"
 
@@ -15,14 +15,14 @@ export function normalizeLoreEntry(
     canonStatus: record.canonStatus?.trim() || "Flexible",
     summary: record.summary.trim() || "",
     details: record.details?.trim() ?? "",
-    characters: parseStringList(record.characters),
-    locations: parseStringList(record.locations),
-    symbols: parseStringList(record.symbols),
-    themes: parseStringList(record.themes),
-    relatedSongs: parseStringList(record.relatedSongs),
-    relatedCampaignIds: parseStringList(record.relatedCampaignIds),
-    relatedAssetIds: parseStringList(record.relatedAssetIds),
-    tags: parseStringList(record.tags),
+    characters: dedupeStringsCaseInsensitive(parseStringList(record.characters)),
+    locations: dedupeStringsCaseInsensitive(parseStringList(record.locations)),
+    symbols: dedupeStringsCaseInsensitive(parseStringList(record.symbols)),
+    themes: dedupeStringsCaseInsensitive(parseStringList(record.themes)),
+    relatedSongs: dedupeStringsCaseInsensitive(parseStringList(record.relatedSongs)),
+    relatedCampaignIds: dedupeStringsCaseInsensitive(parseStringList(record.relatedCampaignIds)),
+    relatedAssetIds: dedupeStringsCaseInsensitive(parseStringList(record.relatedAssetIds)),
+    tags: dedupeStringsCaseInsensitive(parseStringList(record.tags)),
     notes: record.notes?.trim() ?? "",
     createdAt: record.createdAt ?? now,
     updatedAt: record.updatedAt ?? now,

@@ -20,6 +20,8 @@ import {
   Video,
 } from "lucide-react"
 import { toast } from "sonner"
+import { formatFieldLabel } from "@/lib/ui/labels"
+import { formLabelClassName } from "@/components/ui/form-field"
 
 import { useStore, createId } from "@/lib/store"
 import type {
@@ -174,7 +176,7 @@ function DetailSection({
 }) {
   return (
     <div className="space-y-2">
-      <h4 className="text-sm font-medium">{title}</h4>
+      <h4 className={formLabelClassName}>{title}</h4>
       <div className="rounded-md border bg-muted/30 p-3 text-sm whitespace-pre-wrap">
         {children}
       </div>
@@ -503,7 +505,7 @@ export function ArtistCrm() {
             <CardContent className="space-y-4">
               {FORM_FIELD_ORDER.map((field) => {
                 const id = `artist-${field}`
-                const label = FIELD_LABELS[field]
+                const label = formatFieldLabel(field)
 
                 if (field === "artistType") {
                   return (
@@ -592,7 +594,7 @@ export function ArtistCrm() {
                       className="space-y-3 rounded-md border p-3"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <Label className="text-sm font-medium">Release</Label>
+                        <Label className={formLabelClassName}>Release</Label>
                         <Button
                           type="button"
                           variant="ghost"
@@ -904,7 +906,7 @@ export function ArtistCrm() {
                       className="space-y-3 rounded-md border p-3"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <Label className="text-sm font-medium">Product</Label>
+                        <Label className={formLabelClassName}>Product</Label>
                         <Button
                           type="button"
                           variant="ghost"
@@ -1034,7 +1036,7 @@ export function ArtistCrm() {
                       className="space-y-3 rounded-md border p-3"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <Label className="text-sm font-medium">Campaign</Label>
+                        <Label className={formLabelClassName}>Campaign</Label>
                         <Button
                           type="button"
                           variant="ghost"

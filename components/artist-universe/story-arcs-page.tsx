@@ -14,12 +14,11 @@ import { EmptyState } from "@/components/empty-state"
 import { RecordMeta, TagList, useModuleTab, useRecordDeepLink } from "@/components/artist-universe/shared"
 import { RecordNotFound } from "@/components/record-not-found"
 import { PageErrorState } from "@/components/page-error-state"
-import { ModuleShell, ModuleTabPanel, ModuleWorkflowTabs } from "@/components/module/form-layout"
+import { ModuleShell, FormGrid, ModuleTabPanel, ModuleWorkflowTabs } from "@/components/module/form-layout"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { FormField, FormTextarea } from "@/components/ui/form-field"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 
 const TABS = [
   { value: "arcs", label: "Arcs" },
@@ -108,13 +107,36 @@ export function StoryArcsPage() {
         </Card>
       ) : null}
       {showForm ? (
-        <Card className="mb-4"><CardHeader><CardTitle className="text-base">New story arc</CardTitle></CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-2">
-            <div><Label>Title</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
-            <div><Label>Artist</Label><Input value={form.artistName} onChange={(e) => setForm({ ...form, artistName: e.target.value })} /></div>
-            <div><Label>Arc type</Label><Input list="arc-types" value={form.arcType} onChange={(e) => setForm({ ...form, arcType: e.target.value })} /><datalist id="arc-types">{STORY_ARC_TYPES.map((t) => <option key={t} value={t} />)}</datalist></div>
-            <div className="md:col-span-2"><Label>Summary</Label><Textarea value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} /></div>
-            <div className="flex gap-2 md:col-span-2"><Button size="sm" onClick={() => void handleCreate()}>Save</Button><Button size="sm" variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button></div>
+        <Card className="mb-4">
+          <CardHeader><CardTitle className="text-base">New Story Arc</CardTitle></CardHeader>
+          <CardContent>
+            <FormGrid>
+              <FormField fieldKey="title" required>
+                <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+              </FormField>
+              <FormField fieldKey="artistName" required>
+                <Input value={form.artistName} onChange={(e) => setForm({ ...form, artistName: e.target.value })} />
+              </FormField>
+              <FormField fieldKey="arcType">
+                <Input list="arc-types" value={form.arcType} onChange={(e) => setForm({ ...form, arcType: e.target.value })} />
+                <datalist id="arc-types">{STORY_ARC_TYPES.map((t) => <option key={t} value={t} />)}</datalist>
+              </FormField>
+              <FormField fieldKey="theme">
+                <Input value={form.theme} onChange={(e) => setForm({ ...form, theme: e.target.value })} />
+              </FormField>
+              <div className="sm:col-span-2">
+                <FormField fieldKey="summary">
+                  <FormTextarea value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} rows={3} />
+                </FormField>
+              </div>
+              <FormField fieldKey="tags" hint="Comma-separated.">
+                <Input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} />
+              </FormField>
+            </FormGrid>
+            <div className="mt-4 flex gap-2">
+              <Button size="sm" onClick={() => void handleCreate()}>Save</Button>
+              <Button size="sm" variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button>
+            </div>
           </CardContent>
         </Card>
       ) : null}

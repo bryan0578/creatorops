@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation"
 
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { orNotSet } from "@/lib/artist-universe/utils"
+import { orNotSet, normalizeTagsForDisplay } from "@/lib/artist-universe/utils"
+import { formatDisplayLabel } from "@/lib/ui/labels"
 
 export function useModuleTab(defaultTab: string, aliases: Record<string, string> = {}) {
   const router = useRouter()
@@ -113,18 +114,21 @@ export function StatCard({ label, value }: { label: string; value: string | numb
 export function FieldRow({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div className="space-y-1">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {formatDisplayLabel(label)}
+      </p>
       <p className="text-sm whitespace-pre-wrap">{orNotSet(value)}</p>
     </div>
   )
 }
 
-export function TagList({ tags }: { tags: string[] }) {
-  if (!tags.length) return <span className="text-sm text-muted-foreground">Not set</span>
+export function TagList({ tags }: { tags: string[] | unknown }) {
+  const normalized = normalizeTagsForDisplay(tags)
+  if (!normalized.length) return <span className="text-sm text-muted-foreground">Not set</span>
   return (
     <div className="flex flex-wrap gap-1">
-      {tags.map((tag) => (
-        <Badge key={tag} variant="secondary">
+      {normalized.map((tag, index) => (
+        <Badge key={`${tag}-${index}`} variant="secondary">
           {tag}
         </Badge>
       ))}

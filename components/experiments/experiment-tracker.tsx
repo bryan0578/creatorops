@@ -13,6 +13,8 @@ import {
   Upload,
 } from "lucide-react"
 import { toast } from "sonner"
+import { formatFieldLabel } from "@/lib/ui/labels"
+import { formLabelClassName } from "@/components/ui/form-field"
 
 import { duplicateExperiment as duplicateExperimentAction } from "@/lib/actions/experiments"
 import { parseCampaignPrefillContext, shouldSkipCampaignUrlPrefill } from "@/lib/campaign-prefill"
@@ -296,7 +298,7 @@ export function ExperimentTracker() {
   }
 
   function renderField(key: keyof ExperimentFormState) {
-    const label = FIELD_LABELS[key]
+    const label = formatFieldLabel(key)
     const value = form[key]
 
     if (key === "experimentType") {

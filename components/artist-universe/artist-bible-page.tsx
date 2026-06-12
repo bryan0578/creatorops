@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { BookOpen, Copy, Loader2, Music2, Pencil, Plus, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 
@@ -16,9 +15,10 @@ import {
   getArtistBibleById,
   updateArtistBible,
 } from "@/lib/actions/artist-bible"
-import { createVisualIdentity } from "@/lib/actions/visual-identity"
+import { getVisualIdentityForArtist } from "@/lib/actions/visual-identity"
 import { agentHref } from "@/lib/agents/routes"
 import type { ArtistBibleRecord } from "@/lib/artist-universe/types"
+import type { VisualIdentityProfileRecord } from "@/lib/artist-universe/types"
 import {
   artistBibleCompletenessBreakdown,
   scoreArtistBibleCompleteness,
@@ -196,8 +196,27 @@ function ArtistSelector({
   )
 }
 
+function visualIdentityLinks(selected: ArtistBibleRecord, profiles: VisualIdentityProfileRecord[]) {
+  const artist = encodeURIComponent(selected.artistName)
+  const fromBible = encodeURIComponent(selected.id)
+  if (profiles.length === 0) {
+    return {
+      primaryHref: `/visual-identity?artist=${artist}&fromArtistBible=${fromBible}`,
+      primaryLabel: "Create Visual Identity from Bible",
+      secondaryHref: null as string | null,
+    }
+  }
+  const primary = profiles[0]
+  return {
+    primaryHref: `/visual-identity?artist=${artist}&recordId=${encodeURIComponent(primary.id)}`,
+    primaryLabel: "Open Visual Identity",
+    secondaryHref: `/visual-identity?artist=${artist}&fromArtistBible=${fromBible}`,
+  }
+}
+
 function ViewActions({
   selected,
+  visualProfiles,
   onNew,
   onEdit,
   onCompleteMissing,
@@ -205,6 +224,7 @@ function ViewActions({
   editorOpen,
 }: {
   selected: ArtistBibleRecord
+  visualProfiles: VisualIdentityProfileRecord[]
   onNew: () => void
   onEdit: () => void
   onCompleteMissing: () => void
@@ -212,6 +232,7 @@ function ViewActions({
   editorOpen: boolean
 }) {
   const completeness = scoreArtistBibleCompleteness(selected)
+  const vi = visualIdentityLinks(selected, visualProfiles)
   return (
     <div className="flex flex-wrap gap-2">
       <Button size="sm" disabled={saving || editorOpen} onClick={onNew}>
@@ -227,8 +248,16 @@ function ViewActions({
           Complete Missing Sections
         </Button>
       ) : null}
+      <Link href={vi.primaryHref} className={buttonVariants({ size: "sm", variant: "default" })}>
+        {vi.primaryLabel}
+      </Link>
+      {vi.secondaryHref ? (
+        <Link href={vi.secondaryHref} className={buttonVariants({ size: "sm", variant: "outline" })}>
+          Create Another Visual Identity
+        </Link>
+      ) : null}
       <Link
-        href={`/lore?artist=${encodeURIComponent(selected.artistName)}`}
+        href={`/lore?artist=${encodeURIComponent(selected.artistName)}&fromArtistBible=${encodeURIComponent(selected.id)}`}
         className={buttonVariants({ size: "sm", variant: "outline" })}
       >
         Lore Manager
@@ -243,7 +272,7 @@ function ViewActions({
         href={`/visual-identity?artist=${encodeURIComponent(selected.artistName)}`}
         className={buttonVariants({ size: "sm", variant: "outline" })}
       >
-        Visual Identity
+        Visual Identity Module
       </Link>
     </div>
   )
@@ -277,7 +306,6 @@ function CompletenessCard({ bible }: { bible: ArtistBibleRecord }) {
 }
 
 export function ArtistBiblePage() {
-  const router = useRouter()
   const { tab, setTab, recordId } = useModuleTab("overview")
   const [items, setItems] = React.useState<ArtistBibleRecord[]>([])
   const [loading, setLoading] = React.useState(true)
@@ -289,6 +317,7 @@ export function ArtistBiblePage() {
   const [editingId, setEditingId] = React.useState<string | null>(null)
   const [aiContext, setAiContext] = React.useState("")
   const [loadError, setLoadError] = React.useState<string | null>(null)
+  const [visualProfiles, setVisualProfiles] = React.useState<VisualIdentityProfileRecord[]>([])
 
   const { resolved: deepLinked, missingRecordId, resolving } = useRecordDeepLink({
     recordId,
@@ -327,6 +356,20 @@ export function ArtistBiblePage() {
   React.useEffect(() => {
     void load()
   }, [load])
+
+  React.useEffect(() => {
+    if (!selected?.artistName) {
+      setVisualProfiles([])
+      return
+    }
+    let cancelled = false
+    void getVisualIdentityForArtist(selected.artistName).then((rows) => {
+      if (!cancelled) setVisualProfiles(rows)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [selected?.artistName])
 
   React.useEffect(() => {
     if (editorMode === "closed" && selected) {
@@ -376,6 +419,22 @@ export function ArtistBiblePage() {
     }
   }
 
+  async function nudgeVisualIdentityIfMissing(record: ArtistBibleRecord) {
+    const profiles = await getVisualIdentityForArtist(record.artistName)
+    setVisualProfiles(profiles)
+    if (profiles.length === 0) {
+      const href = `/visual-identity?artist=${encodeURIComponent(record.artistName)}&fromArtistBible=${encodeURIComponent(record.id)}`
+      toast.message(`Next: create a Visual Identity for ${record.artistName}`, {
+        action: {
+          label: "Create Visual Identity",
+          onClick: () => {
+            window.location.href = href
+          },
+        },
+      })
+    }
+  }
+
   async function handleSave() {
     const artistName = form.artistName.trim()
     if (!artistName) {
@@ -406,6 +465,7 @@ export function ArtistBiblePage() {
         setEditingId(null)
         toast.success("Artist bible updated")
         if (aiContext) await refreshAiContext(updated.artistName)
+        await nudgeVisualIdentityIfMissing(updated)
       } else if (editorMode === "create") {
         const created = await createArtistBible(payload)
         setItems((prev) => [created, ...prev])
@@ -413,6 +473,7 @@ export function ArtistBiblePage() {
         setEditorMode("closed")
         setEditingId(null)
         toast.success(`Artist bible created for ${created.artistName}`)
+        await nudgeVisualIdentityIfMissing(created)
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Save failed")
@@ -460,37 +521,6 @@ export function ArtistBiblePage() {
       toast.success("Artist bible duplicated")
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Duplicate failed")
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function handleCreateVisualIdentity() {
-    if (!selected) return
-    setSaving(true)
-    try {
-      const profile = await createVisualIdentity({
-        artistName: selected.artistName,
-        profileName: `${selected.artistName} — Primary`,
-        status: "Active",
-        visualStyle: selected.aesthetic || selected.visualRules,
-        colorPalette: selected.colorPalette,
-        typographyRules: "",
-        characterRules: "",
-        environmentRules: selected.aesthetic,
-        imagePromptRules: selected.visualRules,
-        thumbnailRules: selected.visualRules,
-        merchDesignRules: "",
-        forbiddenElements: selected.dontList,
-        referenceAssetIds: [],
-        referenceDriveFileIds: [],
-        tags: selected.tags,
-        notes: `Created from Artist Bible for ${selected.artistName}.`,
-      })
-      toast.success("Visual identity profile created")
-      router.push(`/visual-identity?recordId=${encodeURIComponent(profile.id)}`)
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not create visual identity")
     } finally {
       setSaving(false)
     }
@@ -595,6 +625,7 @@ export function ArtistBiblePage() {
             <>
               <ViewActions
                 selected={selected}
+                visualProfiles={visualProfiles}
                 onNew={openCreate}
                 onEdit={() => openEdit(selected)}
                 onCompleteMissing={() => openEdit(selected)}
@@ -795,7 +826,7 @@ export function ArtistBiblePage() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="flex flex-wrap gap-2">
-                        <Link href={`/lore?artist=${encodeURIComponent(selected.artistName)}`} className={buttonVariants({ size: "sm", variant: "outline" })}>Lore Manager</Link>
+                        <Link href={`/lore?artist=${encodeURIComponent(selected.artistName)}&fromArtistBible=${encodeURIComponent(selected.id)}`} className={buttonVariants({ size: "sm", variant: "outline" })}>Lore Manager</Link>
                         <Link href={`/song-vault?artist=${encodeURIComponent(selected.artistName)}`} className={buttonVariants({ size: "sm", variant: "outline" })}>Song Vault</Link>
                         <Link href={`/story-arcs?artist=${encodeURIComponent(selected.artistName)}`} className={buttonVariants({ size: "sm", variant: "outline" })}>Story Arcs</Link>
                         <Link href={`/visual-identity?artist=${encodeURIComponent(selected.artistName)}`} className={buttonVariants({ size: "sm", variant: "outline" })}>Visual Identity</Link>
@@ -804,9 +835,21 @@ export function ArtistBiblePage() {
                         <Link href="/artist-crm" className={buttonVariants({ size: "sm", variant: "outline" })}>Artist CRM</Link>
                       </div>
                       <div className="flex flex-wrap gap-2 border-t pt-4">
-                        <Button size="sm" variant="outline" disabled={saving} onClick={() => void handleCreateVisualIdentity()}>
-                          Create Visual Identity from Bible
-                        </Button>
+                        {(() => {
+                          const vi = visualIdentityLinks(selected, visualProfiles)
+                          return (
+                            <>
+                              <Link href={vi.primaryHref} className={buttonVariants({ size: "sm", variant: "default" })}>
+                                {vi.primaryLabel}
+                              </Link>
+                              {vi.secondaryHref ? (
+                                <Link href={vi.secondaryHref} className={buttonVariants({ size: "sm", variant: "outline" })}>
+                                  Create Another Visual Identity
+                                </Link>
+                              ) : null}
+                            </>
+                          )
+                        })()}
                         <Button size="sm" variant="outline" disabled={saving} onClick={() => void handleDuplicate()}>
                           <Copy className="mr-1 size-4" />
                           Duplicate Artist Bible

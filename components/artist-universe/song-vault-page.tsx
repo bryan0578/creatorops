@@ -22,12 +22,11 @@ import { EmptyState } from "@/components/empty-state"
 import { RecordMeta, useModuleTab, useRecordDeepLink } from "@/components/artist-universe/shared"
 import { RecordNotFound } from "@/components/record-not-found"
 import { PageErrorState } from "@/components/page-error-state"
-import { ModuleShell, ModuleTabPanel, ModuleWorkflowTabs } from "@/components/module/form-layout"
+import { ModuleShell, FormGrid, ModuleTabPanel, ModuleWorkflowTabs } from "@/components/module/form-layout"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { FormField, FormTextarea, FORM_HINTS } from "@/components/ui/form-field"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import type { SongConceptRecord } from "@/lib/artist-universe/types"
 
 const TABS = [
@@ -103,13 +102,44 @@ export function SongVaultPage() {
         </Card>
       ) : null}
       {showForm ? (
-        <Card className="mb-4"><CardHeader><CardTitle className="text-base">New song concept</CardTitle></CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-2">
-            {(["title", "artistName", "songTitle", "genre", "mood"] as const).map((k) => <div key={k}><Label>{k}</Label><Input value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })} /></div>)}
-            <div className="md:col-span-2"><Label>Concept summary</Label><Textarea value={form.conceptSummary} onChange={(e) => setForm({ ...form, conceptSummary: e.target.value })} /></div>
-            <div><Label>Hook idea</Label><Input value={form.hookIdea} onChange={(e) => setForm({ ...form, hookIdea: e.target.value })} /></div>
-            <div><Label>Visual concept</Label><Input value={form.visualConcept} onChange={(e) => setForm({ ...form, visualConcept: e.target.value })} /></div>
-            <div className="flex gap-2 md:col-span-2"><Button size="sm" onClick={() => void handleCreate()}>Save</Button><Button size="sm" variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button></div>
+        <Card className="mb-4">
+          <CardHeader><CardTitle className="text-base">New Song Concept</CardTitle></CardHeader>
+          <CardContent>
+            <FormGrid>
+              <FormField fieldKey="title" required>
+                <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+              </FormField>
+              <FormField fieldKey="artistName" required>
+                <Input value={form.artistName} onChange={(e) => setForm({ ...form, artistName: e.target.value })} />
+              </FormField>
+              <FormField fieldKey="songTitle">
+                <Input value={form.songTitle} onChange={(e) => setForm({ ...form, songTitle: e.target.value })} />
+              </FormField>
+              <FormField fieldKey="genre">
+                <Input value={form.genre} onChange={(e) => setForm({ ...form, genre: e.target.value })} />
+              </FormField>
+              <FormField fieldKey="mood">
+                <Input value={form.mood} onChange={(e) => setForm({ ...form, mood: e.target.value })} />
+              </FormField>
+              <div className="sm:col-span-2">
+                <FormField fieldKey="conceptSummary">
+                  <FormTextarea value={form.conceptSummary} onChange={(e) => setForm({ ...form, conceptSummary: e.target.value })} rows={3} />
+                </FormField>
+              </div>
+              <FormField fieldKey="hookIdea">
+                <Input value={form.hookIdea} onChange={(e) => setForm({ ...form, hookIdea: e.target.value })} />
+              </FormField>
+              <FormField fieldKey="visualConcept">
+                <Input value={form.visualConcept} onChange={(e) => setForm({ ...form, visualConcept: e.target.value })} />
+              </FormField>
+              <FormField fieldKey="tags" hint={FORM_HINTS.tags}>
+                <Input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} />
+              </FormField>
+            </FormGrid>
+            <div className="mt-4 flex gap-2">
+              <Button size="sm" onClick={() => void handleCreate()}>Save</Button>
+              <Button size="sm" variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button>
+            </div>
           </CardContent>
         </Card>
       ) : null}

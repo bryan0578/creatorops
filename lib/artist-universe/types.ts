@@ -157,14 +157,21 @@ export type ArtistUniverseContextBundle = {
 export const LORE_TYPES = [
   "Character",
   "World",
+  "Location",
   "Symbol",
+  "Visual Motif",
   "Timeline",
   "Theme",
-  "Visual Motif",
   "Story Event",
   "Brand Rule",
+  "Object",
+  "Song Lore",
+  "Album Lore",
+  "Product Lore",
   "Other",
 ] as const
+
+export const LORE_STATUSES = ["Draft", "Active", "Archived", "Deprecated"] as const
 
 export const CANON_STATUSES = ["Canon", "Flexible", "Idea", "Deprecated"] as const
 

@@ -94,7 +94,8 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select"
-import { useSmartDefaultTab } from "@/hooks/use-smart-default-tab"
+import { formatFieldLabel } from "@/lib/ui/labels"
+import { formLabelClassName } from "@/components/ui/form-field"
 
 function formatDate(ts: number) {
   return new Date(ts).toLocaleString(undefined, {
@@ -621,8 +622,10 @@ export function CampaignBuilder() {
             </CardHeader>
             <CardContent className="space-y-6">
               <FormGrid>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="campaignName">Campaign name</Label>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="campaignName" className={formLabelClassName}>
+                    {formatFieldLabel("campaignName")}
+                  </Label>
                   <Input
                     id="campaignName"
                     value={form.campaignName}
@@ -630,8 +633,8 @@ export function CampaignBuilder() {
                     placeholder="No Exit Release Promo"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Campaign type</Label>
+                <div className="space-y-1.5">
+                  <Label className={formLabelClassName}>{formatFieldLabel("campaignType")}</Label>
                   <Select
                     value={form.campaignType}
                     onValueChange={(v) => updateForm("campaignType", v)}
@@ -648,8 +651,8 @@ export function CampaignBuilder() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Status</Label>
+                <div className="space-y-1.5">
+                  <Label className={formLabelClassName}>{formatFieldLabel("status")}</Label>
                   <Select
                     value={form.status}
                     onValueChange={(v) => updateForm("status", v)}

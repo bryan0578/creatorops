@@ -16,18 +16,41 @@ export function orNotSet(value: string | null | undefined): string {
   return text ? text : "Not set"
 }
 
+export function dedupeStringsCaseInsensitive(items: string[]): string[] {
+  const seen = new Set<string>()
+  const result: string[] = []
+  for (const item of items) {
+    const trimmed = item.trim()
+    if (!trimmed) continue
+    const key = trimmed.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    result.push(trimmed)
+  }
+  return result
+}
+
+/** Safe tag list for display: trims, dedupes, handles JSON/malformed input. */
+export function normalizeTagsForDisplay(value: unknown): string[] {
+  return dedupeStringsCaseInsensitive(parseStringList(value))
+}
+
 export function parseTagsFromInput(value: string): string[] {
-  return value
-    .split(/[,;]+/)
-    .map((t) => t.trim())
-    .filter(Boolean)
+  return dedupeStringsCaseInsensitive(
+    value
+      .split(/[,;\n]+/)
+      .map((t) => t.trim())
+      .filter(Boolean),
+  )
 }
 
 export function parseListFromInput(value: string): string[] {
-  return value
-    .split(/\n|,/)
-    .map((t) => t.trim())
-    .filter(Boolean)
+  return dedupeStringsCaseInsensitive(
+    value
+      .split(/\n|,/)
+      .map((t) => t.trim())
+      .filter(Boolean),
+  )
 }
 
 export function formatListForInput(items: string[]): string {

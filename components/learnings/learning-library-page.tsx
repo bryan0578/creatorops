@@ -17,6 +17,8 @@ import {
   Upload,
 } from "lucide-react"
 import { toast } from "sonner"
+import { formatFieldLabel } from "@/lib/ui/labels"
+import { formLabelClassName } from "@/components/ui/form-field"
 
 import {
   createLearning,
@@ -453,7 +455,7 @@ export function LearningLibraryPage() {
   ) {
     return (
       <div key={fieldKey} className="space-y-2">
-        <Label htmlFor={fieldKey}>{FIELD_LABELS[fieldKey]}</Label>
+        <Label htmlFor={fieldKey}>{formatFieldLabel(fieldKey)}</Label>
         <Select
           value={(form[fieldKey] as string) || (allowEmpty ? "__empty__" : options[0])}
           onValueChange={(value) =>
@@ -481,7 +483,7 @@ export function LearningLibraryPage() {
   function renderTextField(fieldKey: keyof LearningFormValues, multiline = false) {
     return (
       <div key={fieldKey} className={multiline ? "sm:col-span-2 space-y-2" : "space-y-2"}>
-        <Label htmlFor={fieldKey}>{FIELD_LABELS[fieldKey]}</Label>
+        <Label htmlFor={fieldKey}>{formatFieldLabel(fieldKey)}</Label>
         {multiline ? (
           <Textarea
             id={fieldKey}

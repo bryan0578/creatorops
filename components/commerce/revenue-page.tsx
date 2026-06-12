@@ -24,6 +24,7 @@ import { ModuleShell, ModuleTabPanel, ModuleWorkflowTabs } from "@/components/mo
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { FormField, FormTextarea } from "@/components/ui/form-field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -408,29 +409,23 @@ export function RevenuePage() {
           <CardTitle className="text-base">Add revenue record</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={(e) => void handleCreate(e)} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="space-y-1">
-              <Label>Product name</Label>
+          <form onSubmit={(e) => void handleCreate(e)} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <FormField fieldKey="productName" required>
               <Input value={form.productName} onChange={(e) => setForm({ ...form, productName: e.target.value })} />
-            </div>
-            <div className="space-y-1">
-              <Label>Platform</Label>
+            </FormField>
+            <FormField fieldKey="platform">
               <Input value={form.platform} onChange={(e) => setForm({ ...form, platform: e.target.value })} />
-            </div>
-            <div className="space-y-1">
-              <Label>Gross revenue</Label>
+            </FormField>
+            <FormField fieldKey="grossRevenue">
               <Input value={form.grossRevenue} onChange={(e) => setForm({ ...form, grossRevenue: e.target.value })} />
-            </div>
-            <div className="space-y-1">
-              <Label>Net revenue</Label>
+            </FormField>
+            <FormField fieldKey="netRevenue">
               <Input value={form.netRevenue} onChange={(e) => setForm({ ...form, netRevenue: e.target.value })} />
-            </div>
-            <div className="space-y-1">
-              <Label>Sale date</Label>
+            </FormField>
+            <FormField fieldKey="saleDate">
               <Input type="date" value={form.saleDate} onChange={(e) => setForm({ ...form, saleDate: e.target.value })} />
-            </div>
-            <div className="space-y-1">
-              <Label>Product listing</Label>
+            </FormField>
+            <FormField fieldKey="productListingId" label="Product Listing">
               <select
                 className="flex h-9 w-full rounded-md border bg-background px-3 text-sm"
                 value={form.productListingId}
@@ -443,9 +438,8 @@ export function RevenuePage() {
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="space-y-1">
-              <Label>Collection</Label>
+            </FormField>
+            <FormField fieldKey="collectionId" label="Collection">
               <select
                 className="flex h-9 w-full rounded-md border bg-background px-3 text-sm"
                 value={form.collectionId}
@@ -458,9 +452,8 @@ export function RevenuePage() {
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="space-y-1">
-              <Label>Campaign</Label>
+            </FormField>
+            <FormField fieldKey="campaignId" label="Campaign">
               <select
                 className="flex h-9 w-full rounded-md border bg-background px-3 text-sm"
                 value={form.campaignId}
@@ -473,10 +466,10 @@ export function RevenuePage() {
                   </option>
                 ))}
               </select>
-            </div>
+            </FormField>
             <div className="flex items-end">
               <Button type="submit" size="sm" disabled={saving}>
-                Add record
+                Add Record
               </Button>
             </div>
           </form>

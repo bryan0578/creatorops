@@ -12,6 +12,8 @@ import {
   Upload,
 } from "lucide-react"
 import { toast } from "sonner"
+import { formatFieldLabel } from "@/lib/ui/labels"
+import { formLabelClassName } from "@/components/ui/form-field"
 
 import { useStore, createId } from "@/lib/store"
 import type { MockupPromptFormValues, MockupPromptRecord } from "@/lib/types"
@@ -590,7 +592,7 @@ export function MockupPromptGenerator() {
               >
             {FORM_FIELD_ORDER.map((field) => {
               const id = `mockup-${field}`
-              const label = FIELD_LABELS[field]
+              const label = formatFieldLabel(field)
 
               if (field === "mockupType") {
                 return (
