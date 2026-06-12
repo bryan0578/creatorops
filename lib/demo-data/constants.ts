@@ -46,6 +46,10 @@ export const DEMO_IDS = {
   driveFileVideo: `${DEMO_ID_PREFIX}prettywise-drive-file-video`,
   driveFileMockup: `${DEMO_ID_PREFIX}prettywise-drive-file-mockup`,
   driveFileSocial: `${DEMO_ID_PREFIX}prettywise-drive-file-social`,
+  productResearch: `${DEMO_ID_PREFIX}prettywise-product-research`,
+  productCollection: `${DEMO_ID_PREFIX}prettywise-product-collection`,
+  revenueRecord: `${DEMO_ID_PREFIX}prettywise-revenue-record`,
+  learningCommerce: `${DEMO_ID_PREFIX}prettywise-learning-commerce`,
 } as const
 
 export function isDemoDataNotes(notes: string | null | undefined): boolean {

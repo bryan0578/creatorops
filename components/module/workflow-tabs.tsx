@@ -91,13 +91,15 @@ export function ModuleTabPanel({
   value,
   children,
   className,
+  keepMounted = true,
 }: {
   value: string
   children: React.ReactNode
   className?: string
+  keepMounted?: boolean
 }) {
   return (
-    <TabsContent value={value} className={cn("mt-0 space-y-4", className)}>
+    <TabsContent value={value} keepMounted={keepMounted} className={cn("mt-0 space-y-4", className)}>
       {children}
     </TabsContent>
   )

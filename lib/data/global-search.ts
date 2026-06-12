@@ -30,6 +30,9 @@ export type GlobalSearchResultType =
   | "social-repurposing"
   | "analytics"
   | "mockup-prompt"
+  | "product-research"
+  | "product-collection"
+  | "revenue-record"
   | "email-campaign"
   | "experiment"
   | "campaign"
@@ -132,6 +135,21 @@ export const GLOBAL_SEARCH_TYPE_META: Record<
     typeLabel: "Mockup Prompt",
     category: "commerce",
     href: "/mockup-prompts",
+  },
+  "product-research": {
+    typeLabel: "Product Research",
+    category: "commerce",
+    href: "/product-research",
+  },
+  "product-collection": {
+    typeLabel: "Collection",
+    category: "commerce",
+    href: "/collections",
+  },
+  "revenue-record": {
+    typeLabel: "Revenue Record",
+    category: "commerce",
+    href: "/revenue",
   },
   "email-campaign": {
     typeLabel: "Email Campaign",
@@ -239,6 +257,9 @@ const GLOBAL_SEARCH_RECORD_ID_TYPES = new Set<GlobalSearchResultType>([
   "merch-idea",
   "product-listing",
   "mockup-prompt",
+  "product-research",
+  "product-collection",
+  "revenue-record",
   "email-campaign",
   "analytics",
   "experiment",

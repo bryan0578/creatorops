@@ -1,2 +1,3 @@
--- CreateIndex
-CREATE INDEX "YouTubeVideo_youtubeVideoId_idx" ON "YouTubeVideo"("youtubeVideoId");
+-- No-op: this migration was misnamed (Google Drive sync lives in 20260616120000_add_google_drive_api).
+-- A YouTubeVideo index was removed from here because YouTubeVideo is created in 20260615090000_add_youtube_api.
+-- Replaying migrations in timestamp order must not reference tables that do not exist yet.

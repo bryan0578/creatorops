@@ -7,6 +7,12 @@ import { scanPatternDetectionWarnings } from "@/lib/data/pattern-health"
 import { scanQualityPerformanceWarnings } from "@/lib/data/quality-performance-health"
 import { scanFeedbackLoopWarnings } from "@/lib/data/feedback-loop-health"
 import { scanCreatorAgentsWarnings } from "@/lib/data/agents-health"
+import { scanCommerceWarnings } from "@/lib/data/commerce-health"
+import type {
+  ProductCollectionRecord,
+  ProductResearchItemRecord,
+  RevenueRecordItem,
+} from "@/lib/commerce/types"
 import { normalizeSourceRecordType } from "@/lib/quality-prefill"
 import { extractPlaybookIdFromNotes } from "@/lib/playbooks"
 import { isValidJsonString } from "@/lib/safe-json"
@@ -163,6 +169,9 @@ export interface DataHealthScanInput {
   driveFiles: DriveFileRecord[]
   driveConnection: DriveConnectionStatusSummary | null
   jsonFields: DataHealthJsonField[]
+  productResearch?: ProductResearchItemRecord[]
+  productCollections?: ProductCollectionRecord[]
+  revenueRecords?: RevenueRecordItem[]
   /** Server-resolved: preferred AI provider has API key configured. */
   aiProviderConfigured?: boolean
 }
@@ -1568,6 +1577,9 @@ export function countScannableRecords(input: DataHealthScanInput): number {
     input.youtubeVideos.length +
     input.driveFolders.length +
     input.driveFiles.length +
+    (input.productResearch?.length ?? 0) +
+    (input.productCollections?.length ?? 0) +
+    (input.revenueRecords?.length ?? 0) +
     (input.workspaceSettings ? 1 : 0)
   )
 }
@@ -2924,6 +2936,7 @@ export function buildDataHealthReport(
   safeScan("Quality vs performance", issues, () => scanQualityPerformanceWarnings(input, issues))
   safeScan("Learning feedback loop", issues, () => scanFeedbackLoopWarnings(input, issues))
   safeScan("Creator AI Agents", issues, () => scanCreatorAgentsWarnings(input, issues))
+  safeScan("Commerce / Product Gaps", issues, () => scanCommerceWarnings(input, issues))
   safeScan("JSON / data issues", issues, () => scanJsonIssues(input, issues))
 
   return {

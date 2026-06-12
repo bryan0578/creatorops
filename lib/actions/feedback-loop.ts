@@ -7,6 +7,8 @@ import { getAssets } from "@/lib/actions/assets"
 import { getCampaigns } from "@/lib/actions/campaigns"
 import { createExperiment, getExperiments } from "@/lib/actions/experiments"
 import { getExternalLinks } from "@/lib/actions/external-links"
+import { getCollections } from "@/lib/actions/collections"
+import { getRevenueRecords } from "@/lib/actions/revenue"
 import { createLearning, getLearnings } from "@/lib/actions/learnings"
 import { getMerchIdeas } from "@/lib/actions/merch-ideas"
 import { getMockupPromptRecords } from "@/lib/actions/mockup-prompts"
@@ -87,6 +89,8 @@ export async function loadFeedbackLoopDataset(): Promise<FeedbackLoopDataset> {
     releasePlans,
     driveFiles,
     externalLinks,
+    revenueRecords,
+    productCollections,
   ] = await Promise.all([
     safeLoad("campaigns", () => getCampaigns(), []),
     safeLoad("analytics", () => getAnalyticsRecords(), []),
@@ -103,6 +107,8 @@ export async function loadFeedbackLoopDataset(): Promise<FeedbackLoopDataset> {
     safeLoad("releasePlans", () => getReleasePlans(), []),
     safeLoad("driveFiles", () => getDriveFiles(), []),
     safeLoad("externalLinks", () => getExternalLinks(), []),
+    safeLoad("revenueRecords", () => getRevenueRecords(), []),
+    safeLoad("productCollections", () => getCollections(), []),
   ])
 
   return {
@@ -121,6 +127,8 @@ export async function loadFeedbackLoopDataset(): Promise<FeedbackLoopDataset> {
     releasePlans,
     driveFiles,
     externalLinks,
+    revenueRecords,
+    productCollections,
   }
 }
 

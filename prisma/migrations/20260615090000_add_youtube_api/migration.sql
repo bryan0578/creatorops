@@ -52,6 +52,7 @@ CREATE INDEX "YouTubeConnection_updatedAt_idx" ON "YouTubeConnection"("updatedAt
 
 -- CreateIndex
 CREATE UNIQUE INDEX "YouTubeVideo_youtubeVideoId_key" ON "YouTubeVideo"("youtubeVideoId");
+CREATE INDEX "YouTubeVideo_youtubeVideoId_idx" ON "YouTubeVideo"("youtubeVideoId");
 CREATE INDEX "YouTubeVideo_channelId_idx" ON "YouTubeVideo"("channelId");
 CREATE INDEX "YouTubeVideo_campaignId_idx" ON "YouTubeVideo"("campaignId");
 CREATE INDEX "YouTubeVideo_campaignName_idx" ON "YouTubeVideo"("campaignName");

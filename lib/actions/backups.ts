@@ -15,6 +15,9 @@ import { getExperiments, importExperiments } from "@/lib/actions/experiments"
 import { importMerchIdeas } from "@/lib/actions/merch-ideas"
 import { importMockupPromptRecords } from "@/lib/actions/mockup-prompts"
 import { importProductListings } from "@/lib/actions/product-listings"
+import { importProductResearchItems } from "@/lib/actions/product-research"
+import { importCollections } from "@/lib/actions/collections"
+import { importRevenueRecords } from "@/lib/actions/revenue"
 import { importPromptRuns } from "@/lib/actions/prompt-runs"
 import { importPrompts } from "@/lib/actions/prompts"
 import { importReleasePlans } from "@/lib/actions/release-plans"
@@ -50,6 +53,9 @@ import { getEmailCampaignRecords } from "@/lib/actions/email-campaigns"
 import { getMerchIdeas } from "@/lib/actions/merch-ideas"
 import { getMockupPromptRecords } from "@/lib/actions/mockup-prompts"
 import { getProductListings } from "@/lib/actions/product-listings"
+import { getProductResearchItems } from "@/lib/actions/product-research"
+import { getCollections } from "@/lib/actions/collections"
+import { getRevenueRecords } from "@/lib/actions/revenue"
 import { getPromptRuns } from "@/lib/actions/prompt-runs"
 import { getPrompts } from "@/lib/actions/prompts"
 import { getReleasePlans } from "@/lib/actions/release-plans"
@@ -179,6 +185,9 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     driveFolders,
     driveFiles,
     workspaceSettingsRow,
+    productResearch,
+    productCollections,
+    revenueRecords,
   ] = await Promise.all([
     getPrompts(),
     getWorkflows(),
@@ -206,6 +215,9 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     getDriveFolders(),
     getDriveFiles(),
     getWorkspaceSettings(),
+    getProductResearchItems().catch(() => []),
+    getCollections().catch(() => []),
+    getRevenueRecords().catch(() => []),
   ])
 
   const workspaceSettings = workspaceSettingsRow ? [workspaceSettingsRow] : []
@@ -237,6 +249,9 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     driveFolders,
     driveFiles,
     workspaceSettings,
+    productResearch,
+    productCollections,
+    revenueRecords,
   }
 }
 
@@ -323,6 +338,9 @@ async function clearAllBackupTables(): Promise<void> {
   await prisma.driveFile.deleteMany()
   await prisma.driveFolder.deleteMany()
   await prisma.workspaceSettings.deleteMany()
+  await prisma.productResearchItem.deleteMany()
+  await prisma.productCollection.deleteMany()
+  await prisma.revenueRecord.deleteMany()
 }
 
 async function importBackupData(
@@ -415,6 +433,21 @@ async function importBackupData(
   }
   if (data.workspaceSettings.length > 0) {
     await importWorkspaceSettings(data.workspaceSettings as WorkspaceSettingsRecord[])
+  }
+  if (data.productResearch.length > 0) {
+    await importProductResearchItems(
+      data.productResearch as import("@/lib/commerce/types").ProductResearchItemRecord[],
+    )
+  }
+  if (data.productCollections.length > 0) {
+    await importCollections(
+      data.productCollections as import("@/lib/commerce/types").ProductCollectionRecord[],
+    )
+  }
+  if (data.revenueRecords.length > 0) {
+    await importRevenueRecords(
+      data.revenueRecords as import("@/lib/commerce/types").RevenueRecordItem[],
+    )
   }
 
   revalidateAllRoutes()

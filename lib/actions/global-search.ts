@@ -1267,6 +1267,111 @@ async function searchDriveFiles(query: string): Promise<GlobalSearchResult[]> {
   )
 }
 
+async function searchProductResearch(query: string): Promise<GlobalSearchResult[]> {
+  const rows = await prisma.productResearchItem.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: GLOBAL_SEARCH_FETCH_BATCH,
+  })
+
+  return pushMatches(
+    rows,
+    query,
+    ["title", "productType", "category", "niche", "audience", "competitorName", "notes", "tags"],
+    {
+      title: "Title",
+      productType: "Product type",
+      category: "Category",
+      niche: "Niche",
+      audience: "Audience",
+      competitorName: "Competitor",
+      notes: "Notes",
+      tags: "Tags",
+    },
+    (row, matchedFields) =>
+      makeResult(
+        "product-research",
+        row.id as string,
+        (row.title as string) || "Product research",
+        [row.productType, row.category].filter(Boolean).join(" · "),
+        previewText(row.notes),
+        row.createdAt as Date,
+        row.updatedAt as Date,
+        matchedFields,
+      ),
+    GLOBAL_SEARCH_LIMIT_PER_TYPE,
+  )
+}
+
+async function searchProductCollections(query: string): Promise<GlobalSearchResult[]> {
+  const rows = await prisma.productCollection.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: GLOBAL_SEARCH_FETCH_BATCH,
+  })
+
+  return pushMatches(
+    rows,
+    query,
+    ["name", "description", "collectionType", "theme", "artistName", "campaignName", "notes", "tags"],
+    {
+      name: "Name",
+      description: "Description",
+      collectionType: "Type",
+      theme: "Theme",
+      artistName: "Artist",
+      campaignName: "Campaign",
+      notes: "Notes",
+      tags: "Tags",
+    },
+    (row, matchedFields) =>
+      makeResult(
+        "product-collection",
+        row.id as string,
+        (row.name as string) || "Collection",
+        [row.collectionType, row.theme].filter(Boolean).join(" · "),
+        previewText(row.description) || previewText(row.notes),
+        row.createdAt as Date,
+        row.updatedAt as Date,
+        matchedFields,
+      ),
+    GLOBAL_SEARCH_LIMIT_PER_TYPE,
+  )
+}
+
+async function searchRevenueRecords(query: string): Promise<GlobalSearchResult[]> {
+  const rows = await prisma.revenueRecord.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: GLOBAL_SEARCH_FETCH_BATCH,
+  })
+
+  return pushMatches(
+    rows,
+    query,
+    ["productName", "platform", "source", "campaignName", "artistName", "orderId", "notes", "tags"],
+    {
+      productName: "Product",
+      platform: "Platform",
+      source: "Source",
+      campaignName: "Campaign",
+      artistName: "Artist",
+      orderId: "Order ID",
+      notes: "Notes",
+      tags: "Tags",
+    },
+    (row, matchedFields) =>
+      makeResult(
+        "revenue-record",
+        row.id as string,
+        (row.productName as string) || "Revenue record",
+        [row.platform, row.source].filter(Boolean).join(" · "),
+        previewText(row.notes),
+        row.createdAt as Date,
+        row.updatedAt as Date,
+        matchedFields,
+      ),
+    GLOBAL_SEARCH_LIMIT_PER_TYPE,
+  )
+}
+
 async function searchAgentRuns(query: string): Promise<GlobalSearchResult[]> {
   const all = await searchPromptRuns(query)
   return all.filter((result) => result.type === "agent-run")
@@ -1290,6 +1395,9 @@ const SEARCHERS: {
   { type: "social-repurposing", search: searchSocialRepurposing },
   { type: "analytics", search: searchAnalytics },
   { type: "mockup-prompt", search: searchMockupPrompts },
+  { type: "product-research", search: searchProductResearch },
+  { type: "product-collection", search: searchProductCollections },
+  { type: "revenue-record", search: searchRevenueRecords },
   { type: "email-campaign", search: searchEmailCampaigns },
   { type: "experiment", search: searchExperiments },
   { type: "campaign", search: searchCampaigns },

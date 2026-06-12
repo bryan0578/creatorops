@@ -46,6 +46,9 @@ import {
   getDriveFiles,
   getDriveFolders,
 } from "@/lib/actions/drive-integration"
+import { getCollections } from "@/lib/actions/collections"
+import { getProductResearchItems } from "@/lib/actions/product-research"
+import { getRevenueRecords } from "@/lib/actions/revenue"
 import { prisma } from "@/lib/prisma"
 import { WORKSPACE_SETTINGS_ID } from "@/lib/workspace-settings"
 import type { CampaignLinkedRecordType } from "@/lib/types"
@@ -286,6 +289,9 @@ async function loadScanInput(): Promise<{
     driveFolders,
     driveFiles,
     jsonFields,
+    productResearch,
+    productCollections,
+    revenueRecords,
   ] = await Promise.all([
     safeLoad(
       "Campaigns",
@@ -522,6 +528,9 @@ async function loadScanInput(): Promise<{
     safeLoad("Drive folders", async () => getDriveFolders(), loadIssues, []),
     safeLoad("Drive files", async () => getDriveFiles(), loadIssues, []),
     safeLoad("JSON fields", loadJsonFields, loadIssues, []),
+    safeLoad("Product research", () => getProductResearchItems(), loadIssues, []),
+    safeLoad("Product collections", () => getCollections(), loadIssues, []),
+    safeLoad("Revenue records", () => getRevenueRecords(), loadIssues, []),
   ])
 
   return {
@@ -555,6 +564,9 @@ async function loadScanInput(): Promise<{
       driveFiles,
       driveConnection,
       jsonFields,
+      productResearch,
+      productCollections,
+      revenueRecords,
       aiProviderConfigured: workspaceSettings
         ? resolveProviderStatus({
             enabled: workspaceSettings.aiGenerationEnabled,

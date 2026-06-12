@@ -29,6 +29,8 @@ import type {
 export interface FeedbackLoopDataset extends PatternDetectionDataset, QualityPerformanceDataset {
   learnings: LearningRecord[]
   externalLinks: import("@/lib/types").ExternalLinkRecord[]
+  revenueRecords?: import("@/lib/commerce/types").RevenueRecordItem[]
+  productCollections?: import("@/lib/commerce/types").ProductCollectionRecord[]
 }
 
 function defaultActions(suggestion: Pick<FeedbackSuggestion, "id" | "sourceType" | "sourceId" | "campaignId">): FeedbackAction[] {
@@ -737,6 +739,58 @@ function suggestAIContext(
   return suggestions
 }
 
+function suggestCommerceRevenueToLearning(
+  dataset: FeedbackLoopDataset,
+  seen: Set<string>,
+): FeedbackSuggestion[] {
+  const suggestions: FeedbackSuggestion[] = []
+  const revenue = dataset.revenueRecords ?? []
+  for (const record of revenue) {
+    if ((record.grossRevenue ?? 0) <= 0) continue
+    const hasLearning = dataset.learnings.some(
+      (l) =>
+        l.sourceRecordId === record.productListingId ||
+        l.tags.some((t) => /product|commerce|revenue/i.test(t)),
+    )
+    if (hasLearning) continue
+    const id = buildSuggestionId(["commerce-revenue", record.id])
+    if (seen.has(id)) continue
+    seen.add(id)
+    suggestions.push(
+      buildSuggestion({
+        id,
+        suggestionType: "analytics-to-learning",
+        title: `Capture product performance learning: ${record.productName}`,
+        summary: `Tracked $${record.grossRevenue.toFixed(2)} in revenue without a product learning.`,
+        confidence: "medium",
+        score: scoreFromSignal({ metricStrength: record.grossRevenue, recordCount: 1 }),
+        sourceType: "revenue-record",
+        sourceId: record.id,
+        sourceName: record.productName,
+        campaignId: record.campaignId,
+        campaignName: record.campaignName,
+        artistName: record.artistName,
+        platform: record.platform,
+        evidence: [
+          evidenceItem("Gross revenue", `$${record.grossRevenue.toFixed(2)}`),
+          evidenceItem("Platform", record.platform || record.source || "—"),
+        ],
+        recommendedLearning: {
+          title: `Product performance: ${record.productName}`,
+          learningType: "Product Performance",
+          category: "Commerce Insight",
+          insight: `${record.productName} generated $${record.grossRevenue.toFixed(2)} on ${record.platform || record.source}. Capture what worked for future launches.`,
+          evidence: `Gross revenue $${record.grossRevenue.toFixed(2)} on ${record.platform || record.source}.`,
+          recommendation: "Document pricing, mockup, and launch channel choices that drove the sale.",
+          tags: ["commerce", "product-performance", "revenue"],
+        },
+        relatedRecords: [relatedRecord("revenue-record", record.id, record.productName)],
+      }),
+    )
+  }
+  return suggestions
+}
+
 export function buildFeedbackSuggestions(
   dataset: FeedbackLoopDataset,
   input: FeedbackLoopInput = {},
@@ -752,6 +806,7 @@ export function buildFeedbackSuggestions(
       ...suggestCampaignRetrospectives(dataset, seen),
       ...suggestPlaybookUpdates(dataset, seen),
       ...suggestAIContext(dataset, seen),
+      ...suggestCommerceRevenueToLearning(dataset, seen),
     ]
 
     if (input.campaignId) {

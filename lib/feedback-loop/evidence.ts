@@ -20,6 +20,8 @@ export function recordHref(type: string, id: string): string {
       return `/quality-performance`
     case "playbook":
       return `/playbooks?recordId=${encodeURIComponent(id)}`
+    case "revenue-record":
+      return `/revenue?recordId=${encodeURIComponent(id)}`
     default:
       return "/feedback-loop"
   }

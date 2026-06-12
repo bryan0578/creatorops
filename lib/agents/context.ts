@@ -10,6 +10,7 @@ import { getDataHealthReport } from "@/lib/actions/data-health"
 import { loadFeedbackLoopDataset } from "@/lib/actions/feedback-loop"
 import { loadPatternDetectionDataset } from "@/lib/actions/patterns"
 import { loadQualityPerformanceDataset } from "@/lib/actions/quality-performance"
+import { loadCommerceDataset } from "@/lib/actions/commerce"
 import { getPlaybooks } from "@/lib/actions/playbooks"
 import { getPromptRuns } from "@/lib/actions/prompt-runs"
 import { getPrompts } from "@/lib/actions/prompts"
@@ -442,6 +443,67 @@ export async function buildAgentContext(input: AgentRunInput): Promise<AgentCont
       }
     } catch {
       sections.push("\n## Data health risks\n- Data health scan unavailable.")
+    }
+  }
+
+  if (input.agentId === "product-strategist") {
+    try {
+      const commerce = await loadCommerceDataset()
+      const research = filterRecords(commerce.research, input).slice(0, 6)
+      const collections = filterRecords(
+        commerce.collections.map((c) => ({
+          ...c,
+          campaignId: c.campaignId,
+          artistName: c.artistName,
+        })),
+        input,
+      ).slice(0, 6)
+      const revenue = filterRecords(
+        commerce.revenue.map((r) => ({
+          ...r,
+          campaignId: r.campaignId,
+          artistName: r.artistName,
+          platform: r.platform,
+        })),
+        input,
+      ).slice(0, 8)
+      const listings = filterRecords(
+        commerce.listings.map((l) => ({
+          ...l,
+          campaignId: (l as ProductListingRecord & { campaignId?: string }).campaignId,
+          artistName: "",
+        })),
+        input,
+      ).slice(0, 6)
+
+      sections.push("\n## Product research summary")
+      sections.push(
+        research.length === 0
+          ? "- No product research items."
+          : research.map((r) => `- ${r.title} · ${r.status} · score: ${r.opportunityScore ?? "—"}`).join("\n"),
+      )
+      sections.push("\n## Collections summary")
+      sections.push(
+        collections.length === 0
+          ? "- No collections."
+          : collections.map((c) => `- ${c.name} · ${c.status} · products: ${c.productIds.length}`).join("\n"),
+      )
+      sections.push("\n## Revenue summary")
+      sections.push(
+        revenue.length === 0
+          ? "- No revenue records."
+          : revenue
+              .map((r) => `- ${r.productName} · $${r.grossRevenue.toFixed(2)} · ${r.platform || r.source}`)
+              .join("\n"),
+      )
+      sections.push("\n## Product listing summary")
+      sections.push(
+        listings.length === 0
+          ? "- No product listings."
+          : listings.map((l) => `- ${l.finalTitle || l.designConcept || "Listing"} · ${l.storeName || "—"}`).join("\n"),
+      )
+    } catch {
+      sections.push("\n## Commerce summary\n- Commerce dataset unavailable.")
     }
   }
 

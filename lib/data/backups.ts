@@ -32,6 +32,9 @@ export type BackupDataKey =
   | "driveFolders"
   | "driveFiles"
   | "workspaceSettings"
+  | "productResearch"
+  | "productCollections"
+  | "revenueRecords"
 
 export type BackupImportMode = "merge" | "replace"
 
@@ -62,6 +65,9 @@ export interface BackupRecordCounts {
   driveFolders: number
   driveFiles: number
   workspaceSettings: number
+  productResearch: number
+  productCollections: number
+  revenueRecords: number
 }
 
 export interface CreatorOpsBackupData {
@@ -91,6 +97,9 @@ export interface CreatorOpsBackupData {
   driveFolders: unknown[]
   driveFiles: unknown[]
   workspaceSettings: unknown[]
+  productResearch: unknown[]
+  productCollections: unknown[]
+  revenueRecords: unknown[]
 }
 
 export interface CreatorOpsBackup {
@@ -175,6 +184,24 @@ export const BACKUP_MODULE_META: BackupModuleMeta[] = [
     exportFilename: "creatorops-workspace-settings.json",
     category: "operations",
   },
+  {
+    key: "productResearch",
+    label: "Product Research",
+    exportFilename: "creatorops-product-research.json",
+    category: "commerce",
+  },
+  {
+    key: "productCollections",
+    label: "Product Collections",
+    exportFilename: "creatorops-product-collections.json",
+    category: "commerce",
+  },
+  {
+    key: "revenueRecords",
+    label: "Revenue Records",
+    exportFilename: "creatorops-revenue-records.json",
+    category: "commerce",
+  },
 ]
 
 export const BACKUP_DATA_KEYS = BACKUP_MODULE_META.map((m) => m.key)
@@ -207,6 +234,9 @@ export function emptyBackupData(): CreatorOpsBackupData {
     driveFolders: [],
     driveFiles: [],
     workspaceSettings: [],
+    productResearch: [],
+    productCollections: [],
+    revenueRecords: [],
   }
 }
 
@@ -238,6 +268,9 @@ export function countBackupData(data: CreatorOpsBackupData): BackupRecordCounts 
     driveFolders: data.driveFolders.length,
     driveFiles: data.driveFiles.length,
     workspaceSettings: data.workspaceSettings.length,
+    productResearch: data.productResearch.length,
+    productCollections: data.productCollections.length,
+    revenueRecords: data.revenueRecords.length,
   }
 }
 

@@ -1070,3 +1070,105 @@ model DriveFile {
   @@index([modifiedTime])
   @@index([updatedAt])
 }
+
+/// Product research opportunities before merch/listing creation.
+model ProductResearchItem {
+  id              String    @id @default(cuid())
+  title           String
+  productType     String    @default("")
+  category        String    @default("")
+  niche           String    @default("")
+  audience        String    @default("")
+  platform        String    @default("")
+  inspirationUrl  String    @default("")
+  competitorName  String    @default("")
+  priceRange      String    @default("")
+  demandSignal    String    @default("")
+  difficulty      String    @default("")
+  opportunityScore Float?
+  status          String    @default("Idea")
+  campaignId      String    @default("")
+  campaignName    String    @default("")
+  artistName      String    @default("")
+  productName     String    @default("")
+  notes           String    @default("")
+  tags            String    @default("[]")
+  rawJson         String    @default("{}")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status])
+  @@index([productType])
+  @@index([category])
+  @@index([campaignId])
+  @@index([artistName])
+  @@index([updatedAt])
+}
+
+/// Product drops / collections grouping listings, merch, and assets.
+model ProductCollection {
+  id               String    @id @default(cuid())
+  name             String
+  description      String    @default("")
+  collectionType   String    @default("")
+  status           String    @default("Planning")
+  campaignId       String    @default("")
+  campaignName     String    @default("")
+  artistName       String    @default("")
+  theme            String    @default("")
+  targetAudience   String    @default("")
+  launchDate       DateTime?
+  productIds       String    @default("[]")
+  merchIdeaIds     String    @default("[]")
+  assetIds         String    @default("[]")
+  externalLinkIds  String    @default("[]")
+  notes            String    @default("")
+  tags             String    @default("[]")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([status])
+  @@index([collectionType])
+  @@index([campaignId])
+  @@index([artistName])
+  @@index([launchDate])
+  @@index([updatedAt])
+}
+
+/// Manual or CSV-imported revenue / sales records.
+model RevenueRecord {
+  id                String    @id @default(cuid())
+  source            String
+  platform          String    @default("")
+  orderId           String    @default("")
+  productName       String
+  productType       String    @default("")
+  quantity          Int       @default(1)
+  grossRevenue      Float     @default(0)
+  netRevenue        Float?
+  fees              Float?
+  currency          String    @default("USD")
+  saleDate          DateTime?
+  campaignId        String    @default("")
+  campaignName      String    @default("")
+  artistName        String    @default("")
+  productListingId  String    @default("")
+  collectionId      String    @default("")
+  externalLinkId    String    @default("")
+  customerCountry   String    @default("")
+  notes             String    @default("")
+  tags              String    @default("[]")
+  rawJson           String    @default("{}")
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([platform])
+  @@index([source])
+  @@index([productName])
+  @@index([productListingId])
+  @@index([campaignId])
+  @@index([collectionId])
+  @@index([artistName])
+  @@index([saleDate])
+  @@index([updatedAt])
+}

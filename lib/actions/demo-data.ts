@@ -43,7 +43,13 @@ import {
   DEMO_IDS,
   isDemoRecord,
 } from "@/lib/demo-data/constants"
+import { buildPrettyWiseDemoCommerceRecords } from "@/lib/demo-data/commerce-records"
 import { buildPrettyWiseDemoRecords } from "@/lib/demo-data/prettywise-records"
+import { createProductResearchItem } from "@/lib/actions/product-research"
+import { createCollection } from "@/lib/actions/collections"
+import { createRevenueRecord, deleteRevenueRecord } from "@/lib/actions/revenue"
+import { deleteProductResearchItem } from "@/lib/actions/product-research"
+import { deleteCollection } from "@/lib/actions/collections"
 import { buildPrettyWiseDemoExternalLinks } from "@/lib/demo-data/external-links"
 import { buildPrettyWiseDemoYouTubeVideo } from "@/lib/demo-data/youtube-videos"
 import {
@@ -79,6 +85,11 @@ const REVALIDATE_PATHS = [
   "/learnings",
   "/activity",
   "/integrations",
+  "/product-factory",
+  "/product-research",
+  "/collections",
+  "/revenue",
+  "/feedback-loop",
 ]
 
 export type DemoDataStatus = {
@@ -191,6 +202,42 @@ export async function getDemoDataStatus(): Promise<DemoDataStatus> {
   }
 }
 
+async function canSeedDemoCommerce(id: string): Promise<boolean> {
+  try {
+    const research = await prisma.productResearchItem.findUnique({
+      where: { id },
+      select: { id: true, notes: true },
+    })
+    return canSeedDemoRecord(research)
+  } catch {
+    return false
+  }
+}
+
+async function canSeedDemoCommerceCollection(id: string): Promise<boolean> {
+  try {
+    const row = await prisma.productCollection.findUnique({
+      where: { id },
+      select: { id: true, notes: true },
+    })
+    return canSeedDemoRecord(row)
+  } catch {
+    return false
+  }
+}
+
+async function canSeedDemoCommerceRevenue(id: string): Promise<boolean> {
+  try {
+    const row = await prisma.revenueRecord.findUnique({
+      where: { id },
+      select: { id: true, notes: true },
+    })
+    return canSeedDemoRecord(row)
+  } catch {
+    return false
+  }
+}
+
 async function findRowNotesById(
   id: string,
 ): Promise<{ id: string; notes: string } | null> {
@@ -260,6 +307,10 @@ export async function seedDemoData(): Promise<{
       DEMO_IDS.driveFileVideo,
       DEMO_IDS.driveFileMockup,
       DEMO_IDS.driveFileSocial,
+      DEMO_IDS.productResearch,
+      DEMO_IDS.productCollection,
+      DEMO_IDS.revenueRecord,
+      DEMO_IDS.learningCommerce,
     ]
 
     for (const id of demoIds) {
@@ -299,6 +350,19 @@ export async function seedDemoData(): Promise<{
     }
     for (const learning of demo.learnings) {
       await createLearning(learning)
+    }
+    const commerce = buildPrettyWiseDemoCommerceRecords()
+    if (await canSeedDemoCommerce(DEMO_IDS.productResearch)) {
+      await createProductResearchItem(commerce.research)
+    }
+    if (await canSeedDemoCommerceCollection(DEMO_IDS.productCollection)) {
+      await createCollection(commerce.collection)
+    }
+    if (await canSeedDemoCommerceRevenue(DEMO_IDS.revenueRecord)) {
+      await createRevenueRecord(commerce.revenue)
+    }
+    if (canSeedDemoRecord(await findRowNotesById(DEMO_IDS.learningCommerce))) {
+      await createLearning(commerce.learning)
     }
     for (const link of buildPrettyWiseDemoExternalLinks()) {
       await createExternalLink(link)
@@ -393,6 +457,16 @@ export async function deleteDemoData(): Promise<{
       prisma.driveFolder.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
       prisma.driveFile.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }),
     ])
+
+    const [researchRows, collectionRows, revenueRows] = await Promise.all([
+      prisma.productResearchItem.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }).catch(() => []),
+      prisma.productCollection.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }).catch(() => []),
+      prisma.revenueRecord.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }).catch(() => []),
+    ])
+
+    await deleteMarked(revenueRows, deleteRevenueRecord)
+    await deleteMarked(collectionRows, deleteCollection)
+    await deleteMarked(researchRows, deleteProductResearchItem)
 
     await deleteMarked(learningRows, async (id) => {
       await deleteLearning(id)
