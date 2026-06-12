@@ -8,6 +8,7 @@ import { useStore } from "@/lib/store"
 import { PageHeader } from "@/components/app-shell"
 import { ControlCenterContinueWorking } from "@/components/dashboard/control-center-continue-working"
 import { ControlCenterNextActions } from "@/components/dashboard/control-center-actions"
+import { ControlCenterOperatingGuide } from "@/components/dashboard/control-center-operating-guide"
 import { ControlCenterStatusCards } from "@/components/dashboard/control-center-status"
 import { DomainTilesGrid } from "@/components/dashboard/domain-tiles"
 import { buttonVariants } from "@/components/ui/button"
@@ -46,6 +47,8 @@ export function DashboardHome() {
       />
 
       <ControlCenterStatusCards />
+
+      <ControlCenterOperatingGuide />
 
       <DomainTilesGrid />
 

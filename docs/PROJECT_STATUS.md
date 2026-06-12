@@ -55,7 +55,16 @@ Analytics, pattern detection, quality vs performance, feedback loop, experiments
 Asset library, external links, YouTube/Drive sync, backup center
 
 ### Admin
-Settings, global search, activity, backups, data health, automation
+Settings, global search, activity, backups, data health, automation, **Operating Guide** (`/operating-guide`)
+
+## Operating Guide
+
+In-app onboarding and weekly rhythms for the full platform. Mirrors markdown doc:
+
+- **Route:** `/operating-guide`
+- **Markdown:** [CREATOROPS_OPERATING_GUIDE.md](./CREATOROPS_OPERATING_GUIDE.md)
+- **PrettyWise setup:** tab `?tab=prettywise` — seeds first artist project (Bible, lore, songs, campaign, products)
+- **Command palette:** Open Operating Guide, Start PrettyWise Setup, Weekly Review, Troubleshooting
 
 ## Migrations
 

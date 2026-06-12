@@ -183,6 +183,7 @@ const DOMAINS: CreatorOpsDomain[] = [
       { label: "Learnings", href: "/learnings", icon: Lightbulb },
     ],
     relatedItems: [
+      { label: "Operating Guide", href: "/operating-guide", icon: BookOpen },
       { label: "Campaigns", href: "/campaigns", icon: Megaphone },
       { label: "Settings", href: "/settings", icon: Settings },
     ],
@@ -224,6 +225,8 @@ const DOMAINS: CreatorOpsDomain[] = [
       { label: "Creator AI Agents", href: "/agents", icon: Bot },
     ],
     relatedItems: [
+      { label: "Operating Guide", href: "/operating-guide", icon: BookOpen },
+      { label: "Set Up PrettyWise", href: "/operating-guide?tab=prettywise", icon: Sparkles },
       { label: "Campaigns", href: "/campaigns", icon: Megaphone },
       { label: "Integrations", href: "/integrations", icon: Link2 },
     ],
@@ -264,6 +267,7 @@ const DOMAINS: CreatorOpsDomain[] = [
       },
     ],
     relatedItems: [
+      { label: "Operating Guide", href: "/operating-guide", icon: BookOpen },
       { label: "Campaigns", href: "/campaigns", icon: Megaphone },
       { label: "Integrations", href: "/integrations", icon: Link2 },
       { label: "Analytics", href: "/analytics", icon: BarChart3 },
@@ -325,6 +329,8 @@ const DOMAINS: CreatorOpsDomain[] = [
       { label: "Automation", href: "/automation", icon: Zap },
     ],
     relatedItems: [
+      { label: "Operating Guide", href: "/operating-guide", icon: BookOpen },
+      { label: "Weekly Review", href: "/operating-guide?tab=weekly", icon: ListChecks },
       { label: "Campaigns", href: "/campaigns", icon: Megaphone },
       {
         label: "YouTube API",
@@ -382,8 +388,16 @@ const DOMAINS: CreatorOpsDomain[] = [
       "Manage settings, backups, data health, automation, and system maintenance.",
     icon: Settings,
     homeHref: "/settings",
-    matchRoutes: ["/settings", "/search", "/activity", "/automation", "/data-health"],
+    matchRoutes: [
+      "/settings",
+      "/search",
+      "/activity",
+      "/automation",
+      "/data-health",
+      "/operating-guide",
+    ],
     navItems: [
+      { label: "Operating Guide", href: "/operating-guide", icon: BookOpen },
       { label: "Settings", href: "/settings", icon: Settings },
       { label: "Global Search", href: "/search", icon: Search },
       { label: "Activity", href: "/activity", icon: ListChecks },
@@ -486,6 +500,7 @@ const PATH_DOMAIN_RULES: PathDomainRule[] = [
   { path: "/activity", domainId: "admin-system" },
   { path: "/automation", domainId: "campaign-command" },
   { path: "/data-health", domainId: "admin-system" },
+  { path: "/operating-guide", domainId: "admin-system" },
   { path: "/release-planner", domainId: "youtube-studio" },
 ]
 

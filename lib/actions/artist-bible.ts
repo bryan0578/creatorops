@@ -84,6 +84,19 @@ export async function createArtistBible(
     createdAt: Date.now(),
     updatedAt: Date.now(),
   })
+
+  const duplicate = await prisma.artistBible.findFirst({
+    where: {
+      artistName: record.artistName,
+      ...(data.id?.trim() ? { NOT: { id: data.id.trim() } } : {}),
+    },
+  })
+  if (duplicate) {
+    throw new Error(
+      `An artist bible for "${record.artistName}" already exists. Edit the existing record instead.`,
+    )
+  }
+
   try {
     const row = await prisma.artistBible.create({
       data: artistBibleToPrismaCreate(record) as Parameters<
@@ -109,6 +122,18 @@ export async function updateArtistBible(
     id,
     updatedAt: Date.now(),
   })
+
+  if (record.artistName !== existing.artistName) {
+    const duplicate = await prisma.artistBible.findFirst({
+      where: { artistName: record.artistName, NOT: { id } },
+    })
+    if (duplicate) {
+      throw new Error(
+        `An artist bible for "${record.artistName}" already exists. Choose a different artist name.`,
+      )
+    }
+  }
+
   try {
     const row = await prisma.artistBible.update({
       where: { id },
@@ -119,6 +144,28 @@ export async function updateArtistBible(
   } catch (error) {
     throw wrapDbError(error, "Could not update artist bible.")
   }
+}
+
+export async function duplicateArtistBible(id: string): Promise<ArtistBibleRecord> {
+  const existing = await getArtistBibleById(id)
+  if (!existing) throw new Error("Artist bible not found.")
+
+  let copyName = `${existing.artistName} (Copy)`
+  let suffix = 2
+  while (await getArtistBibleByArtistName(copyName)) {
+    copyName = `${existing.artistName} (Copy ${suffix})`
+    suffix += 1
+  }
+
+  const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = existing
+  return createArtistBible({
+    ...rest,
+    artistName: copyName,
+    projectName: existing.projectName ? `${existing.projectName} (Copy)` : copyName,
+    notes: existing.notes
+      ? `${existing.notes}\n\nDuplicated from ${existing.artistName}.`
+      : `Duplicated from ${existing.artistName}.`,
+  })
 }
 
 export async function deleteArtistBible(id: string): Promise<void> {

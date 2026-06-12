@@ -37,3 +37,12 @@ export function formatListForInput(items: string[]): string {
 export function formatTagsForInput(tags: string[]): string {
   return tags.join(", ")
 }
+
+/** Safe parse for JSON array fields stored as strings in SQLite. */
+export const parseJsonArraySafe = parseStringList
+
+/** Convert newline-separated input to a string array. */
+export const linesToJsonArray = parseListFromInput
+
+/** Render a string array as one item per line for textarea editing. */
+export const jsonArrayToLines = formatListForInput

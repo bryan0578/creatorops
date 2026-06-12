@@ -176,6 +176,42 @@ export const COMMAND_PALETTE_DOMAINS: CommandPaletteStaticItem[] = [
 
 export const COMMAND_PALETTE_QUICK_ACTIONS: CommandPaletteStaticItem[] = [
   {
+    id: "qa-operating-guide",
+    group: "quick-actions",
+    title: "Open Operating Guide",
+    subtitle: "CreatorOps setup and weekly rhythms",
+    href: "/operating-guide",
+    icon: BookOpen,
+    keywords: "operating guide onboarding setup help documentation",
+  },
+  {
+    id: "qa-prettywise-setup",
+    group: "quick-actions",
+    title: "Start PrettyWise Setup",
+    subtitle: "Operating Guide — seed PrettyWise artist project",
+    href: "/operating-guide?tab=prettywise",
+    icon: Sparkles,
+    keywords: "prettywise onboarding artist setup dorsyth",
+  },
+  {
+    id: "qa-weekly-review-guide",
+    group: "quick-actions",
+    title: "Open Weekly Review Guide",
+    subtitle: "Operating Guide — Friday review checklist",
+    href: "/operating-guide?tab=weekly",
+    icon: ListChecks,
+    keywords: "weekly review friday rhythm learnings patterns",
+  },
+  {
+    id: "qa-troubleshooting-guide",
+    group: "quick-actions",
+    title: "Open CreatorOps Troubleshooting",
+    subtitle: "Operating Guide — common fixes and commands",
+    href: "/operating-guide?tab=troubleshooting",
+    icon: ShieldCheck,
+    keywords: "troubleshooting help fix sync migrate build backup",
+  },
+  {
     id: "qa-tasks",
     group: "quick-actions",
     title: "Open Tasks",
