@@ -9,7 +9,7 @@ import {
 } from "@/lib/prompt-run-linking"
 import type { PromptRun } from "@/lib/types"
 
-const REVALIDATE_PATHS = ["/runner", "/campaigns", "/search", "/activity", "/backups"]
+const REVALIDATE_PATHS = ["/runner", "/campaigns", "/search", "/activity", "/backups", "/agents"]
 
 function revalidatePromptRunRoutes() {
   for (const path of REVALIDATE_PATHS) {

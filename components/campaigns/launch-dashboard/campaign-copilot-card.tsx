@@ -25,6 +25,7 @@ import {
   type CampaignCopilotMode,
 } from "@/lib/ai/campaign-copilot-modes"
 import { promptRunRunnerHref } from "@/lib/prompt-run-linking"
+import { agentHref } from "@/lib/agents/routes"
 import type { CampaignRecord } from "@/lib/types"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -380,6 +381,30 @@ export function CampaignCopilotCard({
             or a prompt plan. Nothing runs automatically — you choose when to generate.
           </p>
         )}
+
+        <div className="space-y-2 border-t border-border/80 pt-4">
+          <p className="text-xs font-medium text-muted-foreground">Creator AI Agents</p>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={agentHref("campaign-qa", { campaignId: campaign.id })}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              Run Campaign QA Agent
+            </Link>
+            <Link
+              href={agentHref("release-strategist", { campaignId: campaign.id })}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              Run Release Strategist Agent
+            </Link>
+            <Link
+              href={agentHref("learning-synthesizer", { campaignId: campaign.id })}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              Run Learning Synthesizer Agent
+            </Link>
+          </div>
+        </div>
 
         <div className="space-y-2 border-t border-border/80 pt-4">
           <p className="text-xs font-medium text-muted-foreground">Quick links</p>

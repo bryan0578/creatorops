@@ -206,8 +206,11 @@ async function searchPromptRuns(query: string): Promise<GlobalSearchResult[]> {
       ]
         .filter(Boolean)
         .join(" · ")
+      const isAgentRun =
+        row.runType === "Creator AI Agent" ||
+        parseTagsArray(row.tags).includes("creator-ai-agent")
       return makeResult(
-        "prompt-run",
+        isAgentRun ? "agent-run" : "prompt-run",
         row.id as string,
         row.promptName as string,
         subtitle,
@@ -1264,6 +1267,11 @@ async function searchDriveFiles(query: string): Promise<GlobalSearchResult[]> {
   )
 }
 
+async function searchAgentRuns(query: string): Promise<GlobalSearchResult[]> {
+  const all = await searchPromptRuns(query)
+  return all.filter((result) => result.type === "agent-run")
+}
+
 const SEARCHERS: {
   type: GlobalSearchResultType
   search: (query: string) => Promise<GlobalSearchResult[]>
@@ -1271,6 +1279,7 @@ const SEARCHERS: {
   { type: "prompt", search: searchPrompts },
   { type: "workflow", search: searchWorkflows },
   { type: "prompt-run", search: searchPromptRuns },
+  { type: "agent-run", search: searchAgentRuns },
   { type: "workflow-run", search: searchWorkflowRuns },
   { type: "youtube-package", search: searchYouTubePackages },
   { type: "youtube-thumbnail", search: searchYouTubeThumbnails },

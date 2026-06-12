@@ -42,6 +42,7 @@ import {
   type VideoIntelligenceTab,
 } from "@/lib/data/videos"
 import { buildLearningUrlFromVideo } from "@/lib/video-prefill"
+import { agentHref } from "@/lib/agents/routes"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -278,6 +279,15 @@ export function VideoIntelligencePage() {
         {busy === "sync-all" ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
         Sync All Stats
       </Button>
+      <Link
+        href={agentHref("youtube-growth", {
+          sourceRecordType: "YouTubeVideo",
+          sourceRecordId: recordIdParam || undefined,
+        })}
+        className={buttonVariants({ variant: "outline", size: "sm" })}
+      >
+        Run YouTube Growth Agent
+      </Link>
       <Link
         href="/feedback-loop"
         className={buttonVariants({ variant: "outline", size: "sm" })}

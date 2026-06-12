@@ -2439,6 +2439,98 @@ function evaluateFeedbackLoopRules(
   }
 }
 
+function evaluateCreatorAgentRules(
+  ctx: AutomationEvaluationContext,
+  suggestions: AutomationSuggestion[],
+) {
+  try {
+    const agentRuns = ctx.store.runs.filter(
+      (run) => run.runType === "Creator AI Agent" || run.tags.includes("creator-ai-agent"),
+    )
+
+    for (const campaign of ctx.campaigns) {
+      if (campaign.status === "Ready to Publish") {
+        const hasQa = agentRuns.some(
+          (run) => run.campaignId === campaign.id && run.tags.includes("campaign-qa"),
+        )
+        if (!hasQa) {
+          suggestions.push({
+            id: suggestionId(["agent-campaign-qa", campaign.id]),
+            ruleId: "agent-campaign-qa",
+            priority: "info",
+            category: "Creator AI Agents",
+            title: "Run Campaign QA Agent before launch",
+            description: `${campaign.campaignName || "Campaign"} is ready to publish — run QA for blockers and missing records.`,
+            campaignId: campaign.id,
+            campaignName: campaign.campaignName,
+            suggestedActionLabel: "Run Campaign QA Agent",
+            actionType: "navigate",
+            actionPayload: {
+              href: `/agents?agentId=campaign-qa&campaignId=${encodeURIComponent(campaign.id)}&tab=run`,
+            },
+            href: `/agents?agentId=campaign-qa&campaignId=${encodeURIComponent(campaign.id)}&tab=run`,
+            canApply: false,
+            reason: "Specialized QA audit using local campaign context.",
+          })
+        }
+      }
+
+      if (/active|planning|in progress/i.test(campaign.status ?? "")) {
+        const hasRelease = agentRuns.some(
+          (run) => run.campaignId === campaign.id && run.tags.includes("release-strategist"),
+        )
+        if (!hasRelease) {
+          suggestions.push({
+            id: suggestionId(["agent-release-strategist", campaign.id]),
+            ruleId: "agent-release-strategist",
+            priority: "info",
+            category: "Creator AI Agents",
+            title: "Run Release Strategist for active campaign",
+            description: `Review launch readiness and missing assets for ${campaign.campaignName || "campaign"}.`,
+            campaignId: campaign.id,
+            campaignName: campaign.campaignName,
+            suggestedActionLabel: "Run Release Strategist",
+            actionType: "navigate",
+            actionPayload: {
+              href: `/agents?agentId=release-strategist&campaignId=${encodeURIComponent(campaign.id)}&tab=run`,
+            },
+            href: `/agents?agentId=release-strategist&campaignId=${encodeURIComponent(campaign.id)}&tab=run`,
+            canApply: false,
+          })
+        }
+      }
+    }
+
+    for (const video of ctx.store.youtubeVideos ?? []) {
+      if (!video.lastSyncedAt) continue
+      const hasGrowth = agentRuns.some(
+        (run) =>
+          run.inputValues?.sourceRecordId === video.id &&
+          run.tags.includes("youtube-growth"),
+      )
+      if (hasGrowth) continue
+      suggestions.push({
+        id: suggestionId(["agent-youtube-growth", video.id]),
+        ruleId: "agent-youtube-growth",
+        priority: "info",
+        category: "Creator AI Agents",
+        title: "Run YouTube Growth Agent after stats sync",
+        description: `Optimize packaging and performance for "${video.title || "video"}".`,
+        suggestedActionLabel: "Run YouTube Growth Agent",
+        actionType: "navigate",
+        actionPayload: {
+          href: `/agents?agentId=youtube-growth&sourceRecordType=YouTubeVideo&sourceRecordId=${encodeURIComponent(video.id)}&tab=run`,
+        },
+        href: `/agents?agentId=youtube-growth&sourceRecordType=YouTubeVideo&sourceRecordId=${encodeURIComponent(video.id)}&tab=run`,
+        canApply: false,
+      })
+      if (suggestions.filter((s) => s.ruleId === "agent-youtube-growth").length >= 4) break
+    }
+  } catch {
+    // must never break automation
+  }
+}
+
 const RULE_EVALUATORS: Array<(ctx: AutomationEvaluationContext, out: AutomationSuggestion[]) => void> = [
   evaluateMissingAssets,
   evaluateMissingAssetLibrary,
@@ -2461,6 +2553,7 @@ const RULE_EVALUATORS: Array<(ctx: AutomationEvaluationContext, out: AutomationS
   evaluatePatternDetectionRules,
   evaluateQualityPerformanceRules,
   evaluateFeedbackLoopRules,
+  evaluateCreatorAgentRules,
   evaluateLearnings,
   evaluateIncompleteCampaignFields,
   evaluatePrePublishChecklist,

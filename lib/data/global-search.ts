@@ -19,6 +19,7 @@ export type GlobalSearchResultType =
   | "prompt"
   | "workflow"
   | "prompt-run"
+  | "agent-run"
   | "workflow-run"
   | "youtube-package"
   | "youtube-thumbnail"
@@ -85,6 +86,7 @@ export const GLOBAL_SEARCH_TYPE_META: Record<
   prompt: { typeLabel: "Prompt", category: "core", href: "/prompts" },
   workflow: { typeLabel: "Workflow", category: "core", href: "/workflows" },
   "prompt-run": { typeLabel: "Prompt Run", category: "core", href: "/runner" },
+  "agent-run": { typeLabel: "Agent Run", category: "core", href: "/agents" },
   "workflow-run": {
     typeLabel: "Workflow Run",
     category: "core",
@@ -270,6 +272,14 @@ export function buildResultHref(
       href: `/runner?recordId=${encodeURIComponent(id)}`,
       directOpen: true,
       openNote: "Opens in Prompt Runner with this run loaded.",
+    }
+  }
+
+  if (type === "agent-run") {
+    return {
+      href: `/agents?recordId=${encodeURIComponent(id)}&tab=results`,
+      directOpen: true,
+      openNote: "Opens in Creator AI Agents with this run loaded.",
     }
   }
 
