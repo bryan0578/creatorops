@@ -732,8 +732,12 @@ function AgentResultPanel({
           variant="outline"
           onClick={async () => {
             const text = result.rawText ?? result.summary
-            const ok = await copyToClipboard(text)
-            if (ok) toast.success("Copied result")
+            try {
+              await copyToClipboard(text)
+              toast.success("Copied result")
+            } catch {
+              toast.error("Could not copy result")
+            }
           }}
         >
           <Copy className="size-4" />

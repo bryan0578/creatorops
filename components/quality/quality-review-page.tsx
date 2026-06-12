@@ -12,6 +12,7 @@ import {
   ScanSearch,
   Scale,
   Repeat,
+  Sparkles,
   Trash2,
   Upload,
   Wand2,

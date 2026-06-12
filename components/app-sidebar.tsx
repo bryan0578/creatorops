@@ -28,6 +28,7 @@ import { isNavItemActive } from "@/lib/navigation/nav-active"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -127,44 +128,47 @@ function DomainSwitcher({
         <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="max-h-[min(70vh,28rem)] w-72 overflow-y-auto">
-        <DropdownMenuLabel>Switch domain</DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Switch domain</DropdownMenuLabel>
+          <DropdownMenuItem className="p-0">
+            <Link
+              href="/"
+              className="flex w-full items-center gap-2 rounded-md px-1.5 py-1.5"
+            >
+              <LayoutDashboard className="size-4 shrink-0 text-muted-foreground" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium">Control Center</p>
+                <p className="truncate text-xs text-muted-foreground">All Domains</p>
+              </div>
+              {onControlCenter ? <Check className="size-4 shrink-0 text-primary" /> : null}
+            </Link>
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="p-0">
-          <Link
-            href="/"
-            className="flex w-full items-center gap-2 rounded-md px-1.5 py-1.5"
-          >
-            <LayoutDashboard className="size-4 shrink-0 text-muted-foreground" />
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-medium">Control Center</p>
-              <p className="truncate text-xs text-muted-foreground">All Domains</p>
-            </div>
-            {onControlCenter ? <Check className="size-4 shrink-0 text-primary" /> : null}
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        {domains.map((domain) => {
-          const Icon = domain.icon
-          const active = !onControlCenter && currentDomain?.id === domain.id
-          return (
-            <DropdownMenuItem key={domain.id} className="p-0">
-              <Link
-                href={domain.homeHref}
-                title={domain.label}
-                className="flex w-full items-center gap-2 rounded-md px-1.5 py-1.5"
-              >
-                <Icon className="size-4 shrink-0 text-muted-foreground" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{domain.label}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {domain.navItems.length} modules
-                  </p>
-                </div>
-                {active ? <Check className="size-4 shrink-0 text-primary" /> : null}
-              </Link>
-            </DropdownMenuItem>
-          )
-        })}
+        <DropdownMenuGroup>
+          {domains.map((domain) => {
+            const Icon = domain.icon
+            const active = !onControlCenter && currentDomain?.id === domain.id
+            return (
+              <DropdownMenuItem key={domain.id} className="p-0">
+                <Link
+                  href={domain.homeHref}
+                  title={domain.label}
+                  className="flex w-full items-center gap-2 rounded-md px-1.5 py-1.5"
+                >
+                  <Icon className="size-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{domain.label}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {domain.navItems.length} modules
+                    </p>
+                  </div>
+                  {active ? <Check className="size-4 shrink-0 text-primary" /> : null}
+                </Link>
+              </DropdownMenuItem>
+            )
+          })}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )

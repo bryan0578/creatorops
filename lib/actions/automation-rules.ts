@@ -15,6 +15,7 @@ import { getLearnings } from "@/lib/actions/learnings"
 import { getQualityReviews } from "@/lib/actions/quality-reviews"
 import { getCampaigns, upsertCampaign } from "@/lib/actions/campaigns"
 import { getDataHealthReport } from "@/lib/actions/data-health"
+import { getExperiments } from "@/lib/actions/experiments"
 import { getMerchIdeas } from "@/lib/actions/merch-ideas"
 import { getMockupPromptRecords } from "@/lib/actions/mockup-prompts"
 import { getProductListings } from "@/lib/actions/product-listings"
@@ -103,13 +104,27 @@ async function loadAutomationContext() {
     dataHealth,
     workspaceSettings,
   ] = await Promise.all([
-    getCampaigns(),
-    loadCampaignLinkableStoreSlice(),
-    getExperiments(),
-    getPromptRuns(),
-    getAssets(),
-    getQualityReviews(),
-    getLearnings(),
+    safeLoad("campaigns", () => getCampaigns(), []),
+    safeLoad("campaignLinkableStore", () => loadCampaignLinkableStoreSlice(), {
+      releasePlans: [],
+      youtubePackages: [],
+      youtubeThumbnailRecords: [],
+      socialRepurposingRecords: [],
+      merchIdeas: [],
+      productListings: [],
+      mockupPromptRecords: [],
+      emailCampaignRecords: [],
+      analyticsRecords: [],
+      artistRecords: [],
+      workflows: [],
+      workflowRuns: [],
+      runs: [],
+    }),
+    safeLoad("experiments", () => getExperiments(), []),
+    safeLoad("promptRuns", () => getPromptRuns(), []),
+    safeLoad("assets", () => getAssets(), []),
+    safeLoad("qualityReviews", () => getQualityReviews(), []),
+    safeLoad("learnings", () => getLearnings(), []),
     safeLoad("externalLinks", () => getExternalLinks(), []),
     safeLoad(
       "youtubeConnection",

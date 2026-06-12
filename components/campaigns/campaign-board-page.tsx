@@ -50,6 +50,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -149,17 +150,19 @@ function CampaignBoardCard({
               <MoreHorizontal className="size-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuLabel>Move to</DropdownMenuLabel>
-              {CAMPAIGN_BOARD_STAGES.filter((stage) => stage.id !== currentStage).map(
-                (stage) => (
-                  <DropdownMenuItem
-                    key={stage.id}
-                    onClick={() => onMove(campaign.id, stage.id)}
-                  >
-                    {stage.title}
-                  </DropdownMenuItem>
-                ),
-              )}
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Move to</DropdownMenuLabel>
+                {CAMPAIGN_BOARD_STAGES.filter((stage) => stage.id !== currentStage).map(
+                  (stage) => (
+                    <DropdownMenuItem
+                      key={stage.id}
+                      onClick={() => onMove(campaign.id, stage.id)}
+                    >
+                      {stage.title}
+                    </DropdownMenuItem>
+                  ),
+                )}
+              </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => {
