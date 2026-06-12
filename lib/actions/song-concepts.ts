@@ -239,6 +239,42 @@ export async function createPromptRunFromSongConcept(id: string): Promise<{ prom
   return { promptRunId: runId }
 }
 
+export async function createPrettyWiseStarterSongConcepts(): Promise<{
+  created: number
+  skipped: number
+  message: string
+}> {
+  const { PRETTYWISE_STARTER_SONG_CONCEPTS, normalizeConceptTitleKey } = await import(
+    "@/lib/artist-universe/song-vault-prefill"
+  )
+  const existing = await getSongConceptsForArtist("PrettyWise")
+  const existingKeys = new Set(
+    existing.map((c) => normalizeConceptTitleKey(c.title, c.songTitle)),
+  )
+
+  let created = 0
+  let skipped = 0
+  for (const concept of PRETTYWISE_STARTER_SONG_CONCEPTS) {
+    const key = normalizeConceptTitleKey(concept.title, concept.songTitle)
+    if (existingKeys.has(key)) {
+      skipped += 1
+      continue
+    }
+    await createSongConcept(concept)
+    existingKeys.add(key)
+    created += 1
+  }
+
+  if (created === 0) {
+    return { created: 0, skipped, message: "Starter song concepts already exist." }
+  }
+  return {
+    created,
+    skipped,
+    message: `Created ${created} PrettyWise starter song concept${created === 1 ? "" : "s"}.`,
+  }
+}
+
 export async function createQualityReviewFromSongConcept(
   id: string,
 ): Promise<{ qualityReviewId: string }> {

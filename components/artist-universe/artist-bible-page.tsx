@@ -263,10 +263,10 @@ function ViewActions({
         Lore Manager
       </Link>
       <Link
-        href={`/song-vault?artist=${encodeURIComponent(selected.artistName)}`}
+        href={`/song-vault?artist=${encodeURIComponent(selected.artistName)}&fromArtistBible=${encodeURIComponent(selected.id)}`}
         className={buttonVariants({ size: "sm", variant: "outline" })}
       >
-        Song Vault
+        Open Song Concept Vault
       </Link>
       <Link
         href={`/visual-identity?artist=${encodeURIComponent(selected.artistName)}`}
@@ -827,7 +827,7 @@ export function ArtistBiblePage() {
                     <CardContent className="space-y-4">
                       <div className="flex flex-wrap gap-2">
                         <Link href={`/lore?artist=${encodeURIComponent(selected.artistName)}&fromArtistBible=${encodeURIComponent(selected.id)}`} className={buttonVariants({ size: "sm", variant: "outline" })}>Lore Manager</Link>
-                        <Link href={`/song-vault?artist=${encodeURIComponent(selected.artistName)}`} className={buttonVariants({ size: "sm", variant: "outline" })}>Song Vault</Link>
+                        <Link href={`/song-vault?artist=${encodeURIComponent(selected.artistName)}&fromArtistBible=${encodeURIComponent(selected.id)}`} className={buttonVariants({ size: "sm", variant: "outline" })}>Open Song Concept Vault</Link>
                         <Link href={`/story-arcs?artist=${encodeURIComponent(selected.artistName)}`} className={buttonVariants({ size: "sm", variant: "outline" })}>Story Arcs</Link>
                         <Link href={`/visual-identity?artist=${encodeURIComponent(selected.artistName)}`} className={buttonVariants({ size: "sm", variant: "outline" })}>Visual Identity</Link>
                         <Link href="/campaigns" className={buttonVariants({ size: "sm", variant: "outline" })}>Campaigns</Link>

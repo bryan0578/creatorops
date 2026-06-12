@@ -219,7 +219,7 @@ function LoreCard({
             href={`/song-vault?artist=${encodeURIComponent(entry.artistName)}&fromLore=${encodeURIComponent(entry.id)}`}
             className={buttonVariants({ size: "sm", variant: "outline", className: "h-7 px-2 text-xs" })}
           >
-            Song Concept
+            Create Song Concept
           </Link>
         </div>
       </CardContent>

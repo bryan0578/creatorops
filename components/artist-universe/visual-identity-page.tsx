@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Loader2, Palette, Pencil, Plus, ScrollText, Sparkles } from "lucide-react"
+import { Loader2, Music, Palette, Pencil, Plus, ScrollText, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 
 import { getArtistBibleById } from "@/lib/actions/artist-bible"
@@ -523,6 +523,13 @@ export function VisualIdentityPage() {
                         >
                           <ScrollText className="mr-1 size-4" />
                           Create Lore from Visual Identity
+                        </Link>
+                        <Link
+                          href={`/song-vault?artist=${encodeURIComponent(selected.artistName)}&fromVisualIdentity=${encodeURIComponent(selected.id)}`}
+                          className={buttonVariants({ size: "sm", variant: "outline" })}
+                        >
+                          <Music className="mr-1 size-4" />
+                          Create Song Concept
                         </Link>
                       </div>
                     </div>
