@@ -1372,6 +1372,55 @@ async function searchRevenueRecords(query: string): Promise<GlobalSearchResult[]
   )
 }
 
+async function searchArtistUniverseTable(
+  query: string,
+  type: GlobalSearchResultType,
+  rows: Record<string, unknown>[],
+  fields: string[],
+  labels: Record<string, string>,
+  titleField: string,
+  subtitleFn: (row: Record<string, unknown>) => string,
+): Promise<GlobalSearchResult[]> {
+  return pushMatches(rows, query, fields, labels, (row, matchedFields) =>
+    makeResult(
+      type,
+      row.id as string,
+      (row[titleField] as string) || GLOBAL_SEARCH_TYPE_META[type].typeLabel,
+      subtitleFn(row),
+      previewText(row.notes),
+      row.createdAt as Date,
+      row.updatedAt as Date,
+      matchedFields,
+    ),
+    GLOBAL_SEARCH_LIMIT_PER_TYPE,
+  )
+}
+
+async function searchArtistBibles(query: string): Promise<GlobalSearchResult[]> {
+  const rows = await prisma.artistBible.findMany({ orderBy: { updatedAt: "desc" }, take: GLOBAL_SEARCH_FETCH_BATCH })
+  return searchArtistUniverseTable(query, "artist-bible", rows as Record<string, unknown>[], ["artistName", "projectName", "genre", "mood", "notes", "tags"], { artistName: "Artist", projectName: "Project", genre: "Genre", mood: "Mood", notes: "Notes", tags: "Tags" }, "artistName", (r) => [r.genre, r.projectName].filter(Boolean).join(" · "))
+}
+
+async function searchLoreEntries(query: string): Promise<GlobalSearchResult[]> {
+  const rows = await prisma.loreEntry.findMany({ orderBy: { updatedAt: "desc" }, take: GLOBAL_SEARCH_FETCH_BATCH })
+  return searchArtistUniverseTable(query, "lore-entry", rows as Record<string, unknown>[], ["title", "artistName", "loreType", "summary", "notes", "tags"], { title: "Title", artistName: "Artist", loreType: "Type", summary: "Summary", notes: "Notes", tags: "Tags" }, "title", (r) => [r.artistName, r.loreType].filter(Boolean).join(" · "))
+}
+
+async function searchSongConcepts(query: string): Promise<GlobalSearchResult[]> {
+  const rows = await prisma.songConcept.findMany({ orderBy: { updatedAt: "desc" }, take: GLOBAL_SEARCH_FETCH_BATCH })
+  return searchArtistUniverseTable(query, "song-concept", rows as Record<string, unknown>[], ["title", "songTitle", "artistName", "conceptSummary", "notes", "tags"], { title: "Title", songTitle: "Song", artistName: "Artist", conceptSummary: "Summary", notes: "Notes", tags: "Tags" }, "title", (r) => [r.artistName, r.status].filter(Boolean).join(" · "))
+}
+
+async function searchStoryArcs(query: string): Promise<GlobalSearchResult[]> {
+  const rows = await prisma.releaseStoryArc.findMany({ orderBy: { updatedAt: "desc" }, take: GLOBAL_SEARCH_FETCH_BATCH })
+  return searchArtistUniverseTable(query, "story-arc", rows as Record<string, unknown>[], ["title", "artistName", "arcType", "summary", "theme", "tags"], { title: "Title", artistName: "Artist", arcType: "Arc type", summary: "Summary", theme: "Theme", tags: "Tags" }, "title", (r) => [r.artistName, r.arcType].filter(Boolean).join(" · "))
+}
+
+async function searchVisualIdentities(query: string): Promise<GlobalSearchResult[]> {
+  const rows = await prisma.visualIdentityProfile.findMany({ orderBy: { updatedAt: "desc" }, take: GLOBAL_SEARCH_FETCH_BATCH })
+  return searchArtistUniverseTable(query, "visual-identity", rows as Record<string, unknown>[], ["profileName", "artistName", "visualStyle", "notes", "tags"], { profileName: "Profile", artistName: "Artist", visualStyle: "Style", notes: "Notes", tags: "Tags" }, "profileName", (r) => [r.artistName, r.status].filter(Boolean).join(" · "))
+}
+
 async function searchAgentRuns(query: string): Promise<GlobalSearchResult[]> {
   const all = await searchPromptRuns(query)
   return all.filter((result) => result.type === "agent-run")
@@ -1398,6 +1447,11 @@ const SEARCHERS: {
   { type: "product-research", search: searchProductResearch },
   { type: "product-collection", search: searchProductCollections },
   { type: "revenue-record", search: searchRevenueRecords },
+  { type: "artist-bible", search: searchArtistBibles },
+  { type: "lore-entry", search: searchLoreEntries },
+  { type: "song-concept", search: searchSongConcepts },
+  { type: "story-arc", search: searchStoryArcs },
+  { type: "visual-identity", search: searchVisualIdentities },
   { type: "email-campaign", search: searchEmailCampaigns },
   { type: "experiment", search: searchExperiments },
   { type: "campaign", search: searchCampaigns },

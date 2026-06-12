@@ -48,6 +48,19 @@ import { buildPrettyWiseDemoRecords } from "@/lib/demo-data/prettywise-records"
 import { createProductResearchItem } from "@/lib/actions/product-research"
 import { createCollection } from "@/lib/actions/collections"
 import { createRevenueRecord, deleteRevenueRecord } from "@/lib/actions/revenue"
+import { createArtistBible, deleteArtistBible } from "@/lib/actions/artist-bible"
+import { createLoreEntry, deleteLoreEntry } from "@/lib/actions/lore"
+import { createSongConcept, deleteSongConcept } from "@/lib/actions/song-concepts"
+import { createStoryArc, deleteStoryArc } from "@/lib/actions/story-arcs"
+import { createVisualIdentity, deleteVisualIdentity } from "@/lib/actions/visual-identity"
+import {
+  buildPrettyWiseArtistBible,
+  buildPrettyWiseLoreEntries,
+  buildPrettyWiseSongConcepts,
+  buildPrettyWiseStoryArc,
+  buildPrettyWiseVisualIdentity,
+  DEMO_ARTIST_UNIVERSE_IDS,
+} from "@/lib/demo-data/artist-universe-records"
 import { deleteProductResearchItem } from "@/lib/actions/product-research"
 import { deleteCollection } from "@/lib/actions/collections"
 import { buildPrettyWiseDemoExternalLinks } from "@/lib/demo-data/external-links"
@@ -90,6 +103,11 @@ const REVALIDATE_PATHS = [
   "/collections",
   "/revenue",
   "/feedback-loop",
+  "/artist-bible",
+  "/lore",
+  "/song-vault",
+  "/story-arcs",
+  "/visual-identity",
 ]
 
 export type DemoDataStatus = {
@@ -371,6 +389,41 @@ export async function seedDemoData(): Promise<{
     await importDriveFolderRecords([buildPrettyWiseDemoDriveFolder()])
     await importDriveFileRecords(buildPrettyWiseDemoDriveFiles())
 
+    const universeIds = Object.values(DEMO_ARTIST_UNIVERSE_IDS)
+    for (const id of universeIds) {
+      const existing = await findRowNotesById(id)
+      if (existing && !canSeedDemoRecord(existing)) {
+        return {
+          success: false,
+          skipped: true,
+          message:
+            "Demo seed skipped — artist universe record exists and is not marked as demo data.",
+        }
+      }
+    }
+    const bible = buildPrettyWiseArtistBible()
+    if (canSeedDemoRecord(await findRowNotesById(bible.id))) {
+      await createArtistBible(bible)
+    }
+    for (const lore of buildPrettyWiseLoreEntries()) {
+      if (canSeedDemoRecord(await findRowNotesById(lore.id))) {
+        await createLoreEntry(lore)
+      }
+    }
+    for (const concept of buildPrettyWiseSongConcepts()) {
+      if (canSeedDemoRecord(await findRowNotesById(concept.id))) {
+        await createSongConcept(concept)
+      }
+    }
+    const arc = buildPrettyWiseStoryArc()
+    if (canSeedDemoRecord(await findRowNotesById(arc.id))) {
+      await createStoryArc(arc)
+    }
+    const visual = buildPrettyWiseVisualIdentity()
+    if (canSeedDemoRecord(await findRowNotesById(visual.id))) {
+      await createVisualIdentity(visual)
+    }
+
     revalidateDemoRoutes()
 
     return {
@@ -467,6 +520,19 @@ export async function deleteDemoData(): Promise<{
     await deleteMarked(revenueRows, deleteRevenueRecord)
     await deleteMarked(collectionRows, deleteCollection)
     await deleteMarked(researchRows, deleteProductResearchItem)
+
+    const [bibleRows, loreRows, conceptRows, arcRows, visualRows] = await Promise.all([
+      prisma.artistBible.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }).catch(() => []),
+      prisma.loreEntry.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }).catch(() => []),
+      prisma.songConcept.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }).catch(() => []),
+      prisma.releaseStoryArc.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }).catch(() => []),
+      prisma.visualIdentityProfile.findMany({ where: { notes: { contains: DEMO_DATA_MARKER } } }).catch(() => []),
+    ])
+    await deleteMarked(visualRows, deleteVisualIdentity)
+    await deleteMarked(arcRows, deleteStoryArc)
+    await deleteMarked(conceptRows, deleteSongConcept)
+    await deleteMarked(loreRows, deleteLoreEntry)
+    await deleteMarked(bibleRows, deleteArtistBible)
 
     await deleteMarked(learningRows, async (id) => {
       await deleteLearning(id)

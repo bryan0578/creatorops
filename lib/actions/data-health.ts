@@ -49,6 +49,11 @@ import {
 import { getCollections } from "@/lib/actions/collections"
 import { getProductResearchItems } from "@/lib/actions/product-research"
 import { getRevenueRecords } from "@/lib/actions/revenue"
+import { getArtistBibles } from "@/lib/actions/artist-bible"
+import { getLoreEntries } from "@/lib/actions/lore"
+import { getSongConcepts } from "@/lib/actions/song-concepts"
+import { getStoryArcs } from "@/lib/actions/story-arcs"
+import { getVisualIdentityProfiles } from "@/lib/actions/visual-identity"
 import { prisma } from "@/lib/prisma"
 import { WORKSPACE_SETTINGS_ID } from "@/lib/workspace-settings"
 import type { CampaignLinkedRecordType } from "@/lib/types"
@@ -292,6 +297,11 @@ async function loadScanInput(): Promise<{
     productResearch,
     productCollections,
     revenueRecords,
+    artistBibles,
+    loreEntries,
+    songConcepts,
+    storyArcs,
+    visualIdentities,
   ] = await Promise.all([
     safeLoad(
       "Campaigns",
@@ -531,6 +541,11 @@ async function loadScanInput(): Promise<{
     safeLoad("Product research", () => getProductResearchItems(), loadIssues, []),
     safeLoad("Product collections", () => getCollections(), loadIssues, []),
     safeLoad("Revenue records", () => getRevenueRecords(), loadIssues, []),
+    safeLoad("Artist bibles", () => getArtistBibles().catch(() => []), loadIssues, []),
+    safeLoad("Lore entries", () => getLoreEntries().catch(() => []), loadIssues, []),
+    safeLoad("Song concepts", () => getSongConcepts().catch(() => []), loadIssues, []),
+    safeLoad("Story arcs", () => getStoryArcs().catch(() => []), loadIssues, []),
+    safeLoad("Visual identities", () => getVisualIdentityProfiles().catch(() => []), loadIssues, []),
   ])
 
   return {
@@ -567,6 +582,11 @@ async function loadScanInput(): Promise<{
       productResearch,
       productCollections,
       revenueRecords,
+      artistBibles,
+      loreEntries,
+      songConcepts,
+      storyArcs,
+      visualIdentities,
       aiProviderConfigured: workspaceSettings
         ? resolveProviderStatus({
             enabled: workspaceSettings.aiGenerationEnabled,

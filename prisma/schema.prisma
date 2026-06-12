@@ -1172,3 +1172,164 @@ model RevenueRecord {
   @@index([saleDate])
   @@index([updatedAt])
 }
+
+/// Central identity source of truth for an artist / music IP project.
+model ArtistBible {
+  id               String   @id @default(cuid())
+  artistName       String
+  projectName      String   @default("")
+  labelName        String   @default("")
+  status           String   @default("Active")
+  genre            String   @default("")
+  subgenre         String   @default("")
+  mood             String   @default("")
+  aesthetic        String   @default("")
+  targetAudience   String   @default("")
+  brandPromise     String   @default("")
+  shortBio         String   @default("")
+  longBio          String   @default("")
+  voiceRules       String   @default("")
+  lyricalThemes    String   @default("")
+  visualRules      String   @default("")
+  sonicRules       String   @default("")
+  doList           String   @default("[]")
+  dontList         String   @default("[]")
+  referenceArtists String   @default("[]")
+  referenceMedia   String   @default("[]")
+  colorPalette     String   @default("[]")
+  keywords         String   @default("[]")
+  tags             String   @default("[]")
+  notes            String   @default("")
+  sourceArtistId   String   @default("")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([artistName])
+  @@index([projectName])
+  @@index([status])
+  @@index([updatedAt])
+}
+
+/// Worldbuilding, characters, symbols, and narrative notes for an artist IP.
+model LoreEntry {
+  id                 String   @id @default(cuid())
+  title              String
+  artistName         String
+  loreType           String
+  status             String   @default("Draft")
+  canonStatus        String   @default("Flexible")
+  summary            String
+  details            String   @default("")
+  characters         String   @default("[]")
+  locations          String   @default("[]")
+  symbols            String   @default("[]")
+  themes             String   @default("[]")
+  relatedSongs       String   @default("[]")
+  relatedCampaignIds String   @default("[]")
+  relatedAssetIds    String   @default("[]")
+  tags               String   @default("[]")
+  notes              String   @default("")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([artistName])
+  @@index([loreType])
+  @@index([status])
+  @@index([canonStatus])
+  @@index([updatedAt])
+}
+
+/// Vault for song ideas, Suno prompts, visuals, and release concepts.
+model SongConcept {
+  id                  String   @id @default(cuid())
+  title               String
+  artistName          String
+  status              String   @default("Idea")
+  songTitle           String   @default("")
+  conceptSummary      String
+  genre               String   @default("")
+  mood                String   @default("")
+  lyricalTheme        String   @default("")
+  storyRole           String   @default("")
+  hookIdea            String   @default("")
+  chorusIdea          String   @default("")
+  sunoPrompt          String   @default("")
+  lyricDraft          String   @default("")
+  visualConcept       String   @default("")
+  youtubeAngle        String   @default("")
+  productTieIn        String   @default("")
+  campaignId          String   @default("")
+  campaignName        String   @default("")
+  releasePlanId       String   @default("")
+  relatedLoreIds      String   @default("[]")
+  relatedAssetIds     String   @default("[]")
+  relatedPromptRunIds String   @default("[]")
+  qualityReviewId     String   @default("")
+  tags                String   @default("[]")
+  notes               String   @default("")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([artistName])
+  @@index([status])
+  @@index([songTitle])
+  @@index([campaignId])
+  @@index([updatedAt])
+}
+
+/// Connected release sequence across an artist era or narrative arc.
+model ReleaseStoryArc {
+  id                    String    @id @default(cuid())
+  title                 String
+  artistName            String
+  arcType               String    @default("")
+  status                String    @default("Planning")
+  summary               String
+  theme                 String    @default("")
+  startDate             DateTime?
+  endDate               DateTime?
+  campaignIds           String    @default("[]")
+  releasePlanIds        String    @default("[]")
+  songConceptIds        String    @default("[]")
+  loreEntryIds          String    @default("[]")
+  productCollectionIds  String    @default("[]")
+  visualDirection       String    @default("")
+  narrativeBeats        String    @default("[]")
+  launchNotes           String    @default("")
+  tags                  String    @default("[]")
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([artistName])
+  @@index([status])
+  @@index([arcType])
+  @@index([updatedAt])
+}
+
+/// Visual design rules and generation constraints for an artist brand.
+model VisualIdentityProfile {
+  id                    String   @id @default(cuid())
+  artistName            String
+  profileName           String
+  status                String   @default("Active")
+  visualStyle           String   @default("")
+  colorPalette          String   @default("[]")
+  typographyRules       String   @default("")
+  characterRules        String   @default("")
+  environmentRules      String   @default("")
+  imagePromptRules      String   @default("")
+  thumbnailRules        String   @default("")
+  merchDesignRules      String   @default("")
+  forbiddenElements     String   @default("[]")
+  referenceAssetIds     String   @default("[]")
+  referenceDriveFileIds String   @default("[]")
+  tags                  String   @default("[]")
+  notes                 String   @default("")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([artistName])
+  @@index([profileName])
+  @@index([status])
+  @@index([updatedAt])
+}

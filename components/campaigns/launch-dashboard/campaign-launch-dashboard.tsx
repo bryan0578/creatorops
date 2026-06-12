@@ -39,6 +39,7 @@ import { CampaignPromptHistoryCard } from "@/components/campaigns/launch-dashboa
 import { CampaignCopilotCard } from "@/components/campaigns/launch-dashboard/campaign-copilot-card"
 import { CampaignAgentsCard } from "@/components/campaigns/launch-dashboard/campaign-agents-card"
 import { CampaignCommerceCard } from "@/components/campaigns/launch-dashboard/campaign-commerce-card"
+import { CampaignArtistUniverseCard } from "@/components/artist-universe/campaign-artist-universe-card"
 import { CampaignPatternInsightsCard } from "@/components/campaigns/launch-dashboard/campaign-pattern-insights-card"
 import { CampaignQualityPerformanceCard } from "@/components/campaigns/launch-dashboard/campaign-quality-performance-card"
 import { CampaignFeedbackLoopCard } from "@/components/campaigns/launch-dashboard/campaign-feedback-loop-card"
@@ -408,6 +409,7 @@ export function CampaignLaunchDashboard({
       <CampaignAgentsCard campaign={campaign} />
 
       <CampaignCommerceCard campaign={campaign} />
+      <CampaignArtistUniverseCard campaign={campaign} />
 
       <CampaignPatternInsightsCard
         campaignId={campaign.id}

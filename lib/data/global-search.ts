@@ -33,6 +33,11 @@ export type GlobalSearchResultType =
   | "product-research"
   | "product-collection"
   | "revenue-record"
+  | "artist-bible"
+  | "lore-entry"
+  | "song-concept"
+  | "story-arc"
+  | "visual-identity"
   | "email-campaign"
   | "experiment"
   | "campaign"
@@ -151,6 +156,31 @@ export const GLOBAL_SEARCH_TYPE_META: Record<
     category: "commerce",
     href: "/revenue",
   },
+  "artist-bible": {
+    typeLabel: "Artist Bible",
+    category: "operations",
+    href: "/artist-bible",
+  },
+  "lore-entry": {
+    typeLabel: "Lore Entry",
+    category: "operations",
+    href: "/lore",
+  },
+  "song-concept": {
+    typeLabel: "Song Concept",
+    category: "operations",
+    href: "/song-vault",
+  },
+  "story-arc": {
+    typeLabel: "Story Arc",
+    category: "operations",
+    href: "/story-arcs",
+  },
+  "visual-identity": {
+    typeLabel: "Visual Identity",
+    category: "operations",
+    href: "/visual-identity",
+  },
   "email-campaign": {
     typeLabel: "Email Campaign",
     category: "marketing",
@@ -260,6 +290,11 @@ const GLOBAL_SEARCH_RECORD_ID_TYPES = new Set<GlobalSearchResultType>([
   "product-research",
   "product-collection",
   "revenue-record",
+  "artist-bible",
+  "lore-entry",
+  "song-concept",
+  "story-arc",
+  "visual-identity",
   "email-campaign",
   "analytics",
   "experiment",

@@ -14,7 +14,7 @@ import { loadCommerceDataset } from "@/lib/actions/commerce"
 import { getPlaybooks } from "@/lib/actions/playbooks"
 import { getPromptRuns } from "@/lib/actions/prompt-runs"
 import { getPrompts } from "@/lib/actions/prompts"
-import { buildDetectedPatterns } from "@/lib/patterns/detectors"
+import { buildArtistUniverseContext } from "@/lib/artist-universe/context"
 import { buildFeedbackSuggestions } from "@/lib/feedback-loop/suggestions"
 import { buildQualityPerformanceInsights } from "@/lib/quality-performance/detectors"
 import type {
@@ -519,6 +519,37 @@ export async function buildAgentContext(input: AgentRunInput): Promise<AgentCont
       }
     } catch {
       sections.push("\n## Automation suggestions\n- Automation report unavailable.")
+    }
+  }
+
+  const artistUniverseAgents = new Set([
+    "release-strategist",
+    "youtube-growth",
+    "product-strategist",
+    "prompt-optimizer",
+    "campaign-qa",
+    "learning-synthesizer",
+  ])
+  if (
+    artistUniverseAgents.has(input.agentId) &&
+    (input.artistName?.trim() || input.campaignId?.trim())
+  ) {
+    try {
+      const universe = await buildArtistUniverseContext({
+        artistName: input.artistName,
+        campaignId: input.campaignId,
+        includeLore: true,
+        includeVisualIdentity: true,
+        includeLearnings: input.agentId === "learning-synthesizer",
+        includeProducts: input.agentId === "product-strategist",
+        includeAssets: input.agentId === "youtube-growth",
+      })
+      if (universe.compactText.trim()) {
+        sections.push("\n## Artist Universe context")
+        sections.push(universe.compactText.slice(0, 3500))
+      }
+    } catch {
+      sections.push("\n## Artist Universe context\n- Artist universe context unavailable.")
     }
   }
 

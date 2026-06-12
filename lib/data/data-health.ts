@@ -8,6 +8,14 @@ import { scanQualityPerformanceWarnings } from "@/lib/data/quality-performance-h
 import { scanFeedbackLoopWarnings } from "@/lib/data/feedback-loop-health"
 import { scanCreatorAgentsWarnings } from "@/lib/data/agents-health"
 import { scanCommerceWarnings } from "@/lib/data/commerce-health"
+import { scanArtistUniverseWarnings } from "@/lib/data/artist-universe-health"
+import type {
+  ArtistBibleRecord,
+  LoreEntryRecord,
+  ReleaseStoryArcRecord,
+  SongConceptRecord,
+  VisualIdentityProfileRecord,
+} from "@/lib/artist-universe/types"
 import type {
   ProductCollectionRecord,
   ProductResearchItemRecord,
@@ -172,6 +180,11 @@ export interface DataHealthScanInput {
   productResearch?: ProductResearchItemRecord[]
   productCollections?: ProductCollectionRecord[]
   revenueRecords?: RevenueRecordItem[]
+  artistBibles?: ArtistBibleRecord[]
+  loreEntries?: LoreEntryRecord[]
+  songConcepts?: SongConceptRecord[]
+  storyArcs?: ReleaseStoryArcRecord[]
+  visualIdentities?: VisualIdentityProfileRecord[]
   /** Server-resolved: preferred AI provider has API key configured. */
   aiProviderConfigured?: boolean
 }
@@ -2937,6 +2950,7 @@ export function buildDataHealthReport(
   safeScan("Learning feedback loop", issues, () => scanFeedbackLoopWarnings(input, issues))
   safeScan("Creator AI Agents", issues, () => scanCreatorAgentsWarnings(input, issues))
   safeScan("Commerce / Product Gaps", issues, () => scanCommerceWarnings(input, issues))
+  safeScan("Artist Universe Gaps", issues, () => scanArtistUniverseWarnings(input, issues))
   safeScan("JSON / data issues", issues, () => scanJsonIssues(input, issues))
 
   return {

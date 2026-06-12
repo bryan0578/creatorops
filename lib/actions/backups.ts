@@ -18,6 +18,14 @@ import { importProductListings } from "@/lib/actions/product-listings"
 import { importProductResearchItems } from "@/lib/actions/product-research"
 import { importCollections } from "@/lib/actions/collections"
 import { importRevenueRecords } from "@/lib/actions/revenue"
+import {
+  exportArtistUniverseRecords,
+  importArtistBibles,
+  importLoreEntries,
+  importSongConcepts,
+  importStoryArcs,
+  importVisualIdentities,
+} from "@/lib/actions/artist-universe"
 import { importPromptRuns } from "@/lib/actions/prompt-runs"
 import { importPrompts } from "@/lib/actions/prompts"
 import { importReleasePlans } from "@/lib/actions/release-plans"
@@ -188,6 +196,7 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     productResearch,
     productCollections,
     revenueRecords,
+    artistUniverse,
   ] = await Promise.all([
     getPrompts(),
     getWorkflows(),
@@ -218,6 +227,13 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     getProductResearchItems().catch(() => []),
     getCollections().catch(() => []),
     getRevenueRecords().catch(() => []),
+    exportArtistUniverseRecords().catch(() => ({
+      artistBibles: [],
+      loreEntries: [],
+      songConcepts: [],
+      storyArcs: [],
+      visualIdentities: [],
+    })),
   ])
 
   const workspaceSettings = workspaceSettingsRow ? [workspaceSettingsRow] : []
@@ -252,6 +268,11 @@ async function fetchAllBackupData(): Promise<CreatorOpsBackupData> {
     productResearch,
     productCollections,
     revenueRecords,
+    artistBibles: artistUniverse.artistBibles,
+    loreEntries: artistUniverse.loreEntries,
+    songConcepts: artistUniverse.songConcepts,
+    storyArcs: artistUniverse.storyArcs,
+    visualIdentities: artistUniverse.visualIdentities,
   }
 }
 
@@ -341,6 +362,11 @@ async function clearAllBackupTables(): Promise<void> {
   await prisma.productResearchItem.deleteMany()
   await prisma.productCollection.deleteMany()
   await prisma.revenueRecord.deleteMany()
+  await prisma.visualIdentityProfile.deleteMany()
+  await prisma.releaseStoryArc.deleteMany()
+  await prisma.songConcept.deleteMany()
+  await prisma.loreEntry.deleteMany()
+  await prisma.artistBible.deleteMany()
 }
 
 async function importBackupData(
@@ -447,6 +473,23 @@ async function importBackupData(
   if (data.revenueRecords.length > 0) {
     await importRevenueRecords(
       data.revenueRecords as import("@/lib/commerce/types").RevenueRecordItem[],
+    )
+  }
+  if (data.artistBibles.length > 0) {
+    await importArtistBibles(data.artistBibles as import("@/lib/artist-universe/types").ArtistBibleRecord[])
+  }
+  if (data.loreEntries.length > 0) {
+    await importLoreEntries(data.loreEntries as import("@/lib/artist-universe/types").LoreEntryRecord[])
+  }
+  if (data.songConcepts.length > 0) {
+    await importSongConcepts(data.songConcepts as import("@/lib/artist-universe/types").SongConceptRecord[])
+  }
+  if (data.storyArcs.length > 0) {
+    await importStoryArcs(data.storyArcs as import("@/lib/artist-universe/types").ReleaseStoryArcRecord[])
+  }
+  if (data.visualIdentities.length > 0) {
+    await importVisualIdentities(
+      data.visualIdentities as import("@/lib/artist-universe/types").VisualIdentityProfileRecord[],
     )
   }
 

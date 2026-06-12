@@ -35,6 +35,11 @@ export type BackupDataKey =
   | "productResearch"
   | "productCollections"
   | "revenueRecords"
+  | "artistBibles"
+  | "loreEntries"
+  | "songConcepts"
+  | "storyArcs"
+  | "visualIdentities"
 
 export type BackupImportMode = "merge" | "replace"
 
@@ -68,6 +73,11 @@ export interface BackupRecordCounts {
   productResearch: number
   productCollections: number
   revenueRecords: number
+  artistBibles: number
+  loreEntries: number
+  songConcepts: number
+  storyArcs: number
+  visualIdentities: number
 }
 
 export interface CreatorOpsBackupData {
@@ -100,6 +110,11 @@ export interface CreatorOpsBackupData {
   productResearch: unknown[]
   productCollections: unknown[]
   revenueRecords: unknown[]
+  artistBibles: unknown[]
+  loreEntries: unknown[]
+  songConcepts: unknown[]
+  storyArcs: unknown[]
+  visualIdentities: unknown[]
 }
 
 export interface CreatorOpsBackup {
@@ -202,6 +217,36 @@ export const BACKUP_MODULE_META: BackupModuleMeta[] = [
     exportFilename: "creatorops-revenue-records.json",
     category: "commerce",
   },
+  {
+    key: "artistBibles",
+    label: "Artist Bibles",
+    exportFilename: "creatorops-artist-bibles.json",
+    category: "operations",
+  },
+  {
+    key: "loreEntries",
+    label: "Lore Entries",
+    exportFilename: "creatorops-lore-entries.json",
+    category: "operations",
+  },
+  {
+    key: "songConcepts",
+    label: "Song Concepts",
+    exportFilename: "creatorops-song-concepts.json",
+    category: "operations",
+  },
+  {
+    key: "storyArcs",
+    label: "Story Arcs",
+    exportFilename: "creatorops-story-arcs.json",
+    category: "operations",
+  },
+  {
+    key: "visualIdentities",
+    label: "Visual Identities",
+    exportFilename: "creatorops-visual-identities.json",
+    category: "operations",
+  },
 ]
 
 export const BACKUP_DATA_KEYS = BACKUP_MODULE_META.map((m) => m.key)
@@ -237,6 +282,11 @@ export function emptyBackupData(): CreatorOpsBackupData {
     productResearch: [],
     productCollections: [],
     revenueRecords: [],
+    artistBibles: [],
+    loreEntries: [],
+    songConcepts: [],
+    storyArcs: [],
+    visualIdentities: [],
   }
 }
 
@@ -271,6 +321,11 @@ export function countBackupData(data: CreatorOpsBackupData): BackupRecordCounts 
     productResearch: data.productResearch.length,
     productCollections: data.productCollections.length,
     revenueRecords: data.revenueRecords.length,
+    artistBibles: data.artistBibles.length,
+    loreEntries: data.loreEntries.length,
+    songConcepts: data.songConcepts.length,
+    storyArcs: data.storyArcs.length,
+    visualIdentities: data.visualIdentities.length,
   }
 }
 

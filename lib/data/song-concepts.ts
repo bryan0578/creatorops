@@ -1,0 +1,142 @@
+import { parseStringList } from "@/lib/artist-universe/utils"
+import type { SongConceptRecord } from "@/lib/artist-universe/types"
+import type { SongConcept as PrismaSongConcept } from "@/lib/generated/prisma/client"
+
+export function normalizeSongConcept(
+  record: Partial<SongConceptRecord> & {
+    title: string
+    artistName: string
+    conceptSummary: string
+  },
+): SongConceptRecord {
+  const now = Date.now()
+  return {
+    id: record.id?.trim() || "",
+    title: record.title.trim() || "Untitled concept",
+    artistName: record.artistName.trim() || "Unknown artist",
+    status: record.status?.trim() || "Idea",
+    songTitle: record.songTitle?.trim() ?? "",
+    conceptSummary: record.conceptSummary.trim() || "",
+    genre: record.genre?.trim() ?? "",
+    mood: record.mood?.trim() ?? "",
+    lyricalTheme: record.lyricalTheme?.trim() ?? "",
+    storyRole: record.storyRole?.trim() ?? "",
+    hookIdea: record.hookIdea?.trim() ?? "",
+    chorusIdea: record.chorusIdea?.trim() ?? "",
+    sunoPrompt: record.sunoPrompt?.trim() ?? "",
+    lyricDraft: record.lyricDraft?.trim() ?? "",
+    visualConcept: record.visualConcept?.trim() ?? "",
+    youtubeAngle: record.youtubeAngle?.trim() ?? "",
+    productTieIn: record.productTieIn?.trim() ?? "",
+    campaignId: record.campaignId?.trim() ?? "",
+    campaignName: record.campaignName?.trim() ?? "",
+    releasePlanId: record.releasePlanId?.trim() ?? "",
+    relatedLoreIds: parseStringList(record.relatedLoreIds),
+    relatedAssetIds: parseStringList(record.relatedAssetIds),
+    relatedPromptRunIds: parseStringList(record.relatedPromptRunIds),
+    qualityReviewId: record.qualityReviewId?.trim() ?? "",
+    tags: parseStringList(record.tags),
+    notes: record.notes?.trim() ?? "",
+    createdAt: record.createdAt ?? now,
+    updatedAt: record.updatedAt ?? now,
+  }
+}
+
+export function prismaSongConceptToRecord(row: PrismaSongConcept): SongConceptRecord {
+  return normalizeSongConcept({
+    id: row.id,
+    title: row.title,
+    artistName: row.artistName,
+    status: row.status,
+    songTitle: row.songTitle,
+    conceptSummary: row.conceptSummary,
+    genre: row.genre,
+    mood: row.mood,
+    lyricalTheme: row.lyricalTheme,
+    storyRole: row.storyRole,
+    hookIdea: row.hookIdea,
+    chorusIdea: row.chorusIdea,
+    sunoPrompt: row.sunoPrompt,
+    lyricDraft: row.lyricDraft,
+    visualConcept: row.visualConcept,
+    youtubeAngle: row.youtubeAngle,
+    productTieIn: row.productTieIn,
+    campaignId: row.campaignId,
+    campaignName: row.campaignName,
+    releasePlanId: row.releasePlanId,
+    relatedLoreIds: parseStringList(row.relatedLoreIds),
+    relatedAssetIds: parseStringList(row.relatedAssetIds),
+    relatedPromptRunIds: parseStringList(row.relatedPromptRunIds),
+    qualityReviewId: row.qualityReviewId,
+    tags: parseStringList(row.tags),
+    notes: row.notes,
+    createdAt: row.createdAt.getTime(),
+    updatedAt: row.updatedAt.getTime(),
+  })
+}
+
+export function songConceptToPrismaCreate(record: SongConceptRecord) {
+  const n = normalizeSongConcept(record)
+  return {
+    id: n.id || undefined,
+    title: n.title,
+    artistName: n.artistName,
+    status: n.status,
+    songTitle: n.songTitle,
+    conceptSummary: n.conceptSummary,
+    genre: n.genre,
+    mood: n.mood,
+    lyricalTheme: n.lyricalTheme,
+    storyRole: n.storyRole,
+    hookIdea: n.hookIdea,
+    chorusIdea: n.chorusIdea,
+    sunoPrompt: n.sunoPrompt,
+    lyricDraft: n.lyricDraft,
+    visualConcept: n.visualConcept,
+    youtubeAngle: n.youtubeAngle,
+    productTieIn: n.productTieIn,
+    campaignId: n.campaignId,
+    campaignName: n.campaignName,
+    releasePlanId: n.releasePlanId,
+    relatedLoreIds: JSON.stringify(n.relatedLoreIds),
+    relatedAssetIds: JSON.stringify(n.relatedAssetIds),
+    relatedPromptRunIds: JSON.stringify(n.relatedPromptRunIds),
+    qualityReviewId: n.qualityReviewId,
+    tags: JSON.stringify(n.tags),
+    notes: n.notes,
+    createdAt: new Date(n.createdAt),
+    updatedAt: new Date(n.updatedAt),
+  }
+}
+
+export function songConceptToPrismaUpdate(record: SongConceptRecord) {
+  const n = normalizeSongConcept(record)
+  return {
+    title: n.title,
+    artistName: n.artistName,
+    status: n.status,
+    songTitle: n.songTitle,
+    conceptSummary: n.conceptSummary,
+    genre: n.genre,
+    mood: n.mood,
+    lyricalTheme: n.lyricalTheme,
+    storyRole: n.storyRole,
+    hookIdea: n.hookIdea,
+    chorusIdea: n.chorusIdea,
+    sunoPrompt: n.sunoPrompt,
+    lyricDraft: n.lyricDraft,
+    visualConcept: n.visualConcept,
+    youtubeAngle: n.youtubeAngle,
+    productTieIn: n.productTieIn,
+    campaignId: n.campaignId,
+    campaignName: n.campaignName,
+    releasePlanId: n.releasePlanId,
+    relatedLoreIds: JSON.stringify(n.relatedLoreIds),
+    relatedAssetIds: JSON.stringify(n.relatedAssetIds),
+    relatedPromptRunIds: JSON.stringify(n.relatedPromptRunIds),
+    qualityReviewId: n.qualityReviewId,
+    tags: JSON.stringify(n.tags),
+    notes: n.notes,
+    updatedAt: new Date(n.updatedAt),
+  }
+}
