@@ -5,13 +5,15 @@ import Link from "next/link"
 import { GitBranch, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
-import { createStoryArc, getStoryArcs, addSongConceptToArc, addCampaignToArc, addLoreToArc } from "@/lib/actions/story-arcs"
+import { createStoryArc, getStoryArcs, getStoryArcById, addSongConceptToArc, addCampaignToArc, addLoreToArc } from "@/lib/actions/story-arcs"
 import { STORY_ARC_TYPES } from "@/lib/artist-universe/types"
 import { parseTagsFromInput } from "@/lib/artist-universe/utils"
 import { agentHref } from "@/lib/agents/routes"
 import { ModulePageHeader } from "@/components/app-shell"
 import { EmptyState } from "@/components/empty-state"
-import { RecordMeta, TagList, useModuleTab } from "@/components/artist-universe/shared"
+import { RecordMeta, TagList, useModuleTab, useRecordDeepLink } from "@/components/artist-universe/shared"
+import { RecordNotFound } from "@/components/record-not-found"
+import { PageErrorState } from "@/components/page-error-state"
 import { ModuleShell, ModuleTabPanel, ModuleWorkflowTabs } from "@/components/module/form-layout"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -32,15 +34,28 @@ const TABS = [
 const EMPTY = { title: "", artistName: "", arcType: "Album Era", summary: "", theme: "", tags: "" }
 
 export function StoryArcsPage() {
-  const { tab, setTab } = useModuleTab("arcs")
+  const { tab, setTab, recordId } = useModuleTab("arcs")
   const [items, setItems] = React.useState<Awaited<ReturnType<typeof getStoryArcs>>>([])
   const [loading, setLoading] = React.useState(true)
+  const [loadError, setLoadError] = React.useState<string | null>(null)
   const [form, setForm] = React.useState(EMPTY)
   const [showForm, setShowForm] = React.useState(false)
 
+  const { resolved: focused, missingRecordId, resolving } = useRecordDeepLink({
+    recordId,
+    items,
+    loading,
+    fetchById: getStoryArcById,
+  })
+
   const load = React.useCallback(async () => {
     setLoading(true)
-    try { setItems(await getStoryArcs()) } catch (e) { toast.error(e instanceof Error ? e.message : "Load failed") } finally { setLoading(false) }
+    setLoadError(null)
+    try { setItems(await getStoryArcs()) } catch (e) {
+      const message = e instanceof Error ? e.message : "Load failed"
+      setLoadError(message)
+      toast.error(message)
+    } finally { setLoading(false) }
   }, [])
   React.useEffect(() => { void load() }, [load])
 
@@ -81,7 +96,17 @@ export function StoryArcsPage() {
   return (
     <ModuleShell>
       <ModulePageHeader title="Release Story Arcs" description="Plan connected songs, campaigns, visuals, products, lore, and releases across an artist era." actions={<Button size="sm" onClick={() => setShowForm(true)}>New Story Arc</Button>} />
-      {loading ? <Loader2 className="size-4 animate-spin" /> : null}
+      {loading || resolving ? <Loader2 className="size-4 animate-spin" /> : null}
+      {loadError ? <PageErrorState description={loadError} onRetry={() => void load()} /> : null}
+      {missingRecordId ? (
+        <RecordNotFound recordId={missingRecordId} recordLabel="Story arc" moduleHref="/story-arcs" moduleLabel="Story Arcs" />
+      ) : null}
+      {focused ? (
+        <Card className="mb-4 border-primary/30">
+          <CardHeader className="pb-2"><CardTitle className="text-base">Opened from link: {focused.title}</CardTitle></CardHeader>
+          <CardContent className="text-sm text-muted-foreground">{focused.summary}</CardContent>
+        </Card>
+      ) : null}
       {showForm ? (
         <Card className="mb-4"><CardHeader><CardTitle className="text-base">New story arc</CardTitle></CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">

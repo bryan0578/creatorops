@@ -12,13 +12,16 @@ import {
   createQualityReviewFromSongConcept,
   createSongConcept,
   getSongConcepts,
+  getSongConceptById,
 } from "@/lib/actions/song-concepts"
 import { SONG_CONCEPT_STATUSES } from "@/lib/artist-universe/types"
 import { parseTagsFromInput } from "@/lib/artist-universe/utils"
 import { topReadyConcepts } from "@/lib/artist-universe/scoring"
 import { ModulePageHeader } from "@/components/app-shell"
 import { EmptyState } from "@/components/empty-state"
-import { RecordMeta, useModuleTab } from "@/components/artist-universe/shared"
+import { RecordMeta, useModuleTab, useRecordDeepLink } from "@/components/artist-universe/shared"
+import { RecordNotFound } from "@/components/record-not-found"
+import { PageErrorState } from "@/components/page-error-state"
 import { ModuleShell, ModuleTabPanel, ModuleWorkflowTabs } from "@/components/module/form-layout"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -40,15 +43,28 @@ const TABS = [
 const EMPTY = { title: "", artistName: "", songTitle: "", conceptSummary: "", genre: "", mood: "", hookIdea: "", visualConcept: "", youtubeAngle: "", productTieIn: "", sunoPrompt: "", tags: "" }
 
 export function SongVaultPage() {
-  const { tab, setTab } = useModuleTab("concepts")
+  const { tab, setTab, recordId } = useModuleTab("concepts")
   const [items, setItems] = React.useState<SongConceptRecord[]>([])
   const [loading, setLoading] = React.useState(true)
+  const [loadError, setLoadError] = React.useState<string | null>(null)
   const [form, setForm] = React.useState(EMPTY)
   const [showForm, setShowForm] = React.useState(false)
 
+  const { resolved: focused, missingRecordId, resolving } = useRecordDeepLink({
+    recordId,
+    items,
+    loading,
+    fetchById: getSongConceptById,
+  })
+
   const load = React.useCallback(async () => {
     setLoading(true)
-    try { setItems(await getSongConcepts()) } catch (e) { toast.error(e instanceof Error ? e.message : "Load failed") } finally { setLoading(false) }
+    setLoadError(null)
+    try { setItems(await getSongConcepts()) } catch (e) {
+      const message = e instanceof Error ? e.message : "Load failed"
+      setLoadError(message)
+      toast.error(message)
+    } finally { setLoading(false) }
   }, [])
   React.useEffect(() => { void load() }, [load])
 
@@ -75,7 +91,17 @@ export function SongVaultPage() {
   return (
     <ModuleShell>
       <ModulePageHeader title="Song Concept Vault" description="Capture song ideas, hooks, Suno prompts, lyric drafts, visuals, YouTube angles, and release concepts." actions={<Button size="sm" onClick={() => setShowForm(true)}>New Song Concept</Button>} />
-      {loading ? <Loader2 className="size-4 animate-spin" /> : null}
+      {loading || resolving ? <Loader2 className="size-4 animate-spin" /> : null}
+      {loadError ? <PageErrorState description={loadError} onRetry={() => void load()} /> : null}
+      {missingRecordId ? (
+        <RecordNotFound recordId={missingRecordId} recordLabel="Song concept" moduleHref="/song-vault" moduleLabel="Song Vault" />
+      ) : null}
+      {focused ? (
+        <Card className="mb-4 border-primary/30">
+          <CardHeader className="pb-2"><CardTitle className="text-base">Opened from link: {focused.songTitle || focused.title}</CardTitle></CardHeader>
+          <CardContent className="text-sm text-muted-foreground">{focused.conceptSummary || "No summary"}</CardContent>
+        </Card>
+      ) : null}
       {showForm ? (
         <Card className="mb-4"><CardHeader><CardTitle className="text-base">New song concept</CardTitle></CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">

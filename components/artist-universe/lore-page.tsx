@@ -5,18 +5,14 @@ import Link from "next/link"
 import { Loader2, ScrollText } from "lucide-react"
 import { toast } from "sonner"
 
-import {
-  archiveLoreEntry,
-  createLoreEntry,
-  getLoreEntries,
-  markLoreCanon,
-  markLoreFlexible,
-} from "@/lib/actions/lore"
+import { getLoreEntries, getLoreEntryById, markLoreCanon, markLoreFlexible, archiveLoreEntry, createLoreEntry } from "@/lib/actions/lore"
 import { LORE_TYPES } from "@/lib/artist-universe/types"
 import { formatTagsForInput, parseTagsFromInput } from "@/lib/artist-universe/utils"
 import { ModulePageHeader } from "@/components/app-shell"
 import { EmptyState } from "@/components/empty-state"
-import { RecordMeta, TagList, useModuleTab } from "@/components/artist-universe/shared"
+import { RecordMeta, TagList, useModuleTab, useRecordDeepLink } from "@/components/artist-universe/shared"
+import { RecordNotFound } from "@/components/record-not-found"
+import { PageErrorState } from "@/components/page-error-state"
 import { ModuleShell, ModuleTabPanel, ModuleWorkflowTabs } from "@/components/module/form-layout"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -38,18 +34,29 @@ const TABS = [
 const EMPTY = { title: "", artistName: "", loreType: "Character", summary: "", details: "", tags: "" }
 
 export function LorePage() {
-  const { tab, setTab } = useModuleTab("board")
+  const { tab, setTab, recordId } = useModuleTab("board")
   const [items, setItems] = React.useState<LoreEntryRecord[]>([])
   const [loading, setLoading] = React.useState(true)
+  const [loadError, setLoadError] = React.useState<string | null>(null)
   const [form, setForm] = React.useState(EMPTY)
   const [showForm, setShowForm] = React.useState(false)
 
+  const { resolved: focused, missingRecordId, resolving } = useRecordDeepLink({
+    recordId,
+    items,
+    loading,
+    fetchById: getLoreEntryById,
+  })
+
   const load = React.useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     try {
       setItems(await getLoreEntries())
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load lore")
+      const message = e instanceof Error ? e.message : "Failed to load lore"
+      setLoadError(message)
+      toast.error(message)
     } finally {
       setLoading(false)
     }
@@ -105,7 +112,17 @@ export function LorePage() {
   return (
     <ModuleShell>
       <ModulePageHeader title="Lore Manager" description="Manage canon, flexible ideas, characters, symbols, story events, motifs, and worldbuilding for artist projects." actions={<Button size="sm" onClick={() => setShowForm(true)}>New Lore Entry</Button>} />
-      {loading ? <Loader2 className="size-4 animate-spin" /> : null}
+      {loading || resolving ? <Loader2 className="size-4 animate-spin" /> : null}
+      {loadError ? <PageErrorState description={loadError} onRetry={() => void load()} /> : null}
+      {missingRecordId ? (
+        <RecordNotFound recordId={missingRecordId} recordLabel="Lore entry" moduleHref="/lore" moduleLabel="Lore Manager" />
+      ) : null}
+      {focused ? (
+        <Card className="mb-4 border-primary/30">
+          <CardHeader className="pb-2"><CardTitle className="text-base">Opened from link: {focused.title}</CardTitle></CardHeader>
+          <CardContent className="text-sm text-muted-foreground">{focused.summary}</CardContent>
+        </Card>
+      ) : null}
       {showForm ? (
         <Card className="mb-4">
           <CardHeader><CardTitle className="text-base">New lore entry</CardTitle></CardHeader>

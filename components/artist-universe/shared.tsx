@@ -25,6 +25,80 @@ export function useModuleTab(defaultTab: string, aliases: Record<string, string>
   return { tab, setTab, recordId: searchParams.get("recordId") }
 }
 
+/** Resolve ?recordId= deep links after a list load; optional fetch-by-id for direct opens. */
+export function useRecordDeepLink<T extends { id: string }>(options: {
+  recordId: string | null
+  items: T[]
+  loading: boolean
+  fetchById?: (id: string) => Promise<T | null>
+}): {
+  resolved: T | null
+  missingRecordId: string | null
+  resolving: boolean
+} {
+  const { recordId, items, loading, fetchById } = options
+  const [extra, setExtra] = React.useState<T | null>(null)
+  const [missingRecordId, setMissingRecordId] = React.useState<string | null>(null)
+  const [resolving, setResolving] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!recordId?.trim()) {
+      setExtra(null)
+      setMissingRecordId(null)
+      setResolving(false)
+      return
+    }
+    if (loading) return
+
+    const id = recordId.trim()
+    const inList = items.find((item) => item.id === id)
+    if (inList) {
+      setExtra(null)
+      setMissingRecordId(null)
+      setResolving(false)
+      return
+    }
+
+    if (!fetchById) {
+      setMissingRecordId(id)
+      setResolving(false)
+      return
+    }
+
+    let cancelled = false
+    setResolving(true)
+    void fetchById(id)
+      .then((row) => {
+        if (cancelled) return
+        if (row) {
+          setExtra(row)
+          setMissingRecordId(null)
+        } else {
+          setExtra(null)
+          setMissingRecordId(id)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setExtra(null)
+          setMissingRecordId(id)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setResolving(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [recordId, items, loading, fetchById])
+
+  const resolved =
+    (recordId ? items.find((item) => item.id === recordId) : null) ?? extra
+
+  return { resolved: resolved ?? null, missingRecordId, resolving }
+}
+
 export function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
     <Card className="border-border/80">

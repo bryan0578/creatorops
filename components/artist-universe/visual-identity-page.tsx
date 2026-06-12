@@ -10,12 +10,15 @@ import {
   createThumbnailPromptFromVisualIdentity,
   createVisualIdentity,
   getVisualIdentityProfiles,
+  getVisualIdentityById,
 } from "@/lib/actions/visual-identity"
 import { formatListForInput, parseListFromInput, parseTagsFromInput } from "@/lib/artist-universe/utils"
 import { agentHref } from "@/lib/agents/routes"
 import { ModulePageHeader } from "@/components/app-shell"
 import { EmptyState } from "@/components/empty-state"
-import { RecordMeta, TagList, useModuleTab } from "@/components/artist-universe/shared"
+import { RecordMeta, TagList, useModuleTab, useRecordDeepLink } from "@/components/artist-universe/shared"
+import { RecordNotFound } from "@/components/record-not-found"
+import { PageErrorState } from "@/components/page-error-state"
 import { ModuleShell, ModuleTabPanel, ModuleWorkflowTabs } from "@/components/module/form-layout"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -37,15 +40,28 @@ const TABS = [
 const EMPTY = { artistName: "", profileName: "", visualStyle: "", colorPalette: "", thumbnailRules: "", merchDesignRules: "", characterRules: "", imagePromptRules: "", tags: "" }
 
 export function VisualIdentityPage() {
-  const { tab, setTab } = useModuleTab("profiles")
+  const { tab, setTab, recordId } = useModuleTab("profiles")
   const [items, setItems] = React.useState<Awaited<ReturnType<typeof getVisualIdentityProfiles>>>([])
   const [loading, setLoading] = React.useState(true)
+  const [loadError, setLoadError] = React.useState<string | null>(null)
   const [form, setForm] = React.useState(EMPTY)
   const [showForm, setShowForm] = React.useState(false)
 
+  const { resolved: focused, missingRecordId, resolving } = useRecordDeepLink({
+    recordId,
+    items,
+    loading,
+    fetchById: getVisualIdentityById,
+  })
+
   const load = React.useCallback(async () => {
     setLoading(true)
-    try { setItems(await getVisualIdentityProfiles()) } catch (e) { toast.error(e instanceof Error ? e.message : "Load failed") } finally { setLoading(false) }
+    setLoadError(null)
+    try { setItems(await getVisualIdentityProfiles()) } catch (e) {
+      const message = e instanceof Error ? e.message : "Load failed"
+      setLoadError(message)
+      toast.error(message)
+    } finally { setLoading(false) }
   }, [])
   React.useEffect(() => { void load() }, [load])
 
@@ -77,7 +93,17 @@ export function VisualIdentityPage() {
   return (
     <ModuleShell>
       <ModulePageHeader title="Visual Identity" description="Define artist visual rules for thumbnails, videos, merch, covers, mockups, and image generation prompts." actions={<Button size="sm" onClick={() => setShowForm(true)}>New Profile</Button>} />
-      {loading ? <Loader2 className="size-4 animate-spin" /> : null}
+      {loading || resolving ? <Loader2 className="size-4 animate-spin" /> : null}
+      {loadError ? <PageErrorState description={loadError} onRetry={() => void load()} /> : null}
+      {missingRecordId ? (
+        <RecordNotFound recordId={missingRecordId} recordLabel="Visual identity profile" moduleHref="/visual-identity" moduleLabel="Visual Identity" />
+      ) : null}
+      {focused ? (
+        <Card className="mb-4 border-primary/30">
+          <CardHeader className="pb-2"><CardTitle className="text-base">Opened from link: {focused.profileName}</CardTitle></CardHeader>
+          <CardContent className="text-sm text-muted-foreground">{focused.visualStyle || "No style defined"}</CardContent>
+        </Card>
+      ) : null}
       {showForm ? (
         <Card className="mb-4"><CardHeader><CardTitle className="text-base">New visual identity profile</CardTitle></CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">

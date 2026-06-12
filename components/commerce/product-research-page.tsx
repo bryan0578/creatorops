@@ -15,12 +15,14 @@ import {
   createProductResearchItem,
   deleteProductResearchItem,
   getProductResearchItems,
+  getProductResearchItemById,
 } from "@/lib/actions/product-research"
 import { agentHref } from "@/lib/agents/routes"
 import type { ProductResearchItemRecord } from "@/lib/commerce/types"
 import { scoreResearchOpportunity } from "@/lib/commerce/scoring"
 import { ModulePageHeader } from "@/components/app-shell"
 import { EmptyState } from "@/components/empty-state"
+import { RecordNotFound } from "@/components/record-not-found"
 import { ModuleShell, ModuleTabPanel, ModuleWorkflowTabs } from "@/components/module/form-layout"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -217,9 +219,11 @@ export function ProductResearchPage() {
   const [selectedId, setSelectedId] = React.useState(recordId)
   const [form, setForm] = React.useState(EMPTY_FORM)
   const [saving, setSaving] = React.useState(false)
+  const [missingRecordId, setMissingRecordId] = React.useState<string | null>(null)
 
   const refresh = React.useCallback(async () => {
     setLoading(true)
+    setMissingRecordId(null)
     try {
       const [research, learningRows] = await Promise.all([
         getProductResearchItems(),
@@ -227,7 +231,19 @@ export function ProductResearchPage() {
       ])
       setItems(research)
       setLearnings(learningRows.filter(isCommerceLearning))
-      if (recordId && research.some((i) => i.id === recordId)) setSelectedId(recordId)
+      if (recordId) {
+        if (research.some((i) => i.id === recordId)) {
+          setSelectedId(recordId)
+        } else {
+          const row = await getProductResearchItemById(recordId).catch(() => null)
+          if (row) {
+            setItems((prev) => (prev.some((i) => i.id === row.id) ? prev : [row, ...prev]))
+            setSelectedId(row.id)
+          } else {
+            setMissingRecordId(recordId)
+          }
+        }
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not load product research")
       setItems([])
@@ -373,6 +389,13 @@ export function ProductResearchPage() {
           <Loader2 className="size-4 animate-spin" />
           Loading product research…
         </div>
+      ) : missingRecordId ? (
+        <RecordNotFound
+          recordId={missingRecordId}
+          recordLabel="Product research item"
+          moduleHref="/product-research"
+          moduleLabel="Product Research"
+        />
       ) : null}
 
       <ModuleWorkflowTabs tabs={TABS} value={activeTab} onValueChange={handleTabChange}>

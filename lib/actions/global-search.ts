@@ -1372,7 +1372,7 @@ async function searchRevenueRecords(query: string): Promise<GlobalSearchResult[]
   )
 }
 
-async function searchArtistUniverseTable(
+function searchArtistUniverseTable(
   query: string,
   type: GlobalSearchResultType,
   rows: Record<string, unknown>[],
@@ -1380,7 +1380,7 @@ async function searchArtistUniverseTable(
   labels: Record<string, string>,
   titleField: string,
   subtitleFn: (row: Record<string, unknown>) => string,
-): Promise<GlobalSearchResult[]> {
+): GlobalSearchResult[] {
   return pushMatches(rows, query, fields, labels, (row, matchedFields) =>
     makeResult(
       type,

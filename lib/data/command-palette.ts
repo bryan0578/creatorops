@@ -74,6 +74,15 @@ export const COMMAND_PALETTE_GROUP_LABELS: Record<CommandPaletteGroupId, string>
 
 export const COMMAND_PALETTE_DOMAINS: CommandPaletteStaticItem[] = [
   {
+    id: "domain-control-center",
+    group: "domains",
+    title: "Open Control Center",
+    subtitle: "CreatorOps home and domain launcher",
+    href: "/",
+    icon: LayoutDashboard,
+    keywords: "home control center dashboard domains launcher",
+  },
+  {
     id: "domain-campaign-command",
     group: "domains",
     title: "Open Campaign Command",

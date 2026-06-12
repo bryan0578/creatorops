@@ -346,6 +346,16 @@ const DOMAINS: CreatorOpsDomain[] = [
     navItems: [
       { label: "Asset Library", href: "/assets", icon: FolderOpen },
       { label: "Integrations", href: "/integrations", icon: Link2 },
+      {
+        label: "YouTube API",
+        href: "/integrations?tab=youtube-api",
+        icon: Video,
+      },
+      {
+        label: "Google Drive",
+        href: "/integrations?tab=google-drive",
+        icon: HardDrive,
+      },
       { label: "Backup Center", href: "/backups", icon: HardDrive },
       { label: "Data Health", href: "/data-health", icon: ShieldCheck },
     ],

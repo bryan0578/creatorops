@@ -11,6 +11,7 @@ import {
   deleteArtistBible,
   generateArtistContextSummary,
   getArtistBibles,
+  getArtistBibleById,
   updateArtistBible,
 } from "@/lib/actions/artist-bible"
 import { agentHref } from "@/lib/agents/routes"
@@ -25,7 +26,9 @@ import { summarizeArtistUniverse } from "@/lib/artist-universe/summary"
 import { scoreArtistBibleCompleteness } from "@/lib/artist-universe/summary"
 import { ModulePageHeader } from "@/components/app-shell"
 import { EmptyState } from "@/components/empty-state"
-import { FieldRow, StatCard, TagList, useModuleTab } from "@/components/artist-universe/shared"
+import { FieldRow, StatCard, TagList, useModuleTab, useRecordDeepLink } from "@/components/artist-universe/shared"
+import { RecordNotFound } from "@/components/record-not-found"
+import { PageErrorState } from "@/components/page-error-state"
 import { ModuleShell, ModuleTabPanel, ModuleWorkflowTabs } from "@/components/module/form-layout"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -141,22 +144,41 @@ export function ArtistBiblePage() {
   const [form, setForm] = React.useState(EMPTY_FORM)
   const [aiContext, setAiContext] = React.useState("")
   const [showForm, setShowForm] = React.useState(false)
+  const [loadError, setLoadError] = React.useState<string | null>(null)
 
-  const selected = items.find((i) => i.id === selectedId) ?? items[0] ?? null
+  const { resolved: deepLinked, missingRecordId, resolving } = useRecordDeepLink({
+    recordId,
+    items,
+    loading,
+    fetchById: getArtistBibleById,
+  })
+
+  const selected =
+    deepLinked ?? items.find((i) => i.id === selectedId) ?? items[0] ?? null
 
   const load = React.useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     try {
       const rows = await getArtistBibles()
       setItems(rows)
-      if (recordId) setSelectedId(recordId)
-      else if (!selectedId && rows[0]) setSelectedId(rows[0].id)
+      if (recordId && rows.some((r) => r.id === recordId)) {
+        setSelectedId(recordId)
+      } else if (!recordId && !selectedId && rows[0]) {
+        setSelectedId(rows[0].id)
+      }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load artist bibles")
+      const message = e instanceof Error ? e.message : "Failed to load artist bibles"
+      setLoadError(message)
+      toast.error(message)
     } finally {
       setLoading(false)
     }
   }, [recordId, selectedId])
+
+  React.useEffect(() => {
+    if (deepLinked) setSelectedId(deepLinked.id)
+  }, [deepLinked])
 
   React.useEffect(() => {
     void load()
@@ -247,10 +269,19 @@ export function ArtistBiblePage() {
         }
       />
 
-      {loading ? (
+      {loading || resolving ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" /> Loading…
         </div>
+      ) : loadError ? (
+        <PageErrorState description={loadError} onRetry={() => void load()} />
+      ) : missingRecordId ? (
+        <RecordNotFound
+          recordId={missingRecordId}
+          recordLabel="Artist bible"
+          moduleHref="/artist-bible"
+          moduleLabel="Artist Bible"
+        />
       ) : items.length === 0 && !showForm ? (
         <EmptyState
           icon={BookOpen}

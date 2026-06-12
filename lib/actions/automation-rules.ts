@@ -191,20 +191,53 @@ async function loadAutomationContext() {
 export async function getAutomationReport(options?: {
   campaignId?: string
 }): Promise<AutomationReport> {
-  const ctx = await loadAutomationContext()
-  return buildAutomationReport(
-    {
-      campaigns: ctx.campaigns,
-      store: ctx.store,
-      youtubeConnectionConnected: ctx.youtubeConnectionConnected,
-      driveConnectionConnected: ctx.driveConnectionConnected,
-      dataHealth: ctx.dataHealth,
-      dataHealthFailed: ctx.dataHealthFailed,
-      workspaceSettings: ctx.workspaceSettings,
-      aiProviderConfigured: ctx.aiProviderConfigured,
-    },
-    options,
-  )
+  try {
+    const ctx = await loadAutomationContext()
+    return buildAutomationReport(
+      {
+        campaigns: ctx.campaigns,
+        store: ctx.store,
+        youtubeConnectionConnected: ctx.youtubeConnectionConnected,
+        driveConnectionConnected: ctx.driveConnectionConnected,
+        dataHealth: ctx.dataHealth,
+        dataHealthFailed: ctx.dataHealthFailed,
+        workspaceSettings: ctx.workspaceSettings,
+        aiProviderConfigured: ctx.aiProviderConfigured,
+      },
+      options,
+    )
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return {
+      scannedAt: Date.now(),
+      summary: {
+        totalSuggestions: 1,
+        highPriority: 0,
+        mediumPriority: 0,
+        lowPriority: 1,
+        campaignsScanned: 0,
+        readyToApply: 0,
+        informational: 1,
+      },
+      suggestions: [
+        {
+          id: "automation-load-failed",
+          ruleId: "automation-load-failed",
+          priority: "low",
+          category: "Cleanup",
+          title: "Automation scan unavailable",
+          description: message,
+          suggestedActionLabel: "Open Data Health",
+          actionType: "openDataHealth",
+          actionPayload: { href: "/data-health" },
+          href: "/data-health",
+          canApply: true,
+          reason: "The automation engine could not load workspace data.",
+        },
+      ],
+      dataHealthOk: false,
+    }
+  }
 }
 
 export interface ApplyAutomationSuggestionInput {
