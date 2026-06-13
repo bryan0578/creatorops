@@ -80,6 +80,14 @@ export type SongConceptRecord = {
   qualityReviewId: string
   tags: string[]
   notes: string
+  publishedUrl: string
+  publishedPlatform: string
+  publishedDate: string
+  releaseStatus: string
+  performanceNotes: string
+  futureMerchIdeas: string
+  futureCampaignIdeas: string
+  relatedYouTubeVideoId: string
   createdAt: number
   updatedAt: number
 }
@@ -182,6 +190,7 @@ export const SONG_CONCEPT_STATUSES = [
   "Generated",
   "Selected",
   "Planned",
+  "Published",
   "Released",
   "Archived",
 ] as const

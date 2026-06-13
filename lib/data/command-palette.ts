@@ -224,7 +224,7 @@ export const COMMAND_PALETTE_QUICK_ACTIONS: CommandPaletteStaticItem[] = [
     id: "qa-tasks-today",
     group: "quick-actions",
     title: "Today's Tasks",
-    href: "/tasks?tab=today",
+    href: "/tasks?tab=upcoming",
     icon: ListChecks,
     keywords: "tasks due today",
   },

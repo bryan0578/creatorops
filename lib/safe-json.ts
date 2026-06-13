@@ -25,13 +25,11 @@ export function parseJsonArray(value: unknown, fallback: unknown[] = []): unknow
   return Array.isArray(parsed) ? parsed : fallback
 }
 
-export function parseJsonStringArray(
-  value: unknown,
-  fallback: string[] = [],
-): string[] {
-  const parsed = parseJsonArray(value, fallback)
-  return parsed.filter((item): item is string => typeof item === "string")
-}
+export {
+  dedupeStringArray,
+  parseJsonStringArray,
+  stringifyStringArray,
+} from "@/lib/utils/json-arrays"
 
 export function parseJsonObject(
   value: unknown,

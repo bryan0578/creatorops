@@ -27,7 +27,7 @@ import {
   importAssets,
   updateAsset,
 } from "@/lib/actions/assets"
-import { getDriveFilesForAsset } from "@/lib/actions/drive-integration"
+import { getDriveFilesForAsset, createFileAssetsFromSyncedDriveFiles } from "@/lib/actions/drive-integration"
 import {
   ASSET_SOURCE_TOOLS,
   ASSET_STATUSES,
@@ -56,6 +56,7 @@ import type { AssetFormValues, AssetRecord, DriveFileRecord } from "@/lib/types"
 import { ModulePageHeader } from "@/components/app-shell"
 import { CampaignPrefillBanner } from "@/components/campaigns/campaign-prefill-banner"
 import { EmptyState } from "@/components/empty-state"
+import { AssetRelatedLinksPanel } from "@/components/assets/asset-related-links-panel"
 import {
   FormGrid,
   FormSection,
@@ -299,6 +300,8 @@ export function AssetLibrary() {
   const [filterPlatform, setFilterPlatform] = React.useState("all")
   const [filterTags, setFilterTags] = React.useState("")
   const [pendingDelete, setPendingDelete] = React.useState<AssetRecord | null>(null)
+  const [creatingDriveAssets, setCreatingDriveAssets] = React.useState(false)
+  const [relatedLinksVersion, setRelatedLinksVersion] = React.useState(0)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const prefillApplied = React.useRef(false)
   const [campaignPrefill, setCampaignPrefill] = React.useState(
@@ -504,7 +507,7 @@ export function AssetLibrary() {
     const record = recordFromAssetForm(editingId ?? createId("asset"), form, {
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
-    })
+    }, existing?.notes)
 
     try {
       if (editingId) {
@@ -737,6 +740,28 @@ export function AssetLibrary() {
             <Button type="button" size="sm" onClick={resetForm}>
               <Plus className="size-4" />
               New Asset
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={creatingDriveAssets}
+              onClick={() => {
+                setCreatingDriveAssets(true)
+                void createFileAssetsFromSyncedDriveFiles()
+                  .then((result) => {
+                    toast[result.success ? "success" : "error"](result.message)
+                    if (result.success) void loadAssets()
+                  })
+                  .finally(() => setCreatingDriveAssets(false))
+              }}
+            >
+              {creatingDriveAssets ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <FolderOpen className="size-4" />
+              )}
+              Create File Assets from Drive
             </Button>
             <Button type="button" size="sm" variant="outline" onClick={handleExport}>
               <Download className="size-4" />
@@ -1071,44 +1096,50 @@ export function AssetLibrary() {
         </ModuleTabPanel>
 
         <ModuleTabPanel value="related">
-          <Card className={RECENT_RECORDS_CARD_CLASS}>
-            <CardHeader>
-              <CardTitle className="text-base">Related records</CardTitle>
-              <CardDescription>
-                Open linked campaign, prompt run, experiment, analytics, and source records.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {relatedLinks.length ? (
-                <div className="flex flex-col gap-2">
-                  {relatedLinks.map((link) => (
-                    <Link
-                      key={link.key}
-                      href={link.href}
-                      className="flex flex-col gap-1 rounded-xl border border-border/80 p-4 transition-colors hover:bg-muted/30 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div className="min-w-0 space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant="secondary">{link.label}</Badge>
-                          <p className="font-medium text-pretty">{link.title}</p>
+          <div className="space-y-4">
+            {relatedLinks.length ? (
+              <Card className={RECENT_RECORDS_CARD_CLASS}>
+                <CardHeader>
+                  <CardTitle className="text-base">Related records</CardTitle>
+                  <CardDescription>
+                    Campaign, prompt run, experiment, analytics, and Drive source links.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col gap-2">
+                    {relatedLinks.map((link) => (
+                      <Link
+                        key={link.key}
+                        href={link.href}
+                        className="flex flex-col gap-1 rounded-xl border border-border/80 p-4 transition-colors hover:bg-muted/30 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="secondary">{link.label}</Badge>
+                            <p className="font-medium text-pretty">{link.title}</p>
+                          </div>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {link.subtitle}
+                          </p>
                         </div>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {link.subtitle}
-                        </p>
-                      </div>
-                      <ExternalLink className="size-4 shrink-0 text-muted-foreground" />
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <EmptyState
-                  icon={Link2}
-                  title="No related links yet"
-                  description="Add campaign, source record, prompt run, experiment, or analytics IDs in Source & Links to see connections here."
-                />
-              )}
-            </CardContent>
-          </Card>
+                        <ExternalLink className="size-4 shrink-0 text-muted-foreground" />
+                      </Link>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null}
+
+            <AssetRelatedLinksPanel
+              key={`${editingId ?? "new"}-${relatedLinksVersion}`}
+              assetId={editingId}
+              showBulkActions={Boolean(editingId)}
+              onLinksChanged={() => {
+                setRelatedLinksVersion((v) => v + 1)
+                void loadAssets()
+              }}
+            />
+          </div>
         </ModuleTabPanel>
 
         <ModuleTabPanel value="saved">

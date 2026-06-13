@@ -14,6 +14,7 @@ import {
 
 import { getAIProviderStatus } from "@/lib/actions/ai-generation"
 import { getDataHealthReport } from "@/lib/actions/data-health"
+import { getWorkspaceTasks } from "@/lib/actions/tasks"
 import { getYouTubeConnectionStatus } from "@/lib/actions/youtube-integration"
 import { useStore } from "@/lib/store"
 import {
@@ -89,18 +90,36 @@ export function ControlCenterStatusCards() {
     warnings: number
     missingAssets: number
   } | null>(null)
+  const [taskSummary, setTaskSummary] = React.useState(() =>
+    getWorkspaceTaskSummary(buildWorkspaceTasks(campaigns)),
+  )
 
   const activeCampaigns = React.useMemo(
     () => sortActiveCampaigns(campaigns).length,
     [campaigns],
   )
 
-  const taskSummary = React.useMemo(
-    () => getWorkspaceTaskSummary(buildWorkspaceTasks(campaigns)),
-    [campaigns],
-  )
-
   const tasksDue = taskSummary.today + taskSummary.overdue
+  const tasksHref =
+    taskSummary.overdue > 0 ? "/tasks?filter=overdue" : "/tasks?tab=upcoming"
+
+  React.useEffect(() => {
+    let cancelled = false
+
+    void getWorkspaceTasks()
+      .then((tasks) => {
+        if (!cancelled) setTaskSummary(getWorkspaceTaskSummary(tasks))
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setTaskSummary(getWorkspaceTaskSummary(buildWorkspaceTasks(campaigns)))
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [campaigns])
 
   React.useEffect(() => {
     let cancelled = false
@@ -165,7 +184,7 @@ export function ControlCenterStatusCards() {
         label="Tasks Due"
         value={tasksDue}
         hint={`${taskSummary.today} today · ${taskSummary.overdue} overdue`}
-        href="/tasks"
+        href={tasksHref}
         icon={ListChecks}
         tone={taskSummary.overdue > 0 ? "warning" : "default"}
       />

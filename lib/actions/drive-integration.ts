@@ -12,11 +12,12 @@ import { buildDriveSummary } from "@/lib/data/drive"
 import { normalizeExternalLinkRecord } from "@/lib/data/external-links"
 import { requireDriveAccessToken, tryGetDriveAccessToken } from "@/lib/drive/access"
 import {
-  listDriveFolderFiles,
-  fetchDriveFolderMetadata,
+  listDriveFolderTreeRecursive,
   parseDriveFolderIdInput,
   previewDriveFolder,
 } from "@/lib/drive/client"
+import { isDriveFolderMime } from "@/lib/drive/classify"
+import { filterVisibleDriveFiles, isDriveJunkFile } from "@/lib/drive/junk-files"
 import {
   apiFileToDriveFileRecord,
   apiFolderToDriveFolderRecord,
@@ -126,13 +127,13 @@ export async function validateDriveFolderUrl(input: string): Promise<{
     }
 
     const accessToken = await requireDriveAccessToken()
-    const { folder, files } = await previewDriveFolder(accessToken, folderId)
+    const { folder, fileCount } = await previewDriveFolder(accessToken, folderId)
     const record = apiFolderToDriveFolderRecord(folder)
     return {
       success: true,
-      message: `Found folder "${folder.name}" with ${files.length} file(s).`,
+      message: `Found folder "${folder.name}" with ${fileCount} file(s) (recursive).`,
       folderId,
-      preview: { folder: record, fileCount: files.length },
+      preview: { folder: record, fileCount: fileCount },
     }
   } catch (error) {
     return { success: false, message: friendlyDriveError(error) }
@@ -275,22 +276,24 @@ export async function syncDriveFolder(input: SyncDriveFolderInput): Promise<{
 
     const accessToken = await requireDriveAccessToken()
     const campaignFields = await resolveCampaignFields(input.campaignId)
-    const metadata = await fetchDriveFolderMetadata(accessToken, folderId)
-    const apiFiles = await listDriveFolderFiles(accessToken, folderId)
+    const { rootFolder, folders: subFolders, files: treeFiles } =
+      await listDriveFolderTreeRecursive(accessToken, folderId)
 
     const existingFolder = await prisma.driveFolder.findUnique({
       where: { driveFolderId: folderId },
     })
 
+    const contextFields = {
+      ...campaignFields,
+      artistName: input.artistName?.trim() || campaignFields.artistName,
+      songTitle: input.songTitle?.trim() || campaignFields.songTitle,
+      productName: input.productName?.trim() || campaignFields.productName,
+    }
+
     let folderRecord = apiFolderToDriveFolderRecord(
-      metadata,
+      rootFolder,
       existingFolder ? prismaDriveFolderToRecord(existingFolder) : undefined,
-      {
-        ...campaignFields,
-        artistName: input.artistName?.trim() || campaignFields.artistName,
-        songTitle: input.songTitle?.trim() || campaignFields.songTitle,
-        productName: input.productName?.trim() || campaignFields.productName,
-      },
+      contextFields,
     )
 
     const savedFolder = await upsertDriveFolderRecord(folderRecord)
@@ -305,15 +308,43 @@ export async function syncDriveFolder(input: SyncDriveFolderInput): Promise<{
       folderRecord = savedFolder
     }
 
+    const folderByDriveId = new Map<string, DriveFolderRecord>()
+    folderByDriveId.set(folderRecord.driveFolderId, folderRecord)
+
+    for (const sub of subFolders) {
+      const existingSub = await prisma.driveFolder.findUnique({
+        where: { driveFolderId: sub.folder.id },
+      })
+      const parentRecord =
+        folderByDriveId.get(sub.parentDriveFolderId) ?? folderRecord
+      const subRecord = apiFolderToDriveFolderRecord(
+        sub.folder,
+        existingSub ? prismaDriveFolderToRecord(existingSub) : undefined,
+        {
+          ...contextFields,
+          artistName: contextFields.artistName || parentRecord.artistName,
+          songTitle: contextFields.songTitle || parentRecord.songTitle,
+          notes: `Drive path: ${sub.drivePath}`,
+        },
+      )
+      const savedSub = await upsertDriveFolderRecord(subRecord)
+      folderByDriveId.set(savedSub.driveFolderId, savedSub)
+    }
+
     let synced = 0
-    for (const apiFile of apiFiles) {
+    for (const apiFile of treeFiles) {
+      if (isDriveFolderMime(apiFile.mimeType) || isDriveJunkFile(apiFile.name)) continue
+
+      const parentRecord =
+        folderByDriveId.get(apiFile.immediateParentDriveFolderId) ?? folderRecord
       const existingFile = await prisma.driveFile.findUnique({
         where: { driveFileId: apiFile.id },
       })
       const fileRecord = apiFileToDriveFileRecord(
         apiFile,
-        folderRecord,
+        parentRecord,
         existingFile ? prismaDriveFileToRecord(existingFile) : undefined,
+        apiFile.drivePath,
       )
       await upsertDriveFileRecord(fileRecord)
       synced += 1
@@ -335,7 +366,7 @@ export async function syncDriveFolder(input: SyncDriveFolderInput): Promise<{
     revalidateDriveRoutes()
     return {
       success: true,
-      message: `Synced ${synced} file(s) from "${folderRecord.name}".`,
+      message: `Synced ${synced} file(s) recursively from "${folderRecord.name}".`,
       folder: folderRecord,
       syncedFiles: synced,
     }
@@ -359,7 +390,7 @@ export async function getDriveFolderById(id: string): Promise<DriveFolderRecord 
 
 export async function getDriveFiles(): Promise<DriveFileRecord[]> {
   const rows = await prisma.driveFile.findMany({ orderBy: { updatedAt: "desc" } })
-  return rows.map(prismaDriveFileToRecord)
+  return filterVisibleDriveFiles(rows.map(prismaDriveFileToRecord))
 }
 
 export async function getDriveFoldersForCampaign(
@@ -409,6 +440,9 @@ export async function createAssetFromDriveFile(fileId: string): Promise<{
     if (!row) return { success: false, message: "Drive file not found locally." }
 
     const file = prismaDriveFileToRecord(row)
+    if (isDriveJunkFile(file.name)) {
+      return { success: false, message: "System files cannot be converted to assets." }
+    }
     if (file.assetId) {
       const existing = await getAssets()
       const asset = existing.find((item) => item.id === file.assetId)
@@ -533,6 +567,72 @@ export async function importDriveFileRecords(records: DriveFileRecord[]): Promis
   }
   revalidateDriveRoutes()
   return count
+}
+
+export async function createFileAssetsFromSyncedDriveFiles(): Promise<{
+  success: boolean
+  message: string
+  created: number
+  skipped: number
+}> {
+  try {
+    const files = await getDriveFiles()
+    const assets = await getAssets()
+    const linkedDriveFileIds = new Set(
+      assets
+        .filter((asset) => asset.sourceRecordType === "DriveFile" && asset.sourceRecordId)
+        .map((asset) => asset.sourceRecordId),
+    )
+    const assetUrls = new Set(
+      assets
+        .flatMap((asset) => [asset.externalUrl, asset.fileUrl])
+        .map((url) => url.trim().toLowerCase())
+        .filter(Boolean),
+    )
+
+    let created = 0
+    let skipped = 0
+
+    for (const file of files) {
+      if (isDriveFolderMime(file.mimeType) || isDriveJunkFile(file.name)) {
+        skipped += 1
+        continue
+      }
+      if (file.assetId || linkedDriveFileIds.has(file.id)) {
+        skipped += 1
+        continue
+      }
+      const url = (file.webViewLink || file.url).trim().toLowerCase()
+      if (url && assetUrls.has(url)) {
+        skipped += 1
+        continue
+      }
+
+      const result = await createAssetFromDriveFile(file.id)
+      if (result.success && result.asset) {
+        created += 1
+        linkedDriveFileIds.add(file.id)
+        if (url) assetUrls.add(url)
+      } else {
+        skipped += 1
+      }
+    }
+
+    revalidateDriveRoutes()
+    return {
+      success: true,
+      message: `Created ${created} file asset(s). Skipped ${skipped}.`,
+      created,
+      skipped,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: friendlyDriveError(error),
+      created: 0,
+      skipped: 0,
+    }
+  }
 }
 
 export { driveConnectionToBackupMetadata }

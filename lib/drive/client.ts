@@ -6,6 +6,8 @@ import {
   type DriveApiFolder,
 } from "@/lib/drive/types"
 
+import { isDriveJunkFile } from "@/lib/drive/junk-files"
+
 const FOLDER_MIME = "application/vnd.google-apps.folder"
 
 export function parseDriveFolderIdInput(input: string): string | null {
@@ -122,11 +124,63 @@ export async function listDriveFolderFiles(
   return files
 }
 
+export type DriveTreeFolder = {
+  folder: DriveApiFolder
+  drivePath: string
+  parentDriveFolderId: string
+}
+
+export type DriveTreeFile = DriveApiFile & {
+  drivePath: string
+  immediateParentDriveFolderId: string
+}
+
+export { FOLDER_MIME }
+
+export async function listDriveFolderTreeRecursive(
+  accessToken: string,
+  rootFolderId: string,
+): Promise<{ rootFolder: DriveApiFolder; folders: DriveTreeFolder[]; files: DriveTreeFile[] }> {
+  const rootFolder = await fetchDriveFolderMetadata(accessToken, rootFolderId)
+  const folders: DriveTreeFolder[] = []
+  const files: DriveTreeFile[] = []
+
+  async function walk(folderId: string, pathPrefix: string) {
+    const items = await listDriveFolderFiles(accessToken, folderId)
+    for (const item of items) {
+      if (item.mimeType === FOLDER_MIME) {
+        const childPath = pathPrefix ? `${pathPrefix}/${item.name}` : item.name
+        folders.push({
+          folder: {
+            id: item.id,
+            name: item.name,
+            webViewLink: item.webViewLink,
+            mimeType: item.mimeType,
+          },
+          drivePath: childPath,
+          parentDriveFolderId: folderId,
+        })
+        await walk(item.id, childPath)
+      } else {
+        if (isDriveJunkFile(item.name)) continue
+        const filePath = pathPrefix ? `${pathPrefix}/${item.name}` : item.name
+        files.push({
+          ...item,
+          drivePath: filePath,
+          immediateParentDriveFolderId: folderId,
+        })
+      }
+    }
+  }
+
+  await walk(rootFolderId, rootFolder.name)
+  return { rootFolder, folders, files }
+}
+
 export async function previewDriveFolder(
   accessToken: string,
   folderId: string,
-): Promise<{ folder: DriveApiFolder; files: DriveApiFile[] }> {
-  const folder = await fetchDriveFolderMetadata(accessToken, folderId)
-  const files = await listDriveFolderFiles(accessToken, folderId)
-  return { folder, files }
+): Promise<{ folder: DriveApiFolder; files: DriveApiFile[]; fileCount: number }> {
+  const { rootFolder, files } = await listDriveFolderTreeRecursive(accessToken, folderId)
+  return { folder: rootFolder, files, fileCount: files.length }
 }

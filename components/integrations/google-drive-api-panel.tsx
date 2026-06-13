@@ -16,6 +16,7 @@ import { toast } from "sonner"
 
 import {
   createAssetFromDriveFile,
+  createFileAssetsFromSyncedDriveFiles,
   getDriveConnectionStatus,
   getDriveFiles,
   getDriveFolders,
@@ -24,7 +25,9 @@ import {
   syncDriveFolder,
   validateDriveFolderUrl,
 } from "@/lib/actions/drive-integration"
+import { createDriveSetupTasks } from "@/lib/actions/global-tasks"
 import { countDriveFilesForFolder } from "@/lib/drive/mappers"
+import { filterVisibleDriveFiles } from "@/lib/drive/junk-files"
 import { AssetLinkSuggestionsPanel } from "@/components/asset-linking/asset-link-suggestions-panel"
 import type {
   CampaignRecord,
@@ -85,6 +88,7 @@ export function GoogleDriveApiPanel({
   const [summary, setSummary] = React.useState<Awaited<ReturnType<typeof getDriveSummary>> | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [busy, setBusy] = React.useState<string | null>(null)
+  const [driveTasksLoading, setDriveTasksLoading] = React.useState(false)
   const [folderInput, setFolderInput] = React.useState("")
   const [selectedCampaignId, setSelectedCampaignId] = React.useState(defaultCampaignId)
   const [previewMessage, setPreviewMessage] = React.useState<string | null>(null)
@@ -139,10 +143,13 @@ export function GoogleDriveApiPanel({
   }
 
   const connected = status?.connected ?? false
+  const visibleFiles = React.useMemo(() => filterVisibleDriveFiles(files), [files])
   const filteredFiles =
     selectedFolderId === "all"
-      ? files
-      : files.filter((file) => file.folderId === selectedFolderId || file.driveFolderId === selectedFolderId)
+      ? visibleFiles
+      : visibleFiles.filter(
+          (file) => file.folderId === selectedFolderId || file.driveFolderId === selectedFolderId,
+        )
 
   return (
     <div className="space-y-6">
@@ -198,6 +205,31 @@ export function GoogleDriveApiPanel({
                 <Link href="/api/drive/oauth/start" className={buttonVariants({ variant: "outline", size: "sm" })}>
                   Reconnect
                 </Link>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={driveTasksLoading}
+                  onClick={() => {
+                    setDriveTasksLoading(true)
+                    void createDriveSetupTasks("PrettyWise")
+                      .then((result) => {
+                        toast.success(result.message)
+                      })
+                      .catch((err) => {
+                        toast.error(err instanceof Error ? err.message : "Could not create Drive setup tasks")
+                      })
+                      .finally(() => setDriveTasksLoading(false))
+                  }}
+                >
+                  {driveTasksLoading ? "Creating…" : "Create Drive Setup Tasks"}
+                </Button>
+                <Link
+                  href="/tasks?tab=google-drive&artist=PrettyWise"
+                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                >
+                  Open Task Command Center
+                </Link>
                 <Link
                   href="/api/drive/oauth/disconnect"
                   className={buttonVariants({ variant: "outline", size: "sm" })}
@@ -235,7 +267,7 @@ export function GoogleDriveApiPanel({
             <CardHeader>
               <CardTitle className="text-base">Sync Folder</CardTitle>
               <CardDescription>
-                Paste a Google Drive folder URL or ID, optionally link to a campaign, then sync file metadata.
+                Paste a Google Drive folder URL or ID. Sync walks nested folders recursively and stores file paths.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -297,7 +329,27 @@ export function GoogleDriveApiPanel({
                   }
                 >
                   {busy === "sync" ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-                  Sync Folder
+                  Sync Folder (Recursive)
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={busy === "create-assets"}
+                  onClick={() =>
+                    void runAction(
+                      "create-assets",
+                      () => createFileAssetsFromSyncedDriveFiles(),
+                      (result) =>
+                        toast[result.success ? "success" : "error"](result.message),
+                    )
+                  }
+                >
+                  {busy === "create-assets" ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <FolderOpen className="size-4" />
+                  )}
+                  Create File Assets from Synced Drive Files
                 </Button>
               </div>
             </CardContent>

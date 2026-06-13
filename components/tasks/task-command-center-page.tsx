@@ -17,27 +17,30 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
-import { updateCampaignTaskStatus } from "@/lib/actions/tasks"
+import { createArtistSetupTasks, createDriveSetupTasks, createGlobalTask, createSongSetupTasks } from "@/lib/actions/global-tasks"
+import { getWorkspaceTasks, syncAllWorkspaceTasks, updateWorkspaceTaskStatus } from "@/lib/actions/tasks"
+import {
+  GLOBAL_TASK_MODULES,
+  GLOBAL_TASK_PRIORITIES,
+  GLOBAL_TASK_TYPES,
+} from "@/lib/data/global-tasks"
 import {
   applyWorkspaceTaskFilters,
-  buildWorkspaceTasks,
   filterTasksForTab,
   formatTaskDueLabel,
   getCampaignContextLabel,
   getWorkspaceTaskSummary,
   groupTasksByCampaign,
-  groupTasksByPriority,
   isTaskCompleted,
   nextTaskStatusOnToggle,
   priorityBadgeClass,
+  TASK_TAB_ALIASES,
   taskStatusBadgeClass,
   taskStatusLabel,
   type TaskCommandCenterTab,
   type WorkspaceTask,
   type WorkspaceTaskFilters,
 } from "@/lib/data/tasks"
-import { useStore } from "@/lib/store"
-import type { CampaignTaskStatus } from "@/lib/types"
 
 import { ModulePageHeader } from "@/components/app-shell"
 import { EmptyState } from "@/components/empty-state"
@@ -70,34 +73,38 @@ const EMPTY_COPY: Record<
   TaskCommandCenterTab,
   { title: string; description?: string }
 > = {
-  today: {
-    title: "No tasks due today",
-    description: "You're clear for today, or add due dates in Campaign Builder.",
+  all: {
+    title: "No tasks yet",
+    description: "Create global setup tasks, campaign tasks, or seed PrettyWise demo data.",
   },
   upcoming: {
     title: "No upcoming tasks",
-    description: "No tasks are due in the next 14 days.",
+    description: "No tasks are due soon. Add due dates or create artist setup tasks.",
   },
-  overdue: {
-    title: "No overdue tasks",
-    description: "Nothing is past due right now.",
+  "artist-setup": {
+    title: "No artist setup tasks",
+    description: "Create a PrettyWise artist setup checklist to track Drive uploads and universe setup.",
   },
-  "by-campaign": {
+  campaigns: {
     title: "No campaign tasks",
-    description: "Create tasks inside a campaign to track launch work.",
+    description: "Create tasks inside Campaign Builder or link tasks to a campaign.",
   },
-  "by-priority": {
-    title: "No tasks to group",
-    description: "Adjust filters or add campaign tasks.",
+  "google-drive": {
+    title: "No Google Drive tasks",
+    description: "Create Drive setup tasks from Integrations or the artist setup checklist.",
   },
-  completed: {
+  assets: {
+    title: "No asset tasks",
+    description: "Tasks for creating or linking assets will appear here.",
+  },
+  done: {
     title: "No completed tasks yet",
     description: "Completed tasks will appear here.",
   },
-  all: {
-    title: "No tasks yet",
-    description: "Create campaign tasks or seed PrettyWise demo data to test the task command center.",
-  },
+}
+
+function taskRowKey(task: WorkspaceTask): string {
+  return task.globalTaskId || `${task.campaignId}:${task.taskId}`
 }
 
 function TaskRow({
@@ -169,8 +176,11 @@ function TaskRow({
         </div>
 
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground/90">{task.campaignName}</span>
-          <span>{task.campaignType}</span>
+          {task.taskType ? <Badge variant="secondary" className="text-[10px]">{task.taskType}</Badge> : null}
+          {task.module ? <span>{task.module}</span> : null}
+          {task.campaignName ? (
+            <span className="font-medium text-foreground/90">{task.campaignName}</span>
+          ) : null}
           <span>{getCampaignContextLabel(task)}</span>
           <span className={cn(overdue && "font-medium text-destructive")}>
             {formatTaskDueLabel(task)}
@@ -178,10 +188,16 @@ function TaskRow({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Link href={task.href} className={buttonVariants({ size: "sm", variant: "outline" })}>
-            <ExternalLink className="size-3.5" />
-            Open Campaign
-          </Link>
+          {task.links.map((link) => (
+            <Link
+              key={`${task.taskId}-${link.href}`}
+              href={link.href}
+              className={buttonVariants({ size: "sm", variant: "outline", className: "h-7 px-2 text-xs" })}
+            >
+              <ExternalLink className="size-3" />
+              {link.label}
+            </Link>
+          ))}
         </div>
       </div>
     </div>
@@ -229,31 +245,68 @@ function TaskList({
     <div className="space-y-3">
       {tasks.map((task) => (
         <TaskRow
-          key={`${task.campaignId}:${task.taskId}`}
+          key={taskRowKey(task)}
           task={task}
           onToggle={onToggle}
-          updating={updatingId === `${task.campaignId}:${task.taskId}`}
+          updating={updatingId === taskRowKey(task)}
         />
       ))}
     </div>
   )
 }
 
-export function TaskCommandCenterPage() {
-  const store = useStore()
-  const searchParams = useSearchParams()
-  const initialTab = (searchParams.get("tab") as TaskCommandCenterTab) || "today"
-  const initialCampaignId = searchParams.get("campaignId") ?? "all"
+const DOMAIN_TAB_MAP: Record<string, TaskCommandCenterTab> = {
+  "artist-ops": "artist-setup",
+  "campaign-command": "campaigns",
+  "assets-integrations": "google-drive",
+  admin: "all",
+}
 
-  const defaultTab = TASK_COMMAND_CENTER_TABS.some((tab) => tab.value === initialTab)
-    ? initialTab
-    : "today"
+function resolveInitialTab(rawTab: string | null, domain: string | null): TaskCommandCenterTab {
+  if (domain && DOMAIN_TAB_MAP[domain]) return DOMAIN_TAB_MAP[domain]
+  return resolveTaskTab(rawTab)
+}
+
+function resolveTaskTab(raw: string | null): TaskCommandCenterTab {
+  const aliased = raw ? TASK_TAB_ALIASES[raw] : undefined
+  const candidate = (aliased || raw || "all") as TaskCommandCenterTab
+  return TASK_COMMAND_CENTER_TABS.some((tab) => tab.value === candidate) ? candidate : "all"
+}
+
+export function TaskCommandCenterPage() {
+  const searchParams = useSearchParams()
+  const initialCampaignId = searchParams.get("campaignId") ?? "all"
+  const artistQuery = searchParams.get("artist")?.trim() ?? ""
+  const domainQuery = searchParams.get("domain")?.trim() ?? ""
+
+  const [activeTab, setActiveTab] = React.useState<TaskCommandCenterTab>(() =>
+    resolveInitialTab(searchParams.get("tab"), domainQuery || null),
+  )
+  const [allTasks, setAllTasks] = React.useState<WorkspaceTask[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [templateLoading, setTemplateLoading] = React.useState<string | null>(null)
+  const [newTaskTitle, setNewTaskTitle] = React.useState("")
+  const [creatingTask, setCreatingTask] = React.useState(false)
+
+  React.useEffect(() => {
+    setActiveTab(resolveInitialTab(searchParams.get("tab"), searchParams.get("domain")))
+    const artist = searchParams.get("artist")?.trim()
+    const filter = searchParams.get("filter")?.trim()
+    setFilters((prev) => ({
+      ...prev,
+      ...(artist ? { artistName: artist } : {}),
+      ...(filter === "overdue" ? { status: "overdue", showCompleted: false } : {}),
+    }))
+  }, [searchParams])
 
   const [filters, setFilters] = React.useState<WorkspaceTaskFilters>({
     search: "",
     campaignId: initialCampaignId,
     priority: "all",
     status: "all",
+    taskType: "all",
+    module: "all",
+    artistName: artistQuery || "all",
     dueFrom: "",
     dueTo: "",
     showCompleted: false,
@@ -261,10 +314,21 @@ export function TaskCommandCenterPage() {
   const [refreshing, setRefreshing] = React.useState(false)
   const [updatingId, setUpdatingId] = React.useState<string | null>(null)
 
-  const allTasks = React.useMemo(
-    () => buildWorkspaceTasks(store.campaigns),
-    [store.campaigns],
-  )
+  const loadTasks = React.useCallback(async () => {
+    setLoading(true)
+    try {
+      const tasks = await getWorkspaceTasks()
+      setAllTasks(tasks)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not load tasks")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    void loadTasks()
+  }, [loadTasks])
 
   const filteredTasks = React.useMemo(
     () => applyWorkspaceTaskFilters(allTasks, filters),
@@ -276,21 +340,22 @@ export function TaskCommandCenterPage() {
   const campaignOptions = React.useMemo(() => {
     const map = new Map<string, string>()
     for (const task of allTasks) {
-      map.set(task.campaignId, task.campaignName)
+      if (task.campaignId) map.set(task.campaignId, task.campaignName)
     }
     return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]))
   }, [allTasks])
 
-  const priorityOptions = React.useMemo(() => {
-    const set = new Set(allTasks.map((task) => task.priority))
-    return Array.from(set).sort()
+  const artistOptions = React.useMemo(() => {
+    const set = new Set(allTasks.map((task) => task.artistName.trim()).filter(Boolean))
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
   }, [allTasks])
 
   async function handleRefresh() {
     setRefreshing(true)
     try {
-      await store.reloadCampaigns()
-      toast.success("Tasks refreshed")
+      await syncAllWorkspaceTasks()
+      await loadTasks()
+      toast.success("Tasks refreshed and synced")
     } catch {
       toast.error("Could not refresh tasks")
     } finally {
@@ -298,18 +363,77 @@ export function TaskCommandCenterPage() {
     }
   }
 
+  async function handleTemplate(kind: "artist" | "song" | "drive") {
+    setTemplateLoading(kind)
+    try {
+      const artist = filters.artistName !== "all" ? filters.artistName : "PrettyWise"
+      const result =
+        kind === "artist"
+          ? await createArtistSetupTasks(artist)
+          : kind === "song"
+            ? await createSongSetupTasks(artist, "No Exit")
+            : await createDriveSetupTasks(artist)
+      toast.success(result.message)
+      await loadTasks()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not create tasks")
+    } finally {
+      setTemplateLoading(null)
+    }
+  }
+
+  async function handleCreateTask() {
+    const title = newTaskTitle.trim()
+    if (!title) {
+      toast.error("Enter a task title.")
+      return
+    }
+    setCreatingTask(true)
+    try {
+      await createGlobalTask({
+        title,
+        description: "",
+        status: "To Do",
+        priority: "Medium",
+        dueDate: "",
+        module: activeTab === "google-drive" ? "Google Drive" : activeTab === "artist-setup" ? "Artist Ops" : "",
+        taskType: "Global",
+        artistName: filters.artistName !== "all" ? filters.artistName : "",
+        campaignId: filters.campaignId !== "all" ? filters.campaignId : "",
+        campaignName: "",
+        songConceptId: "",
+        songTitle: "",
+        productId: "",
+        assetId: "",
+        integrationType: "",
+        sourceRecordType: "",
+        sourceRecordId: "",
+        tags: [],
+        notes: "",
+      })
+      setNewTaskTitle("")
+      toast.success("Task created")
+      await loadTasks()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not create task")
+    } finally {
+      setCreatingTask(false)
+    }
+  }
+
   async function handleToggle(task: WorkspaceTask) {
-    const key = `${task.campaignId}:${task.taskId}`
+    const key = taskRowKey(task)
     setUpdatingId(key)
     try {
-      const nextStatus: CampaignTaskStatus = nextTaskStatusOnToggle(task)
-      await updateCampaignTaskStatus({
+      const nextStatus = nextTaskStatusOnToggle(task)
+      await updateWorkspaceTaskStatus({
+        globalTaskId: task.globalTaskId || undefined,
         campaignId: task.campaignId,
         taskId: task.taskId,
-        taskIndex: task.taskIndex,
+        taskIndex: task.taskIndex >= 0 ? task.taskIndex : undefined,
         status: nextStatus,
       })
-      await store.reloadCampaigns()
+      await loadTasks()
       toast.success("Task updated")
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not update task")
@@ -318,7 +442,7 @@ export function TaskCommandCenterPage() {
     }
   }
 
-  if (!store.hydrated) {
+  if (loading && allTasks.length === 0) {
     return (
       <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
         <Loader2 className="size-4 animate-spin" />
@@ -331,9 +455,49 @@ export function TaskCommandCenterPage() {
     <div className="flex min-w-0 max-w-full flex-col gap-6 overflow-x-hidden">
       <ModulePageHeader
         title="Task Command Center"
-        description="Track upcoming, overdue, and completed work across campaigns."
+        description="Track global setup work, campaign tasks, Drive sync, assets, and release checklists."
         action={
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              disabled={creatingTask}
+              onClick={() => void handleCreateTask()}
+            >
+              {creatingTask ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Plus className="size-4" />
+              )}
+              New Task
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={templateLoading === "artist"}
+              onClick={() => void handleTemplate("artist")}
+            >
+              {templateLoading === "artist" ? "Creating…" : "Create Artist Setup Checklist"}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={templateLoading === "song"}
+              onClick={() => void handleTemplate("song")}
+            >
+              {templateLoading === "song" ? "Creating…" : "Create Song Setup Checklist"}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={templateLoading === "drive"}
+              onClick={() => void handleTemplate("drive")}
+            >
+              {templateLoading === "drive" ? "Creating…" : "Create Drive Setup Tasks"}
+            </Button>
             <Link href="/campaigns" className={buttonVariants({ size: "sm" })}>
               <Plus className="size-4" />
               New Campaign
@@ -360,10 +524,10 @@ export function TaskCommandCenterPage() {
 
       <section className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Due today", value: summary.today, href: "/tasks?tab=today" },
           { label: "Upcoming", value: summary.upcoming, href: "/tasks?tab=upcoming" },
-          { label: "Overdue", value: summary.overdue, href: "/tasks?tab=overdue" },
-          { label: "Completed", value: summary.completed, href: "/tasks?tab=completed" },
+          { label: "Overdue", value: summary.overdue, href: "/tasks?filter=overdue" },
+          { label: "In progress", value: summary.inProgress, href: "/tasks?tab=all" },
+          { label: "Done", value: summary.completed, href: "/tasks?tab=done" },
         ].map((item) => (
           <Link
             key={item.label}
@@ -380,10 +544,30 @@ export function TaskCommandCenterPage() {
         <CardHeader className="gap-1 space-y-0 pb-2">
           <CardTitle className="text-base">Filters</CardTitle>
           <CardDescription className="text-xs">
-            Search and narrow tasks across campaigns.
+            Search and narrow tasks across artists, campaigns, modules, and types.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+          <div className="flex gap-2 sm:col-span-2 lg:col-span-4 xl:col-span-6">
+            <Input
+              value={newTaskTitle}
+              onChange={(e) => setNewTaskTitle(e.target.value)}
+              placeholder="Quick add task title…"
+              className="h-9"
+              onKeyDown={(event) => {
+                if (event.key === "Enter") void handleCreateTask()
+              }}
+            />
+            <Button
+              type="button"
+              size="sm"
+              className="h-9 shrink-0"
+              disabled={creatingTask}
+              onClick={() => void handleCreateTask()}
+            >
+              Add Task
+            </Button>
+          </div>
           <div className="space-y-1 sm:col-span-2 lg:col-span-2 xl:col-span-2">
             <Label htmlFor="task-search" className="text-xs">
               Search tasks
@@ -436,9 +620,78 @@ export function TaskCommandCenterPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All priorities</SelectItem>
-                {priorityOptions.map((priority) => (
+                {GLOBAL_TASK_PRIORITIES.map((priority) => (
                   <SelectItem key={priority} value={priority}>
                     {priority}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Task type</Label>
+            <Select
+              value={filters.taskType}
+              onValueChange={(value) =>
+                setFilters((prev) => ({ ...prev, taskType: value ?? "all" }))
+              }
+            >
+              <SelectTrigger className="h-9 w-full">
+                <span className="truncate">
+                  {filters.taskType === "all" ? "All types" : filters.taskType}
+                </span>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All types</SelectItem>
+                {GLOBAL_TASK_TYPES.map((taskType) => (
+                  <SelectItem key={taskType} value={taskType}>
+                    {taskType}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Module</Label>
+            <Select
+              value={filters.module}
+              onValueChange={(value) =>
+                setFilters((prev) => ({ ...prev, module: value ?? "all" }))
+              }
+            >
+              <SelectTrigger className="h-9 w-full">
+                <span className="truncate">
+                  {filters.module === "all" ? "All modules" : filters.module}
+                </span>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All modules</SelectItem>
+                {GLOBAL_TASK_MODULES.map((moduleName) => (
+                  <SelectItem key={moduleName} value={moduleName}>
+                    {moduleName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Artist</Label>
+            <Select
+              value={filters.artistName}
+              onValueChange={(value) =>
+                setFilters((prev) => ({ ...prev, artistName: value ?? "all" }))
+              }
+            >
+              <SelectTrigger className="h-9 w-full">
+                <span className="truncate">
+                  {filters.artistName === "all" ? "All artists" : filters.artistName}
+                </span>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All artists</SelectItem>
+                {artistOptions.map((artist) => (
+                  <SelectItem key={artist} value={artist}>
+                    {artist}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -456,11 +709,14 @@ export function TaskCommandCenterPage() {
                 <span className="truncate">
                   {filters.status === "all"
                     ? "All statuses"
-                    : taskStatusLabel(filters.status as never)}
+                    : filters.status === "overdue"
+                      ? "Overdue"
+                      : taskStatusLabel(filters.status as never)}
                 </span>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="overdue">Overdue</SelectItem>
                 <SelectItem value="todo">To Do</SelectItem>
                 <SelectItem value="in-progress">In Progress</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
@@ -510,85 +766,51 @@ export function TaskCommandCenterPage() {
         </CardContent>
       </Card>
 
-      <ModuleWorkflowTabs defaultTab={defaultTab} tabs={TASK_COMMAND_CENTER_TABS} className="gap-4">
+      <ModuleWorkflowTabs
+        value={activeTab}
+        onValueChange={(next) => setActiveTab(next as TaskCommandCenterTab)}
+        tabs={TASK_COMMAND_CENTER_TABS}
+        className="gap-4"
+      >
         {TASK_COMMAND_CENTER_TABS.map((tab) => {
           const tabTasks = filterTasksForTab(filteredTasks, tab.value)
 
           return (
           <ModuleTabPanel key={tab.value} value={tab.value}>
-            {tab.value === "by-campaign" ? (
-              groupTasksByCampaign(tabTasks).length ? (
-                <div className="space-y-4">
-                  {groupTasksByCampaign(tabTasks).map((group) => (
-                    <Card key={group.campaignId} className={RECENT_RECORDS_CARD_CLASS}>
-                      <CardHeader className="pb-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div>
-                            <CardTitle className="text-base">{group.campaignName}</CardTitle>
-                            <CardDescription>
-                              {group.completed}/{group.total} tasks complete
-                            </CardDescription>
-                          </div>
-                          <Link
-                            href={group.href}
-                            className={buttonVariants({ size: "sm", variant: "outline" })}
-                          >
-                            Open Campaign
-                            <ArrowRight className="size-4" />
-                          </Link>
+            {tab.value === "campaigns" && groupTasksByCampaign(tabTasks).length > 1 ? (
+              <div className="space-y-4">
+                {groupTasksByCampaign(tabTasks).map((group) => (
+                  <Card key={group.campaignId} className={RECENT_RECORDS_CARD_CLASS}>
+                    <CardHeader className="pb-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <CardTitle className="text-base">{group.campaignName}</CardTitle>
+                          <CardDescription>
+                            {group.completed}/{group.total} tasks complete
+                          </CardDescription>
                         </div>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        {group.tasks.map((task) => (
-                          <TaskRow
-                            key={`${task.campaignId}:${task.taskId}`}
-                            task={task}
-                            onToggle={handleToggle}
-                            updating={updatingId === `${task.campaignId}:${task.taskId}`}
-                          />
-                        ))}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <TaskList
-                  tasks={[]}
-                  tab="by-campaign"
-                  onToggle={handleToggle}
-                  updatingId={updatingId}
-                />
-              )
-            ) : tab.value === "by-priority" ? (
-              groupTasksByPriority(tabTasks).length ? (
-                <div className="space-y-4">
-                  {groupTasksByPriority(tabTasks).map((group) => (
-                    <Card key={group.priority} className={RECENT_RECORDS_CARD_CLASS}>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-base">{group.priority}</CardTitle>
-                        <CardDescription>{group.tasks.length} task(s)</CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        {group.tasks.map((task) => (
-                          <TaskRow
-                            key={`${task.campaignId}:${task.taskId}`}
-                            task={task}
-                            onToggle={handleToggle}
-                            updating={updatingId === `${task.campaignId}:${task.taskId}`}
-                          />
-                        ))}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <TaskList
-                  tasks={[]}
-                  tab="by-priority"
-                  onToggle={handleToggle}
-                  updatingId={updatingId}
-                />
-              )
+                        <Link
+                          href={group.href}
+                          className={buttonVariants({ size: "sm", variant: "outline" })}
+                        >
+                          Open Campaign
+                          <ArrowRight className="size-4" />
+                        </Link>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {group.tasks.map((task) => (
+                        <TaskRow
+                          key={taskRowKey(task)}
+                          task={task}
+                          onToggle={handleToggle}
+                          updating={updatingId === taskRowKey(task)}
+                        />
+                      ))}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             ) : (
               <TaskList
                 tasks={tabTasks}

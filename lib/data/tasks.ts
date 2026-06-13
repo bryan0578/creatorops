@@ -1,28 +1,45 @@
 import { parseDashboardDate, priorityBadgeClass } from "@/lib/dashboard"
+import type { GlobalTaskRecord } from "@/lib/data/global-tasks"
 import type { CampaignRecord, CampaignTask, CampaignTaskStatus } from "@/lib/types"
 
-export type NormalizedTaskStatus = "completed" | "in-progress" | "todo" | "blocked"
+export type NormalizedTaskStatus = "completed" | "in-progress" | "todo" | "blocked" | "waiting"
 
-export type WorkspaceTaskSource = "Campaign"
+export type WorkspaceTaskSource = "Campaign" | "Global"
+
+export interface WorkspaceTaskLink {
+  label: string
+  href: string
+}
 
 export interface WorkspaceTask {
   taskId: string
   taskIndex: number
+  globalTaskId: string
   title: string
   description: string
   status: NormalizedTaskStatus
-  rawStatus: CampaignTaskStatus
+  rawStatus: string
   priority: string
   dueDate: string
   dueDateTs: number | null
+  module: string
+  taskType: string
+  artistName: string
   campaignId: string
   campaignName: string
   campaignType: string
   campaignPriority: string
-  artistName: string
+  songConceptId: string
   songTitle: string
+  productId: string
   productName: string
+  assetId: string
+  integrationType: string
+  sourceRecordType: string
+  sourceRecordId: string
+  tags: string[]
   href: string
+  links: WorkspaceTaskLink[]
   source: WorkspaceTaskSource
 }
 
@@ -31,6 +48,9 @@ export interface WorkspaceTaskFilters {
   campaignId: string
   priority: string
   status: string
+  taskType: string
+  module: string
+  artistName: string
   dueFrom: string
   dueTo: string
   showCompleted: boolean
@@ -46,16 +66,31 @@ export interface WorkspaceTaskSummary {
 }
 
 export const TASK_COMMAND_CENTER_TABS = [
-  { value: "today", label: "Today" },
-  { value: "upcoming", label: "Upcoming" },
-  { value: "overdue", label: "Overdue" },
-  { value: "by-campaign", label: "By Campaign" },
-  { value: "by-priority", label: "By Priority" },
-  { value: "completed", label: "Completed" },
   { value: "all", label: "All Tasks" },
+  { value: "upcoming", label: "Upcoming" },
+  { value: "artist-setup", label: "Artist Setup" },
+  { value: "campaigns", label: "Campaigns" },
+  { value: "google-drive", label: "Google Drive" },
+  { value: "assets", label: "Assets" },
+  { value: "done", label: "Done" },
 ] as const
 
 export type TaskCommandCenterTab = (typeof TASK_COMMAND_CENTER_TABS)[number]["value"]
+
+export const TASK_TAB_ALIASES: Record<string, TaskCommandCenterTab> = {
+  all: "all",
+  upcoming: "upcoming",
+  "artist-setup": "artist-setup",
+  campaigns: "campaigns",
+  "by-campaign": "campaigns",
+  "google-drive": "google-drive",
+  assets: "assets",
+  done: "done",
+  completed: "done",
+  today: "upcoming",
+  overdue: "all",
+  "by-priority": "all",
+}
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
@@ -70,13 +105,18 @@ export function normalizeTaskStatus(status: string | undefined | null): Normaliz
     value === "done" ||
     value === "completed" ||
     value === "complete" ||
-    value === "skipped"
+    value === "skipped" ||
+    value === "archived"
   ) {
     return "completed"
   }
 
   if (value === "in progress" || value === "working" || value === "in-progress") {
     return "in-progress"
+  }
+
+  if (value === "waiting") {
+    return "waiting"
   }
 
   if (value === "blocked") {
@@ -116,7 +156,123 @@ function buildCampaignHref(campaignId: string): string {
 }
 
 function effectivePriority(campaign: CampaignRecord): string {
-  return campaign.priority?.trim() || "No Priority"
+  return campaign.priority?.trim() || "Medium"
+}
+
+export function buildTaskLinks(task: Pick<
+  WorkspaceTask,
+  | "artistName"
+  | "campaignId"
+  | "songConceptId"
+  | "assetId"
+  | "integrationType"
+  | "module"
+  | "taskType"
+  | "href"
+>): WorkspaceTaskLink[] {
+  const links: WorkspaceTaskLink[] = []
+
+  if (task.artistName.trim()) {
+    links.push({
+      label: "Artist Bible",
+      href: `/artist-bible?artist=${encodeURIComponent(task.artistName.trim())}`,
+    })
+    links.push({
+      label: "Lore Manager",
+      href: `/lore?artist=${encodeURIComponent(task.artistName.trim())}`,
+    })
+    links.push({
+      label: "Visual Identity",
+      href: `/visual-identity?artist=${encodeURIComponent(task.artistName.trim())}`,
+    })
+  }
+
+  if (task.songConceptId.trim()) {
+    links.push({
+      label: "Song Concept",
+      href: `/song-vault?recordId=${encodeURIComponent(task.songConceptId.trim())}`,
+    })
+  } else if (task.artistName.trim() && task.taskType === "Song Setup") {
+    links.push({
+      label: "Song Vault",
+      href: `/song-vault?artist=${encodeURIComponent(task.artistName.trim())}`,
+    })
+  }
+
+  if (task.campaignId.trim()) {
+    links.push({
+      label: "Campaign",
+      href: `/campaigns?campaignId=${encodeURIComponent(task.campaignId.trim())}`,
+    })
+  }
+
+  if (task.assetId.trim()) {
+    links.push({
+      label: "Asset",
+      href: `/assets?recordId=${encodeURIComponent(task.assetId.trim())}`,
+    })
+  } else if (task.taskType === "Asset" || task.module === "Asset Library") {
+    links.push({ label: "Asset Library", href: "/assets" })
+  }
+
+  if (
+    task.integrationType === "google-drive" ||
+    task.taskType === "Google Drive" ||
+    task.module === "Google Drive"
+  ) {
+    links.push({ label: "Google Drive", href: "/integrations?tab=google-drive" })
+  }
+
+  if (task.href && !links.some((link) => link.href === task.href)) {
+    links.push({ label: "Open record", href: task.href })
+  }
+
+  return links
+}
+
+export function buildWorkspaceTaskFromGlobal(task: GlobalTaskRecord): WorkspaceTask {
+  const dueDateTs = parseTaskDueDate(task.dueDate)
+  const href = task.campaignId.trim()
+    ? buildCampaignHref(task.campaignId)
+    : task.songConceptId.trim()
+      ? `/song-vault?recordId=${encodeURIComponent(task.songConceptId)}`
+      : task.artistName.trim()
+        ? `/tasks?artist=${encodeURIComponent(task.artistName)}`
+        : "/tasks"
+
+  const workspace: WorkspaceTask = {
+    taskId: task.id,
+    taskIndex: -1,
+    globalTaskId: task.id,
+    title: task.title.trim() || "Untitled task",
+    description: task.description.trim(),
+    status: normalizeTaskStatus(task.status),
+    rawStatus: task.status,
+    priority: task.priority.trim() || "Medium",
+    dueDate: task.dueDate.trim(),
+    dueDateTs,
+    module: task.module,
+    taskType: task.taskType,
+    artistName: task.artistName,
+    campaignId: task.campaignId,
+    campaignName: task.campaignName,
+    campaignType: task.taskType === "Campaign" ? "Campaign" : "",
+    campaignPriority: task.priority,
+    songConceptId: task.songConceptId,
+    songTitle: task.songTitle,
+    productId: task.productId,
+    productName: "",
+    assetId: task.assetId,
+    integrationType: task.integrationType,
+    sourceRecordType: task.sourceRecordType,
+    sourceRecordId: task.sourceRecordId,
+    tags: task.tags,
+    href,
+    links: [],
+    source: "Global",
+  }
+  workspace.links = buildTaskLinks(workspace)
+  return workspace
 }
 
 export function buildWorkspaceTask(
@@ -126,10 +282,12 @@ export function buildWorkspaceTask(
 ): WorkspaceTask {
   const taskId = deriveTaskId(campaign.id, task, index)
   const dueDateTs = parseTaskDueDate(task.dueDate)
+  const href = buildCampaignHref(campaign.id)
 
-  return {
+  const workspace: WorkspaceTask = {
     taskId,
     taskIndex: index,
+    globalTaskId: "",
     title: task.title.trim() || "Untitled task",
     description: task.description.trim(),
     status: normalizeTaskStatus(task.status),
@@ -137,16 +295,28 @@ export function buildWorkspaceTask(
     priority: effectivePriority(campaign),
     dueDate: task.dueDate.trim(),
     dueDateTs,
+    module: "Campaign Builder",
+    taskType: "Campaign",
+    artistName: campaign.artistName,
     campaignId: campaign.id,
     campaignName: campaign.campaignName.trim() || "Untitled campaign",
     campaignType: campaign.campaignType,
     campaignPriority: campaign.priority,
-    artistName: campaign.artistName,
+    songConceptId: "",
     songTitle: campaign.songTitle,
+    productId: "",
     productName: campaign.productName,
-    href: buildCampaignHref(campaign.id),
+    assetId: "",
+    integrationType: "",
+    sourceRecordType: "campaign-task",
+    sourceRecordId: taskId,
+    tags: ["campaign"],
+    href,
+    links: [],
     source: "Campaign",
   }
+  workspace.links = buildTaskLinks(workspace)
+  return workspace
 }
 
 export function buildWorkspaceTasks(campaigns: CampaignRecord[]): WorkspaceTask[] {
@@ -159,6 +329,35 @@ export function buildWorkspaceTasks(campaigns: CampaignRecord[]): WorkspaceTask[
     })
   }
 
+  return sortWorkspaceTasks(tasks)
+}
+
+export function mergeWorkspaceTasks(
+  campaigns: CampaignRecord[],
+  globalTasks: GlobalTaskRecord[],
+): WorkspaceTask[] {
+  const syncedCampaignKeys = new Set<string>()
+  for (const task of globalTasks) {
+    if (task.sourceRecordType === "campaign-task" && task.campaignId && task.sourceRecordId) {
+      syncedCampaignKeys.add(`${task.campaignId}:${task.sourceRecordId}`)
+    }
+  }
+
+  const merged: WorkspaceTask[] = globalTasks.map(buildWorkspaceTaskFromGlobal)
+
+  for (const campaign of campaigns) {
+    campaign.tasks.forEach((task, index) => {
+      if (!task.title?.trim() && !task.description?.trim()) return
+      const sourceId = deriveTaskId(campaign.id, task, index)
+      if (syncedCampaignKeys.has(`${campaign.id}:${sourceId}`)) return
+      merged.push(buildWorkspaceTask(campaign, task, index))
+    })
+  }
+
+  return sortWorkspaceTasks(merged)
+}
+
+function sortWorkspaceTasks(tasks: WorkspaceTask[]): WorkspaceTask[] {
   return tasks.sort((a, b) => {
     const dueA = a.dueDateTs ?? Number.MAX_SAFE_INTEGER
     const dueB = b.dueDateTs ?? Number.MAX_SAFE_INTEGER
@@ -170,17 +369,19 @@ export function buildWorkspaceTasks(campaigns: CampaignRecord[]): WorkspaceTask[
 export function getWorkspaceTaskSummary(tasks: WorkspaceTask[]): WorkspaceTaskSummary {
   return {
     total: tasks.length,
-    today: filterTasksForTab(tasks, "today").length,
+    today: filterTasksForTab(tasks, "upcoming").filter((task) => isDueToday(task)).length,
     upcoming: filterTasksForTab(tasks, "upcoming").length,
-    overdue: filterTasksForTab(tasks, "overdue").length,
-    completed: filterTasksForTab(tasks, "completed").length,
+    overdue: tasks.filter((task) => isOverdueTask(task)).length,
+    completed: filterTasksForTab(tasks, "done").length,
     inProgress: tasks.filter((task) => task.status === "in-progress").length,
   }
 }
 
 export function getCampaignContextLabel(task: WorkspaceTask): string {
-  const parts = [task.artistName, task.songTitle, task.productName].filter(Boolean)
-  return parts.join(" · ") || task.campaignType || "Campaign"
+  const parts = [task.artistName, task.songTitle, task.productName, task.module, task.taskType].filter(
+    Boolean,
+  )
+  return parts.join(" · ") || task.campaignType || "Task"
 }
 
 function isDueToday(task: WorkspaceTask, now = new Date()): boolean {
@@ -188,7 +389,7 @@ function isDueToday(task: WorkspaceTask, now = new Date()): boolean {
   return task.dueDateTs >= startOfDay(now) && task.dueDateTs <= endOfDay(now)
 }
 
-function isOverdueTask(task: WorkspaceTask, now = new Date()): boolean {
+export function isOverdueTask(task: WorkspaceTask, now = new Date()): boolean {
   if (isTaskCompleted(task)) return false
   if (task.dueDateTs == null) return false
   return task.dueDateTs < startOfDay(now)
@@ -208,29 +409,36 @@ export function filterTasksForTab(
   now = new Date(),
 ): WorkspaceTask[] {
   switch (tab) {
-    case "today": {
-      const dueToday = tasks.filter((task) => isDueToday(task, now) && !isTaskCompleted(task))
-      const inProgressNoDue = tasks.filter(
+    case "upcoming":
+      return tasks.filter(
         (task) =>
           !isTaskCompleted(task) &&
-          task.status === "in-progress" &&
-          task.dueDateTs == null &&
-          !dueToday.some((item) => item.taskId === task.taskId),
+          (isUpcomingTask(task, now) || isDueToday(task, now) || isOverdueTask(task, now)),
       )
-      return [...dueToday, ...inProgressNoDue]
-    }
-    case "upcoming":
-      return tasks.filter((task) => isUpcomingTask(task, now))
-    case "overdue":
-      return tasks.filter((task) => isOverdueTask(task, now))
-    case "completed":
+    case "artist-setup":
+      return tasks.filter(
+        (task) => task.taskType === "Artist Setup" || task.sourceRecordType === "artist-setup",
+      )
+    case "campaigns":
+      return tasks.filter(
+        (task) => task.taskType === "Campaign" || Boolean(task.campaignId.trim()),
+      )
+    case "google-drive":
+      return tasks.filter(
+        (task) =>
+          task.taskType === "Google Drive" ||
+          task.module === "Google Drive" ||
+          task.integrationType === "google-drive",
+      )
+    case "assets":
+      return tasks.filter(
+        (task) => task.taskType === "Asset" || task.module === "Asset Library" || Boolean(task.assetId.trim()),
+      )
+    case "done":
       return tasks.filter((task) => isTaskCompleted(task))
-    case "by-campaign":
-    case "by-priority":
     case "all":
-      return tasks
     default:
-      return tasks
+      return tasks.filter((task) => task.rawStatus.toLowerCase() !== "archived")
   }
 }
 
@@ -251,9 +459,31 @@ export function applyWorkspaceTaskFilters(
       return false
     }
 
+    if (filters.taskType !== "all" && task.taskType !== filters.taskType) {
+      return false
+    }
+
+    if (filters.module !== "all" && task.module !== filters.module) {
+      return false
+    }
+
+    if (
+      filters.artistName !== "all" &&
+      task.artistName.trim().toLowerCase() !== filters.artistName.trim().toLowerCase()
+    ) {
+      return false
+    }
+
     if (filters.status !== "all") {
       if (filters.status === "completed" && !isTaskCompleted(task)) return false
-      if (filters.status !== "completed" && task.status !== filters.status) return false
+      if (filters.status === "overdue" && !isOverdueTask(task)) return false
+      if (
+        filters.status !== "completed" &&
+        filters.status !== "overdue" &&
+        task.status !== filters.status
+      ) {
+        return false
+      }
     }
 
     if (filters.dueFrom) {
@@ -281,8 +511,11 @@ export function applyWorkspaceTaskFilters(
       task.artistName,
       task.songTitle,
       task.productName,
+      task.module,
+      task.taskType,
       task.dueDate,
       task.rawStatus,
+      ...task.tags,
     ]
       .join(" ")
       .toLowerCase()
@@ -295,13 +528,14 @@ export function groupTasksByCampaign(tasks: WorkspaceTask[]) {
   const map = new Map<string, { campaignName: string; href: string; tasks: WorkspaceTask[] }>()
 
   for (const task of tasks) {
+    if (!task.campaignId) continue
     const existing = map.get(task.campaignId)
     if (existing) {
       existing.tasks.push(task)
     } else {
       map.set(task.campaignId, {
-        campaignName: task.campaignName,
-        href: task.href,
+        campaignName: task.campaignName || "Untitled campaign",
+        href: task.href || buildCampaignHref(task.campaignId),
         tasks: [task],
       })
     }
@@ -323,7 +557,7 @@ export function groupTasksByPriority(tasks: WorkspaceTask[]) {
   const map = new Map<string, WorkspaceTask[]>()
 
   for (const task of tasks) {
-    const key = task.priority || "No Priority"
+    const key = task.priority || "Medium"
     const list = map.get(key) ?? []
     list.push(task)
     map.set(key, list)
@@ -347,6 +581,8 @@ export function taskStatusBadgeClass(status: NormalizedTaskStatus): string {
       return "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300"
     case "in-progress":
       return "border-primary/40 bg-primary/10 text-primary"
+    case "waiting":
+      return "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
     case "blocked":
       return "border-destructive/40 bg-destructive/10 text-destructive"
     default:
@@ -357,9 +593,11 @@ export function taskStatusBadgeClass(status: NormalizedTaskStatus): string {
 export function taskStatusLabel(status: NormalizedTaskStatus): string {
   switch (status) {
     case "completed":
-      return "Completed"
+      return "Done"
     case "in-progress":
       return "In Progress"
+    case "waiting":
+      return "Waiting"
     case "blocked":
       return "Blocked"
     default:
@@ -380,7 +618,7 @@ export function campaignStatusForNormalizedStatus(
   }
 }
 
-export function nextTaskStatusOnToggle(task: WorkspaceTask): CampaignTaskStatus {
+export function nextTaskStatusOnToggle(task: WorkspaceTask): string {
   return isTaskCompleted(task) ? "To Do" : "Done"
 }
 

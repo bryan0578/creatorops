@@ -7,8 +7,10 @@ import {
   Check,
   ChevronDown,
   LayoutDashboard,
+  ListChecks,
   Megaphone,
   Music2,
+  Orbit,
   Search,
   Settings,
   ShieldCheck,
@@ -51,6 +53,8 @@ import {
 const GLOBAL_NAV: CreatorOpsNavItem[] = [
   { label: "Control Center", href: "/", icon: LayoutDashboard },
   { label: "Global Search", href: "/search", icon: Search },
+  { label: "Task Command Center", href: "/tasks", icon: ListChecks },
+  { label: "Artist Universe", href: "/artist-universe", icon: Orbit },
   { label: "Campaigns", href: "/campaigns", icon: Megaphone },
   { label: "Settings", href: "/settings", icon: Settings },
 ]

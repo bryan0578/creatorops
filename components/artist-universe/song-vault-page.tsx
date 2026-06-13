@@ -22,7 +22,11 @@ import {
 } from "@/lib/actions/song-concepts"
 import { getStoryArcById } from "@/lib/actions/story-arcs"
 import { getVisualIdentityById, getVisualIdentityForArtist } from "@/lib/actions/visual-identity"
-import type { ArtistBibleRecord, SongConceptRecord } from "@/lib/artist-universe/types"
+import { getAssets } from "@/lib/actions/assets"
+import { getLoreEntries } from "@/lib/actions/lore"
+import { createReleaseArchiveTask } from "@/lib/actions/global-tasks"
+import { getYouTubeVideos } from "@/lib/actions/youtube-integration"
+import type { ArtistBibleRecord, LoreEntryRecord, SongConceptRecord } from "@/lib/artist-universe/types"
 import {
   buildSongContextFromArtistBible,
   buildSongContextFromLore,
@@ -39,12 +43,22 @@ import {
   tabEmptyState,
 } from "@/lib/artist-universe/song-vault-prefill"
 import {
+  buildPublishedSongSummary,
+  suggestYouTubeVideoForSong,
+} from "@/lib/artist-universe/published-songs"
+import type { AssetRecord, YouTubeVideoRecord } from "@/lib/types"
+import {
   formatListForInput,
   formatTagsForInput,
   normalizeTagsForDisplay,
   parseListFromInput,
   parseTagsFromInput,
 } from "@/lib/artist-universe/utils"
+import {
+  PublishedSongCard,
+  PublishedSongsEmptyState,
+} from "@/components/artist-universe/published-song-card"
+import { RelatedLinksPanel } from "@/components/related-records/related-links-panel"
 import { ModulePageHeader } from "@/components/app-shell"
 import { EmptyState } from "@/components/empty-state"
 import { useModuleTab, useRecordDeepLink } from "@/components/artist-universe/shared"
@@ -66,8 +80,10 @@ const TABS = [
   { value: "writing", label: "Writing" },
   { value: "prompting", label: "Prompting" },
   { value: "planned", label: "Planned Releases" },
+  { value: "published", label: "Published Songs" },
   { value: "visual", label: "Visual Ideas" },
   { value: "products", label: "Product Tie-ins" },
+  { value: "related", label: "Related" },
   { value: "ai", label: "AI Prompt Context" },
 ] as const
 
@@ -79,11 +95,14 @@ const TAB_ALIASES: Record<string, string> = {
   prompting: "prompting",
   planned: "planned",
   "planned-releases": "planned",
+  published: "published",
+  "published-songs": "published",
   visual: "visual",
   visuals: "visual",
   "visual-ideas": "visual",
   products: "products",
   "product-tie-ins": "products",
+  related: "related",
   ai: "ai",
   "ai-prompt-context": "ai",
 }
@@ -117,6 +136,14 @@ function formFromRecord(record: SongConceptRecord): SongConceptFormState {
     qualityReviewId: record.qualityReviewId,
     tags: formatTagsForInput(record.tags),
     notes: record.notes,
+    publishedUrl: record.publishedUrl,
+    publishedPlatform: record.publishedPlatform,
+    publishedDate: record.publishedDate,
+    releaseStatus: record.releaseStatus,
+    performanceNotes: record.performanceNotes,
+    futureMerchIdeas: record.futureMerchIdeas,
+    futureCampaignIdeas: record.futureCampaignIdeas,
+    relatedYouTubeVideoId: record.relatedYouTubeVideoId,
   }
 }
 
@@ -149,6 +176,14 @@ function recordFromForm(
     qualityReviewId: form.qualityReviewId.trim(),
     tags: parseTagsFromInput(form.tags),
     notes: form.notes.trim(),
+    publishedUrl: form.publishedUrl.trim(),
+    publishedPlatform: form.publishedPlatform.trim(),
+    publishedDate: form.publishedDate.trim(),
+    releaseStatus: form.releaseStatus.trim(),
+    performanceNotes: form.performanceNotes.trim(),
+    futureMerchIdeas: form.futureMerchIdeas.trim(),
+    futureCampaignIdeas: form.futureCampaignIdeas.trim(),
+    relatedYouTubeVideoId: form.relatedYouTubeVideoId.trim(),
   }
 }
 
@@ -176,11 +211,13 @@ function CompactTags({ tags, max = 4 }: { tags: string[]; max?: number }) {
 function SongCard({
   concept,
   highlighted,
+  onSelect,
   onEdit,
   onRefresh,
 }: {
   concept: SongConceptRecord
   highlighted?: boolean
+  onSelect: (concept: SongConceptRecord) => void
   onEdit: (concept: SongConceptRecord) => void
   onRefresh: () => Promise<void>
 }) {
@@ -190,17 +227,33 @@ function SongCard({
   return (
     <Card
       className={cn(
-        "border-border/80",
-        highlighted ? "border-primary/50 ring-1 ring-primary/25" : undefined,
+        "border-border/80 transition-colors",
+        highlighted ? "border-primary/50 ring-1 ring-primary/25 bg-primary/5" : undefined,
       )}
     >
       <CardHeader className="gap-1.5 p-3 pb-1">
         <div className="flex items-start justify-between gap-2">
-          <CardTitle className="line-clamp-2 text-sm font-semibold leading-snug">{displayTitle}</CardTitle>
-          <Button size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs" onClick={() => onEdit(concept)}>
-            <Pencil className="mr-1 size-3" />
-            Edit
-          </Button>
+          <button
+            type="button"
+            className="min-w-0 flex-1 rounded-md text-left transition-colors hover:text-primary"
+            onClick={() => onSelect(concept)}
+          >
+            <CardTitle className="line-clamp-2 text-sm font-semibold leading-snug">{displayTitle}</CardTitle>
+          </button>
+          <div className="flex shrink-0 gap-1">
+            <Button
+              size="sm"
+              variant={highlighted ? "secondary" : "outline"}
+              className="h-7 px-2 text-xs"
+              onClick={() => onSelect(concept)}
+            >
+              {highlighted ? "Selected" : "Select"}
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs" onClick={() => onEdit(concept)}>
+              <Pencil className="mr-1 size-3" />
+              Edit
+            </Button>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
           <span>{concept.artistName}</span>
@@ -397,8 +450,12 @@ function TabPanelContent({
   contextArtist,
   onNew,
   onStarterConcepts,
+  onSelect,
   onEdit,
   onRefresh,
+  assets,
+  loreEntries,
+  youtubeVideos,
 }: {
   tabKey: string
   concepts: SongConceptRecord[]
@@ -407,17 +464,47 @@ function TabPanelContent({
   contextArtist: string
   onNew: () => void
   onStarterConcepts: () => void
+  onSelect: (concept: SongConceptRecord) => void
   onEdit: (concept: SongConceptRecord) => void
   onRefresh: () => Promise<void>
+  assets: AssetRecord[]
+  loreEntries: LoreEntryRecord[]
+  youtubeVideos: YouTubeVideoRecord[]
 }) {
   if (tabKey === "ai") {
     const concept = focusedId ? concepts.find((c) => c.id === focusedId) ?? null : null
     return <AiPromptPanel concept={concept} artistName={contextArtist} />
   }
 
+  if (tabKey === "related") {
+    const concept = focusedId ? concepts.find((c) => c.id === focusedId) ?? null : null
+    if (!concept) {
+      return (
+        <EmptyState
+          icon={Music}
+          title="Select a song concept"
+          description="Choose a song concept above to view and manage related lore, assets, campaigns, and videos."
+        />
+      )
+    }
+    return (
+      <RelatedLinksPanel
+        sourceType="SongConcept"
+        sourceId={concept.id}
+        artistName={concept.artistName}
+        songTitle={concept.songTitle || concept.title}
+        onLinksChanged={() => void onRefresh()}
+      />
+    )
+  }
+
   const visible = filterSongConceptForTab(concepts, tabKey)
   const empty = tabEmptyState(tabKey)
   const tabLabel = TABS.find((t) => t.value === tabKey)?.label ?? "Concepts"
+
+  if (tabKey === "published" && visible.length === 0) {
+    return <PublishedSongsEmptyState artistName={contextArtist} onNew={onNew} />
+  }
 
   if (visible.length === 0) {
     return (
@@ -442,15 +529,32 @@ function TabPanelContent({
         </p>
       ) : null}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {visible.map((concept) => (
-          <SongCard
-            key={concept.id}
-            concept={concept}
-            highlighted={focusedId === concept.id}
-            onEdit={onEdit}
-            onRefresh={onRefresh}
-          />
-        ))}
+        {visible.map((concept) =>
+          tabKey === "published" ? (
+            <PublishedSongCard
+              key={concept.id}
+              summary={buildPublishedSongSummary(concept, loreEntries, assets, youtubeVideos)}
+              assets={assets}
+              highlighted={focusedId === concept.id}
+              onSelect={() => onSelect(concept)}
+              onEdit={() => onEdit(concept)}
+              onCreateReleaseArchiveTask={() =>
+                void createReleaseArchiveTask(concept.artistName, concept.songTitle || concept.title)
+                  .then((result) => toast.success(result.message))
+                  .then(onRefresh)
+              }
+            />
+          ) : (
+            <SongCard
+              key={concept.id}
+              concept={concept}
+              highlighted={focusedId === concept.id}
+              onSelect={() => onSelect(concept)}
+              onEdit={onEdit}
+              onRefresh={onRefresh}
+            />
+          ),
+        )}
       </div>
     </div>
   )
@@ -470,6 +574,9 @@ export function SongVaultPage() {
 
   const [items, setItems] = React.useState<SongConceptRecord[]>([])
   const [artistBibles, setArtistBibles] = React.useState<ArtistBibleRecord[]>([])
+  const [assets, setAssets] = React.useState<AssetRecord[]>([])
+  const [loreEntries, setLoreEntries] = React.useState<LoreEntryRecord[]>([])
+  const [youtubeVideos, setYoutubeVideos] = React.useState<YouTubeVideoRecord[]>([])
   const [loading, setLoading] = React.useState(true)
   const [loadError, setLoadError] = React.useState<string | null>(null)
   const [form, setForm] = React.useState<SongConceptFormState>(() => emptySongConceptForm(artistQuery))
@@ -519,9 +626,18 @@ export function SongVaultPage() {
     setLoading(true)
     setLoadError(null)
     try {
-      const [concepts, bibles] = await Promise.all([getSongConcepts(), getArtistBibles()])
+      const [concepts, bibles, allAssets, allLore, allVideos] = await Promise.all([
+        getSongConcepts(),
+        getArtistBibles(),
+        getAssets(),
+        getLoreEntries(),
+        getYouTubeVideos(),
+      ])
       setItems(concepts)
       setArtistBibles(bibles)
+      setAssets(allAssets)
+      setLoreEntries(allLore)
+      setYoutubeVideos(allVideos)
     } catch (e) {
       const message = e instanceof Error ? e.message : "Failed to load song concepts"
       setLoadError(message)
@@ -714,6 +830,24 @@ export function SongVaultPage() {
     }
   }
 
+  function selectConcept(concept: SongConceptRecord) {
+    setSelectedId(concept.id)
+    setEditorMode("closed")
+    setEditingId(null)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("recordId", concept.id)
+    params.set("artist", concept.artistName)
+    params.set("tab", tab)
+    router.replace(`/song-vault?${params.toString()}`, { scroll: false })
+  }
+
+  function clearSelection() {
+    setSelectedId(null)
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete("recordId")
+    router.replace(`/song-vault?${params.toString()}`, { scroll: false })
+  }
+
   function openEdit(concept: SongConceptRecord) {
     setForm(formFromRecord(concept))
     setEditingId(concept.id)
@@ -784,6 +918,38 @@ export function SongVaultPage() {
 
   const editorOpen = editorMode !== "closed"
   const contextArtist = artistQuery || focused?.artistName || form.artistName
+  const artistYoutubeVideos = React.useMemo(
+    () =>
+      youtubeVideos.filter(
+        (video) =>
+          !form.artistName.trim() ||
+          video.artistName.toLowerCase() === form.artistName.trim().toLowerCase() ||
+          video.title.toLowerCase().includes(form.artistName.trim().toLowerCase()),
+      ),
+    [youtubeVideos, form.artistName],
+  )
+  const suggestedYouTubeVideo = React.useMemo(() => {
+    if (editorMode !== "edit" || !editingId) return null
+    const concept = items.find((item) => item.id === editingId)
+    if (!concept) return null
+    return suggestYouTubeVideoForSong(concept, artistYoutubeVideos)
+  }, [editorMode, editingId, items, artistYoutubeVideos])
+  const filteredLore = React.useMemo(() => {
+    if (!contextArtist) return loreEntries
+    return loreEntries.filter((entry) => entry.artistName.toLowerCase() === contextArtist.toLowerCase())
+  }, [loreEntries, contextArtist])
+  const filteredAssets = React.useMemo(() => {
+    if (!contextArtist) return assets
+    return assets.filter((asset) => asset.artistName.toLowerCase() === contextArtist.toLowerCase())
+  }, [assets, contextArtist])
+  const filteredYoutube = React.useMemo(() => {
+    if (!contextArtist) return youtubeVideos
+    return youtubeVideos.filter(
+      (video) =>
+        video.artistName.toLowerCase() === contextArtist.toLowerCase() ||
+        video.title.toLowerCase().includes(contextArtist.toLowerCase()),
+    )
+  }, [youtubeVideos, contextArtist])
 
   return (
     <ModuleShell>
@@ -859,13 +1025,39 @@ export function SongVaultPage() {
       ) : null}
 
       {focused && !editorOpen ? (
-        <Card className="border-primary/30">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">
-              Selected: {focused.songTitle || focused.title}
-            </CardTitle>
-            <CardDescription>{focused.conceptSummary || "No summary"}</CardDescription>
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader className="flex flex-col gap-3 pb-2 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 space-y-1">
+              <CardTitle className="text-base">
+                Selected: {focused.songTitle || focused.title}
+              </CardTitle>
+              <CardDescription>{focused.conceptSummary || "No summary"}</CardDescription>
+              <p className="text-xs text-muted-foreground">
+                Use Related or AI Prompt Context tabs without opening the editor.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 shrink-0">
+              <Button size="sm" variant="outline" onClick={() => openEdit(focused)}>
+                <Pencil className="mr-1 size-3.5" />
+                Edit
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setTab("related")}>
+                Related
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setTab("ai")}>
+                AI Context
+              </Button>
+              <Button size="sm" variant="ghost" onClick={clearSelection}>
+                Clear
+              </Button>
+            </div>
           </CardHeader>
+        </Card>
+      ) : !focused && !editorOpen && (tab === "related" || tab === "ai") ? (
+        <Card className="border-dashed border-border/80">
+          <CardContent className="py-3 text-sm text-muted-foreground">
+            Select a song concept from any tab to use {tab === "related" ? "Related links" : "AI prompt context"}.
+          </CardContent>
         </Card>
       ) : null}
 
@@ -951,6 +1143,8 @@ export function SongVaultPage() {
             onUseArtistContext={() => void handleUseArtistContext()}
             hasArtistContext={hasArtistContext}
             titleHelper={titleHelper}
+            youtubeVideos={artistYoutubeVideos}
+            suggestedYouTubeVideo={suggestedYouTubeVideo}
           />
           <Card className="border-border/80">
             <CardContent className="flex justify-end gap-2 py-4">
@@ -981,8 +1175,12 @@ export function SongVaultPage() {
                     contextArtist={contextArtist}
                     onNew={openCreate}
                     onStarterConcepts={() => void handleStarterConcepts()}
+                    onSelect={selectConcept}
                     onEdit={openEdit}
                     onRefresh={load}
+                    assets={filteredAssets}
+                    loreEntries={filteredLore}
+                    youtubeVideos={filteredYoutube}
                   />
                 ) : null}
               </ModuleTabPanel>

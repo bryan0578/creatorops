@@ -74,6 +74,9 @@ export async function upsertCampaign(record: CampaignRecord): Promise<CampaignRe
       update: campaignToPrismaUpdate(normalized),
     })
     revalidateCampaignRoutes()
+    void import("@/lib/actions/global-tasks").then((mod) =>
+      mod.syncCampaignTasksToGlobal(normalized).catch(() => undefined),
+    )
     return prismaCampaignToCampaignRecord(row)
   } catch (error) {
     throw wrapCampaignDbError(error, "Could not save campaign.")

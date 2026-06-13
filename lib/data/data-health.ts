@@ -9,6 +9,7 @@ import { scanFeedbackLoopWarnings } from "@/lib/data/feedback-loop-health"
 import { scanCreatorAgentsWarnings } from "@/lib/data/agents-health"
 import { scanCommerceWarnings } from "@/lib/data/commerce-health"
 import { scanArtistUniverseWarnings } from "@/lib/data/artist-universe-health"
+import { scanRelatedRecordWarnings } from "@/lib/data/related-records-health"
 import type {
   ArtistBibleRecord,
   LoreEntryRecord,
@@ -2951,6 +2952,7 @@ export function buildDataHealthReport(
   safeScan("Creator AI Agents", issues, () => scanCreatorAgentsWarnings(input, issues))
   safeScan("Commerce / Product Gaps", issues, () => scanCommerceWarnings(input, issues))
   safeScan("Artist Universe Gaps", issues, () => scanArtistUniverseWarnings(input, issues))
+  safeScan("Related record links", issues, () => scanRelatedRecordWarnings(input, issues))
   safeScan("JSON / data issues", issues, () => scanJsonIssues(input, issues))
 
   return {

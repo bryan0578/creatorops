@@ -6,6 +6,10 @@ import type {
   DriveFolder as PrismaDriveFolder,
 } from "@/lib/generated/prisma/client"
 import {
+  classifyDriveFileByPath,
+  getDrivePathFromRawJson,
+} from "@/lib/drive/classify"
+import {
   driveFileUrl,
   driveFolderUrl,
   type DriveApiFile,
@@ -305,9 +309,16 @@ export function apiFileToDriveFileRecord(
   file: DriveApiFile,
   folderRecord: DriveFolderRecord,
   existing?: Partial<DriveFileRecord>,
+  drivePath?: string,
 ): DriveFileRecord {
   const now = Date.now()
   const webViewLink = file.webViewLink ?? driveFileUrl(file.id)
+  const path = drivePath ?? getDrivePathFromRawJson(existing?.rawJson ?? "")
+  const classification = classifyDriveFileByPath(file.name, path)
+  const mergedTags = [
+    ...new Set([...(existing?.tags ?? ["google-drive"]), ...classification.tags]),
+  ]
+
   return normalizeDriveFileRecord({
     id: existing?.id ?? createId(),
     driveFileId: file.id,
@@ -321,16 +332,23 @@ export function apiFileToDriveFileRecord(
     modifiedTime: file.modifiedTime ? Date.parse(file.modifiedTime) : null,
     folderId: folderRecord.id,
     driveFolderId: folderRecord.driveFolderId,
-    campaignId: folderRecord.campaignId,
-    campaignName: folderRecord.campaignName,
-    artistName: folderRecord.artistName,
-    songTitle: folderRecord.songTitle,
-    productName: folderRecord.productName,
+    campaignId: folderRecord.campaignId || existing?.campaignId || "",
+    campaignName:
+      classification.campaignName ||
+      folderRecord.campaignName ||
+      existing?.campaignName ||
+      "",
+    artistName:
+      classification.artistName || folderRecord.artistName || existing?.artistName || "",
+    songTitle:
+      classification.songTitle || folderRecord.songTitle || existing?.songTitle || "",
+    productName: folderRecord.productName || existing?.productName || "",
     assetId: existing?.assetId ?? "",
-    notes: existing?.notes ?? "",
-    tags: existing?.tags ?? ["google-drive"],
+    detectedAssetType: classification.assetType,
+    notes: path ? `Drive path: ${path}` : existing?.notes ?? "",
+    tags: mergedTags,
     status: existing?.status ?? "Active",
-    rawJson: JSON.stringify(file),
+    rawJson: JSON.stringify({ ...file, drivePath: path }),
     lastSyncedAt: now,
     updatedAt: now,
     createdAt: existing?.createdAt ?? now,
@@ -343,18 +361,28 @@ export function driveFileToAssetRecord(
 ): AssetRecord {
   const now = Date.now()
   const url = file.webViewLink || file.url
+  const drivePath = getDrivePathFromRawJson(file.rawJson)
+  const classification = classifyDriveFileByPath(file.name, drivePath)
+  const pathLine = drivePath ? `Drive path: ${drivePath}` : ""
+  const description =
+    existing?.description ||
+    [pathLine, "Synced from Google Drive."].filter(Boolean).join("\n\n")
+
   return {
     id: existing?.id ?? createId(),
     assetName: file.name,
-    assetType: file.detectedAssetType || detectAssetTypeFromDriveFile(file),
+    assetType:
+      file.detectedAssetType ||
+      classification.assetType ||
+      detectAssetTypeFromDriveFile(file),
     status: "Active",
     campaignId: file.campaignId,
-    campaignName: file.campaignName,
-    artistName: file.artistName,
-    songTitle: file.songTitle,
+    campaignName: file.campaignName || classification.campaignName,
+    artistName: file.artistName || classification.artistName,
+    songTitle: file.songTitle || classification.songTitle,
     productName: file.productName,
     platform: "Google Drive",
-    filePath: "",
+    filePath: drivePath,
     fileUrl: url,
     externalUrl: url,
     sourceTool: "Google Drive",
@@ -365,10 +393,8 @@ export function driveFileToAssetRecord(
     experimentId: existing?.experimentId ?? "",
     analyticsRecordId: existing?.analyticsRecordId ?? "",
     versionLabel: existing?.versionLabel ?? "",
-    tags: [...new Set([...(existing?.tags ?? []), "google-drive"])],
-    description:
-      existing?.description ||
-      `Synced from Google Drive folder ${file.driveFolderId || "unknown"}.`,
+    tags: [...new Set([...(existing?.tags ?? []), ...file.tags, ...classification.tags])],
+    description,
     usageNotes: existing?.usageNotes ?? "",
     rightsNotes: existing?.rightsNotes ?? "",
     notes: existing?.notes || "Synced from Google Drive API.",

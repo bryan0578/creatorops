@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowRight, BookOpen, Sparkles } from "lucide-react"
+import { ArrowRight, BookOpen, ListChecks, Orbit, Sparkles } from "lucide-react"
 
 import { buttonVariants } from "@/components/ui/button"
 import {
@@ -32,6 +32,20 @@ export function ControlCenterOperatingGuide() {
         <Link href="/operating-guide" className={buttonVariants({ size: "sm" })}>
           Start Operating Guide
           <ArrowRight className="size-4" />
+        </Link>
+        <Link
+          href="/artist-universe?artist=PrettyWise"
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+        >
+          <Orbit className="size-4" />
+          Artist Universe
+        </Link>
+        <Link
+          href="/tasks?artist=PrettyWise&tab=artist-setup"
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+        >
+          <ListChecks className="size-4" />
+          PrettyWise Setup Tasks
         </Link>
         <Link
           href="/operating-guide?tab=prettywise"

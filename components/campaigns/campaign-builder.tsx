@@ -96,6 +96,7 @@ import {
 } from "@/components/ui/select"
 import { formatFieldLabel } from "@/lib/ui/labels"
 import { formLabelClassName } from "@/components/ui/form-field"
+import { useSmartDefaultTab } from "@/hooks/use-smart-default-tab"
 
 function formatDate(ts: number) {
   return new Date(ts).toLocaleString(undefined, {

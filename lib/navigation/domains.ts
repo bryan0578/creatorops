@@ -38,6 +38,7 @@ import {
   Video,
   Workflow as WorkflowIcon,
   Zap,
+  Orbit,
 } from "lucide-react"
 
 export type CreatorOpsDomainId =
@@ -92,9 +93,9 @@ const DOMAINS: CreatorOpsDomain[] = [
       "/copilot",
     ],
     navItems: [
+      { label: "Task Command Center", href: "/tasks", icon: ListChecks },
       { label: "Campaigns", href: "/campaigns", icon: Megaphone },
       { label: "Campaign Board", href: "/campaign-board", icon: LayoutGrid },
-      { label: "Tasks", href: "/tasks", icon: ListChecks },
       { label: "Calendar", href: "/calendar", icon: CalendarDays },
       { label: "Campaign Copilot", href: "/copilot", icon: Bot },
       { label: "Automation", href: "/automation", icon: Zap },
@@ -196,8 +197,9 @@ const DOMAINS: CreatorOpsDomain[] = [
     description:
       "Manage AI artists, releases, brand identity, assets, and music projects.",
     icon: Music2,
-    homeHref: "/artist-crm",
+    homeHref: "/artist-universe",
     matchRoutes: [
+      "/artist-universe",
       "/artist-crm",
       "/artist-bible",
       "/lore",
@@ -206,6 +208,8 @@ const DOMAINS: CreatorOpsDomain[] = [
       "/visual-identity",
     ],
     navItems: [
+      { label: "Artist Universe", href: "/artist-universe", icon: Orbit },
+      { label: "Task Command Center", href: "/tasks?domain=artist-ops", icon: ListChecks },
       { label: "Artist CRM", href: "/artist-crm", icon: Users },
       { label: "Artist Bible", href: "/artist-bible", icon: BookOpen },
       { label: "Lore Manager", href: "/lore", icon: ScrollText },
@@ -227,6 +231,8 @@ const DOMAINS: CreatorOpsDomain[] = [
     relatedItems: [
       { label: "Operating Guide", href: "/operating-guide", icon: BookOpen },
       { label: "Set Up PrettyWise", href: "/operating-guide?tab=prettywise", icon: Sparkles },
+      { label: "Artist Universe", href: "/artist-universe?artist=PrettyWise", icon: Orbit },
+      { label: "PrettyWise Setup Tasks", href: "/tasks?artist=PrettyWise&tab=artist-setup", icon: ListChecks },
       { label: "Campaigns", href: "/campaigns", icon: Megaphone },
       { label: "Integrations", href: "/integrations", icon: Link2 },
     ],
@@ -351,6 +357,7 @@ const DOMAINS: CreatorOpsDomain[] = [
     matchRoutes: ["/assets", "/integrations", "/backups"],
     navItems: [
       { label: "Asset Library", href: "/assets", icon: FolderOpen },
+      { label: "Task Command Center", href: "/tasks?tab=google-drive", icon: ListChecks },
       { label: "Integrations", href: "/integrations", icon: Link2 },
       {
         label: "YouTube API",
@@ -398,6 +405,7 @@ const DOMAINS: CreatorOpsDomain[] = [
     ],
     navItems: [
       { label: "Operating Guide", href: "/operating-guide", icon: BookOpen },
+      { label: "Task Command Center", href: "/tasks", icon: ListChecks },
       { label: "Settings", href: "/settings", icon: Settings },
       { label: "Global Search", href: "/search", icon: Search },
       { label: "Activity", href: "/activity", icon: ListChecks },
@@ -470,6 +478,7 @@ const PATH_DOMAIN_RULES: PathDomainRule[] = [
   { path: "/prompts", domainId: "ai-studio" },
   { path: "/presets", domainId: "ai-studio" },
   { path: "/playbooks", domainId: "ai-studio" },
+  { path: "/artist-universe", domainId: "music-artist-ops" },
   { path: "/artist-crm", domainId: "music-artist-ops" },
   { path: "/artist-bible", domainId: "music-artist-ops" },
   { path: "/lore", domainId: "music-artist-ops" },

@@ -67,14 +67,18 @@ export function ModuleWorkflowTabs({
   children: React.ReactNode
   className?: string
 }) {
-  const resolvedDefault = defaultTab ?? tabs[0]?.value ?? ""
-  const rootProps =
-    value !== undefined && onValueChange
-      ? { value, onValueChange }
-      : { defaultValue: resolvedDefault }
+  const fallbackTab = tabs[0]?.value ?? ""
+  const isControlled = value !== undefined && onValueChange !== undefined
+
+  const [uncontrolledTab, setUncontrolledTab] = React.useState(
+    () => defaultTab ?? fallbackTab,
+  )
+
+  const activeTab = isControlled ? value : uncontrolledTab
+  const handleValueChange = isControlled ? onValueChange : setUncontrolledTab
 
   return (
-    <Tabs {...rootProps} className={cn("w-full gap-6", className)}>
+    <Tabs value={activeTab} onValueChange={handleValueChange} className={cn("w-full gap-6", className)}>
       <TabRow>
         {tabs.map((tab) => (
           <TabsTrigger key={tab.value} value={tab.value}>

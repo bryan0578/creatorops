@@ -4,6 +4,8 @@ import * as React from "react"
 import Link from "next/link"
 
 import { SONG_CONCEPT_STATUSES } from "@/lib/artist-universe/types"
+import { PUBLISHED_SONG_PLATFORMS } from "@/lib/artist-universe/published-songs"
+import type { YouTubeVideoRecord } from "@/lib/types"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { FormField, FormTextarea, FORM_HINTS } from "@/components/ui/form-field"
@@ -42,6 +44,14 @@ export type SongConceptFormState = {
   qualityReviewId: string
   tags: string
   notes: string
+  publishedUrl: string
+  publishedPlatform: string
+  publishedDate: string
+  releaseStatus: string
+  performanceNotes: string
+  futureMerchIdeas: string
+  futureCampaignIdeas: string
+  relatedYouTubeVideoId: string
 }
 
 function optionsWithCurrent(standard: readonly string[], current: string): string[] {
@@ -52,6 +62,8 @@ function optionsWithCurrent(standard: readonly string[], current: string): strin
   }
   return [...standard, trimmed]
 }
+
+const SELECT_NONE = "__none__"
 
 function StatusSelect({
   value,
@@ -65,7 +77,7 @@ function StatusSelect({
 
   return (
     <FormField fieldKey="status" required>
-      <Select value={value || undefined} onValueChange={onChange}>
+      <Select value={value.trim() || "Idea"} onValueChange={onChange}>
         <SelectTrigger className="w-full">
           <span>{display}</span>
         </SelectTrigger>
@@ -94,6 +106,8 @@ export function SongConceptForm({
   onUseArtistContext,
   hasArtistContext = false,
   titleHelper,
+  youtubeVideos = [],
+  suggestedYouTubeVideo = null,
 }: {
   values: SongConceptFormState
   onChange: (patch: Partial<SongConceptFormState>) => void
@@ -103,6 +117,8 @@ export function SongConceptForm({
   onUseArtistContext?: () => void
   hasArtistContext?: boolean
   titleHelper?: string
+  youtubeVideos?: YouTubeVideoRecord[]
+  suggestedYouTubeVideo?: YouTubeVideoRecord | null
 }) {
   const set =
     (key: keyof SongConceptFormState) =>
@@ -298,6 +314,121 @@ export function SongConceptForm({
                 <FormTextarea value={values.productTieIn} onChange={set("productTieIn")} rows={2} />
               </FormField>
             </div>
+          </FormGrid>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/80">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Published / Release Archive</CardTitle>
+          <CardDescription>
+            Track already-published songs without requiring a campaign. Published = live somewhere
+            (e.g. YouTube). Released = official release package completed.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FormGrid>
+            <div className="sm:col-span-2">
+              <FormField fieldKey="publishedUrl" hint="YouTube, Spotify, or other live URL.">
+                <Input value={values.publishedUrl} onChange={set("publishedUrl")} placeholder="https://youtube.com/..." />
+              </FormField>
+            </div>
+            <FormField fieldKey="publishedPlatform">
+              <Select
+                value={values.publishedPlatform.trim() || SELECT_NONE}
+                onValueChange={(publishedPlatform) =>
+                  onChange({ publishedPlatform: publishedPlatform === SELECT_NONE ? "" : publishedPlatform })
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <span>{values.publishedPlatform.trim() || "Select platform"}</span>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={SELECT_NONE}>Select platform</SelectItem>
+                  {PUBLISHED_SONG_PLATFORMS.map((platform) => (
+                    <SelectItem key={platform} value={platform}>
+                      {platform}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+            <FormField fieldKey="publishedDate" hint="ISO date or free text (e.g. 2025-03-15).">
+              <Input value={values.publishedDate} onChange={set("publishedDate")} />
+            </FormField>
+            <FormField fieldKey="releaseStatus" hint="Optional release package status (e.g. Released, Live).">
+              <Input value={values.releaseStatus} onChange={set("releaseStatus")} />
+            </FormField>
+            <div className="sm:col-span-2">
+              <FormField fieldKey="performanceNotes">
+                <FormTextarea value={values.performanceNotes} onChange={set("performanceNotes")} rows={3} />
+              </FormField>
+            </div>
+            <div className="sm:col-span-2">
+              <FormField fieldKey="futureMerchIdeas">
+                <FormTextarea value={values.futureMerchIdeas} onChange={set("futureMerchIdeas")} rows={2} />
+              </FormField>
+            </div>
+            <div className="sm:col-span-2">
+              <FormField fieldKey="futureCampaignIdeas">
+                <FormTextarea value={values.futureCampaignIdeas} onChange={set("futureCampaignIdeas")} rows={2} />
+              </FormField>
+            </div>
+            <div className="sm:col-span-2">
+              <FormField fieldKey="relatedYouTubeVideoId" hint="Link a synced YouTube video record (optional).">
+                <Select
+                  value={values.relatedYouTubeVideoId.trim() || SELECT_NONE}
+                  onValueChange={(relatedYouTubeVideoId) => {
+                    if (relatedYouTubeVideoId === SELECT_NONE) {
+                      onChange({ relatedYouTubeVideoId: "" })
+                      return
+                    }
+                    const video = youtubeVideos.find((v) => v.id === relatedYouTubeVideoId)
+                    onChange({
+                      relatedYouTubeVideoId,
+                      ...(video && !values.publishedUrl.trim()
+                        ? { publishedUrl: video.videoUrl, publishedPlatform: "YouTube" }
+                        : {}),
+                    })
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <span>
+                      {values.relatedYouTubeVideoId
+                        ? youtubeVideos.find((v) => v.id === values.relatedYouTubeVideoId)?.title ??
+                          values.relatedYouTubeVideoId
+                        : "Select YouTube video (optional)"}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={SELECT_NONE}>No linked video</SelectItem>
+                    {youtubeVideos.map((video) => (
+                      <SelectItem key={video.id} value={video.id}>
+                        {video.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+            </div>
+            {suggestedYouTubeVideo && !values.relatedYouTubeVideoId ? (
+              <div className="sm:col-span-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() =>
+                    onChange({
+                      relatedYouTubeVideoId: suggestedYouTubeVideo.id,
+                      publishedUrl: values.publishedUrl.trim() || suggestedYouTubeVideo.videoUrl,
+                      publishedPlatform: values.publishedPlatform.trim() || "YouTube",
+                    })
+                  }
+                >
+                  Link suggested video: {suggestedYouTubeVideo.title}
+                </Button>
+              </div>
+            ) : null}
           </FormGrid>
         </CardContent>
       </Card>

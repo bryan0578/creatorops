@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Loader2, Pencil, Plus, ScrollText, Sparkles } from "lucide-react"
+import { Loader2, Music2, Pencil, Plus, ScrollText, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 
 import { getArtistBibleByArtistName, getArtistBibleById, getArtistBibles } from "@/lib/actions/artist-bible"
@@ -17,8 +17,9 @@ import {
   markLoreFlexible,
   updateLoreEntry,
 } from "@/lib/actions/lore"
+import { getSongConcepts } from "@/lib/actions/song-concepts"
 import { getVisualIdentityById, getVisualIdentityForArtist } from "@/lib/actions/visual-identity"
-import type { ArtistBibleRecord, LoreEntryRecord } from "@/lib/artist-universe/types"
+import type { ArtistBibleRecord, LoreEntryRecord, SongConceptRecord } from "@/lib/artist-universe/types"
 import {
   buildLoreContextFromArtistBible,
   buildLoreContextFromVisualIdentity,
@@ -28,6 +29,7 @@ import {
   mergeEmptyLoreFields,
   prefillLoreFromArtistBible,
   prefillLoreFromVisualIdentity,
+  resolveLoreSongLinks,
   tabEmptyState,
 } from "@/lib/artist-universe/lore-prefill"
 import { joinLoreTypes, parseLoreTypes } from "@/lib/artist-universe/lore-types"
@@ -45,6 +47,7 @@ import { LoreForm, type LoreFormState } from "@/components/artist-universe/lore-
 import { RecordNotFound } from "@/components/record-not-found"
 import { PageErrorState } from "@/components/page-error-state"
 import { ModuleShell, ModuleTabPanel, ModuleWorkflowTabs } from "@/components/module/form-layout"
+import { RelatedLinksPanel } from "@/components/related-records/related-links-panel"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -58,6 +61,7 @@ const TABS = [
   { value: "timeline", label: "Timeline" },
   { value: "ideas", label: "Story Ideas" },
   { value: "songs", label: "Related Songs" },
+  { value: "related", label: "Related" },
 ] as const
 
 const TAB_ALIASES: Record<string, string> = {
@@ -71,6 +75,7 @@ const TAB_ALIASES: Record<string, string> = {
   "story-ideas": "ideas",
   songs: "songs",
   "related-songs": "songs",
+  related: "related",
 }
 
 type EditorMode = "closed" | "create" | "edit"
@@ -161,30 +166,54 @@ function CompactTags({ tags, max = 5 }: { tags: string[]; max?: number }) {
 function LoreCard({
   entry,
   highlighted,
+  tabKey,
+  songConcepts,
+  onSelect,
   onEdit,
   onRefresh,
 }: {
   entry: LoreEntryRecord
   highlighted?: boolean
+  tabKey?: string
+  songConcepts: SongConceptRecord[]
+  onSelect: (entry: LoreEntryRecord) => void
   onEdit: (entry: LoreEntryRecord) => void
   onRefresh: () => Promise<void>
 }) {
   const cardTags = normalizeTagsForDisplay([...entry.tags, ...entry.symbols.slice(0, 3)])
+  const songLinks = resolveLoreSongLinks(entry, songConcepts)
+  const showSongLinks = tabKey === "songs" || songLinks.length > 0
 
   return (
     <Card
       className={cn(
-        "border-border/80",
-        highlighted ? "border-primary/50 ring-1 ring-primary/25" : undefined,
+        "border-border/80 transition-colors",
+        highlighted ? "border-primary/50 ring-1 ring-primary/25 bg-primary/5" : undefined,
       )}
     >
       <CardHeader className="gap-1.5 p-3 pb-1">
         <div className="flex items-start justify-between gap-2">
-          <CardTitle className="line-clamp-2 text-sm font-semibold leading-snug">{entry.title}</CardTitle>
-          <Button size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs" onClick={() => onEdit(entry)}>
-            <Pencil className="mr-1 size-3" />
-            Edit
-          </Button>
+          <button
+            type="button"
+            className="min-w-0 flex-1 rounded-md text-left transition-colors hover:text-primary"
+            onClick={() => onSelect(entry)}
+          >
+            <CardTitle className="line-clamp-2 text-sm font-semibold leading-snug">{entry.title}</CardTitle>
+          </button>
+          <div className="flex shrink-0 gap-1">
+            <Button
+              size="sm"
+              variant={highlighted ? "secondary" : "outline"}
+              className="h-7 px-2 text-xs"
+              onClick={() => onSelect(entry)}
+            >
+              {highlighted ? "Selected" : "Select"}
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs" onClick={() => onEdit(entry)}>
+              <Pencil className="mr-1 size-3" />
+              Edit
+            </Button>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
           <span>{entry.artistName}</span>
@@ -196,6 +225,44 @@ function LoreCard({
       </CardHeader>
       <CardContent className="space-y-2 p-3 pt-0">
         <p className="line-clamp-2 text-xs text-muted-foreground">{entry.summary || "No summary"}</p>
+        {showSongLinks ? (
+          <div className="space-y-1">
+            <p className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              <Music2 className="size-3" />
+              Related songs
+            </p>
+            {songLinks.length > 0 ? (
+              <div className="flex flex-wrap gap-1">
+                {songLinks.map((link) =>
+                  link.conceptId ? (
+                    <Link
+                      key={`${link.name}-${link.conceptId}`}
+                      href={`/song-vault?artist=${encodeURIComponent(entry.artistName)}&recordId=${encodeURIComponent(link.conceptId)}&tab=concepts`}
+                      className={buttonVariants({
+                        size: "sm",
+                        variant: "secondary",
+                        className: "h-6 px-2 text-[10px] font-normal",
+                      })}
+                    >
+                      {link.name}
+                    </Link>
+                  ) : (
+                    <Badge
+                      key={link.name}
+                      variant="outline"
+                      className="px-1.5 py-0 text-[10px] font-normal"
+                    >
+                      {link.name}
+                      <span className="ml-1 text-muted-foreground">(no concept yet)</span>
+                    </Badge>
+                  ),
+                )}
+              </div>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">No song links on this entry yet.</p>
+            )}
+          </div>
+        ) : null}
         <CompactTags tags={cardTags} max={5} />
         <div className="flex flex-wrap gap-1 pt-1">
           <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => void markLoreCanon(entry.id).then(onRefresh)}>
@@ -230,23 +297,48 @@ function LoreCard({
 function TabPanelContent({
   tabKey,
   entries,
+  songConcepts,
   showStarterLore,
   focusedId,
   onNew,
   onStarterLore,
+  onSelect,
   onEdit,
   onRefresh,
 }: {
   tabKey: string
   entries: LoreEntryRecord[]
+  songConcepts: SongConceptRecord[]
   showStarterLore: boolean
   focusedId: string | null
   onNew: () => void
   onStarterLore: () => void
+  onSelect: (entry: LoreEntryRecord) => void
   onEdit: (entry: LoreEntryRecord) => void
   onRefresh: () => Promise<void>
 }) {
-  const visible = filterLoreForTab(entries, tabKey)
+  if (tabKey === "related") {
+    const entry = focusedId ? entries.find((item) => item.id === focusedId) ?? null : null
+    if (!entry) {
+      return (
+        <EmptyState
+          icon={ScrollText}
+          title="Select a lore entry"
+          description="Choose a lore entry above to view and manage related songs, assets, and campaigns."
+        />
+      )
+    }
+    return (
+      <RelatedLinksPanel
+        sourceType="LoreEntry"
+        sourceId={entry.id}
+        artistName={entry.artistName}
+        onLinksChanged={() => void onRefresh()}
+      />
+    )
+  }
+
+  const visible = filterLoreForTab(entries, tabKey, songConcepts)
   const empty = tabEmptyState(tabKey)
   const tabLabel = TABS.find((t) => t.value === tabKey)?.label ?? "Lore"
 
@@ -267,9 +359,23 @@ function TabPanelContent({
   return (
     <div className="space-y-3">
       {tabKey !== "board" ? (
-        <p className="text-xs text-muted-foreground">
-          {tabLabel}: {visible.length} {visible.length === 1 ? "entry" : "entries"}
-          {entries.length !== visible.length ? ` · ${entries.length} total for this artist` : ""}
+        <p className="text-xs text-muted-foreground text-pretty">
+          {tabKey === "songs" ? (
+            <>
+              {tabLabel}: {visible.length} lore {visible.length === 1 ? "entry" : "entries"} with song
+              links
+              {entries.length !== visible.length
+                ? ` · ${entries.length} total for this artist`
+                : ""}
+            </>
+          ) : (
+            <>
+              {tabLabel}: {visible.length} {visible.length === 1 ? "entry" : "entries"}
+              {entries.length !== visible.length
+                ? ` · ${entries.length} total for this artist`
+                : ""}
+            </>
+          )}
         </p>
       ) : null}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -277,7 +383,10 @@ function TabPanelContent({
         <LoreCard
           key={entry.id}
           entry={entry}
+          tabKey={tabKey}
+          songConcepts={songConcepts}
           highlighted={focusedId === entry.id}
+          onSelect={onSelect}
           onEdit={onEdit}
           onRefresh={onRefresh}
         />
@@ -296,6 +405,7 @@ export function LorePage() {
   const { tab, setTab, recordId } = useModuleTab("board", TAB_ALIASES)
 
   const [items, setItems] = React.useState<LoreEntryRecord[]>([])
+  const [songConcepts, setSongConcepts] = React.useState<SongConceptRecord[]>([])
   const [artistBibles, setArtistBibles] = React.useState<ArtistBibleRecord[]>([])
   const [loading, setLoading] = React.useState(true)
   const [loadError, setLoadError] = React.useState<string | null>(null)
@@ -344,9 +454,14 @@ export function LorePage() {
     setLoading(true)
     setLoadError(null)
     try {
-      const [entries, bibles] = await Promise.all([getLoreEntries(), getArtistBibles()])
+      const [entries, bibles, concepts] = await Promise.all([
+        getLoreEntries(),
+        getArtistBibles(),
+        getSongConcepts(),
+      ])
       setItems(entries)
       setArtistBibles(bibles)
+      setSongConcepts(concepts)
     } catch (e) {
       const message = e instanceof Error ? e.message : "Failed to load lore"
       setLoadError(message)
@@ -499,6 +614,24 @@ export function LorePage() {
     }
   }
 
+  function selectEntry(entry: LoreEntryRecord) {
+    setSelectedId(entry.id)
+    setEditorMode("closed")
+    setEditingId(null)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("recordId", entry.id)
+    params.set("artist", entry.artistName)
+    params.set("tab", tab)
+    router.replace(`/lore?${params.toString()}`, { scroll: false })
+  }
+
+  function clearSelection() {
+    setSelectedId(null)
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete("recordId")
+    router.replace(`/lore?${params.toString()}`, { scroll: false })
+  }
+
   function openEdit(entry: LoreEntryRecord) {
     setForm(formFromRecord(entry))
     setEditingId(entry.id)
@@ -634,11 +767,40 @@ export function LorePage() {
       ) : null}
 
       {focused && !editorOpen ? (
-        <Card className="border-primary/30">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Selected: {focused.title}</CardTitle>
-            <CardDescription>{focused.summary}</CardDescription>
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader className="flex flex-col gap-3 pb-2 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 space-y-1">
+              <CardTitle className="text-base">Selected: {focused.title}</CardTitle>
+              <CardDescription>{focused.summary}</CardDescription>
+              <p className="text-xs text-muted-foreground">
+                Use the Related tab without opening the editor.
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={() => openEdit(focused)}>
+                <Pencil className="mr-1 size-3.5" />
+                Edit
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setTab("related")}>
+                Related
+              </Button>
+              <Link
+                href={`/song-vault?artist=${encodeURIComponent(focused.artistName)}&fromLore=${encodeURIComponent(focused.id)}`}
+                className={buttonVariants({ size: "sm", variant: "outline" })}
+              >
+                Create Song Concept
+              </Link>
+              <Button size="sm" variant="ghost" onClick={clearSelection}>
+                Clear
+              </Button>
+            </div>
           </CardHeader>
+        </Card>
+      ) : !focused && !editorOpen && tab === "related" ? (
+        <Card className="border-dashed border-border/80">
+          <CardContent className="py-3 text-sm text-muted-foreground">
+            Select a lore entry from any tab to manage related songs, assets, and campaigns.
+          </CardContent>
         </Card>
       ) : null}
 
@@ -751,10 +913,12 @@ export function LorePage() {
                   <TabPanelContent
                     tabKey={t.value}
                     entries={filteredItems}
+                    songConcepts={songConcepts}
                     showStarterLore={showStarterLore}
                     focusedId={focused?.id ?? null}
                     onNew={openCreate}
                     onStarterLore={() => void handleStarterLore()}
+                    onSelect={selectEntry}
                     onEdit={openEdit}
                     onRefresh={load}
                   />

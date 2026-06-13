@@ -5,6 +5,12 @@ import type {
   SongConceptRecord,
   VisualIdentityProfileRecord,
 } from "@/lib/artist-universe/types"
+import {
+  daysSincePublished,
+  matchAssetsForSong,
+  matchLoreForSong,
+  publishedSongMissingUrl,
+} from "@/lib/artist-universe/published-songs"
 import type { DataHealthIssue, DataHealthScanInput } from "@/lib/data/data-health"
 import type { CampaignRecord } from "@/lib/types"
 
@@ -89,6 +95,95 @@ export function scanArtistUniverseWarnings(
         href: `/song-vault?recordId=${encodeURIComponent(concept.id)}`,
         suggestedAction: "Convert to Release Plan or Campaign.",
       })
+    }
+
+    const isPublished =
+      /^(published|released)$/i.test(concept.status.trim()) ||
+      /^(published|released)$/i.test(concept.releaseStatus.trim()) ||
+      Boolean(concept.publishedUrl.trim())
+
+    if (isPublished) {
+      if (publishedSongMissingUrl(concept)) {
+        pushIssue(issues, {
+          id: issueId(["artist-universe", "published-no-url", concept.id]),
+          severity: "warning",
+          category: "incomplete-records",
+          title: `Published song missing URL: ${concept.songTitle || concept.title}`,
+          description: "Add a published URL so the release archive is complete.",
+          sourceType: "song-concept",
+          sourceId: concept.id,
+          sourceTitle: concept.songTitle || concept.title,
+          href: `/song-vault?recordId=${encodeURIComponent(concept.id)}&tab=published`,
+          suggestedAction: "Add published URL in Song Vault.",
+        })
+      }
+
+      const lore = input.loreEntries ?? []
+      const assets = input.assets ?? []
+      const matchedLore = matchLoreForSong(concept, lore)
+      const matchedAssets = matchAssetsForSong(concept, assets)
+
+      if (!matchedAssets.length && !concept.relatedAssetIds.length) {
+        pushIssue(issues, {
+          id: issueId(["artist-universe", "published-no-assets", concept.id]),
+          severity: "info",
+          category: "missing-assets",
+          title: `Published song has no linked assets: ${concept.songTitle || concept.title}`,
+          description: "Link lyrics, concept docs, thumbnails, or YouTube metadata.",
+          sourceType: "song-concept",
+          sourceId: concept.id,
+          sourceTitle: concept.songTitle || concept.title,
+          href: `/assets?artist=${encodeURIComponent(concept.artistName)}`,
+          suggestedAction: "Link assets in Asset Library.",
+          relatedHref: `/song-vault?recordId=${encodeURIComponent(concept.id)}`,
+        })
+      }
+
+      if (!matchedLore.length && !concept.relatedLoreIds.length) {
+        pushIssue(issues, {
+          id: issueId(["artist-universe", "published-no-lore", concept.id]),
+          severity: "info",
+          category: "incomplete-records",
+          title: `Published song has no related lore: ${concept.songTitle || concept.title}`,
+          description: "Connect lore entries to anchor the release in the artist universe.",
+          sourceType: "song-concept",
+          sourceId: concept.id,
+          sourceTitle: concept.songTitle || concept.title,
+          href: `/lore?artist=${encodeURIComponent(concept.artistName)}`,
+          suggestedAction: "Link related lore entries.",
+        })
+      }
+
+      const daysSince = daysSincePublished(concept)
+      if (daysSince !== null && daysSince >= 7 && !concept.performanceNotes.trim()) {
+        pushIssue(issues, {
+          id: issueId(["artist-universe", "published-no-performance", concept.id]),
+          severity: "info",
+          category: "incomplete-records",
+          title: `Published song missing performance notes: ${concept.songTitle || concept.title}`,
+          description: `Published ${daysSince} days ago with no performance notes recorded.`,
+          sourceType: "song-concept",
+          sourceId: concept.id,
+          sourceTitle: concept.songTitle || concept.title,
+          href: `/song-vault?recordId=${encodeURIComponent(concept.id)}&tab=published`,
+          suggestedAction: "Add performance notes to the release archive.",
+        })
+      }
+
+      if (!concept.futureCampaignIdeas.trim() && !concept.futureMerchIdeas.trim()) {
+        pushIssue(issues, {
+          id: issueId(["artist-universe", "published-no-future", concept.id]),
+          severity: "info",
+          category: "incomplete-records",
+          title: `Published song missing future campaign/merch notes: ${concept.songTitle || concept.title}`,
+          description: "Capture optional merch tie-ins or relaunch ideas for later.",
+          sourceType: "song-concept",
+          sourceId: concept.id,
+          sourceTitle: concept.songTitle || concept.title,
+          href: `/song-vault?recordId=${encodeURIComponent(concept.id)}&tab=published`,
+          suggestedAction: "Add future merch or campaign ideas.",
+        })
+      }
     }
   }
 

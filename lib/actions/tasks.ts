@@ -4,32 +4,25 @@ import { revalidatePath } from "next/cache"
 
 import { getCampaigns, upsertCampaign } from "@/lib/actions/campaigns"
 import {
+  getGlobalTasks,
+  syncCampaignTasksToGlobal,
+  updateGlobalTaskStatus,
+} from "@/lib/actions/global-tasks"
+import {
   buildWorkspaceTask,
   buildWorkspaceTasks,
+  mergeWorkspaceTasks,
   type WorkspaceTask,
 } from "@/lib/data/tasks"
 import { normalizeCampaignRecord } from "@/lib/campaigns"
 import type { CampaignTaskStatus } from "@/lib/types"
 
-const TASK_PATHS = ["/tasks", "/campaigns", "/campaign-board", "/", "/search"]
+const TASK_PATHS = ["/tasks", "/campaigns", "/campaign-board", "/", "/search", "/integrations", "/assets"]
 
 function revalidateTaskRoutes() {
   for (const path of TASK_PATHS) {
     revalidatePath(path)
   }
-}
-
-/** Load all workspace tasks from campaign records. */
-export async function getWorkspaceTasks(): Promise<WorkspaceTask[]> {
-  const campaigns = await getCampaigns()
-  return buildWorkspaceTasks(campaigns)
-}
-
-export interface UpdateCampaignTaskStatusInput {
-  campaignId: string
-  taskId?: string
-  taskIndex?: number
-  status: string
 }
 
 function resolveCampaignTaskStatus(status: string): CampaignTaskStatus {
@@ -45,6 +38,49 @@ function resolveCampaignTaskStatus(status: string): CampaignTaskStatus {
     return "In Progress"
   }
   return "To Do"
+}
+
+/** Load merged workspace tasks from global Task records and legacy campaign JSON tasks. */
+export async function getWorkspaceTasks(): Promise<WorkspaceTask[]> {
+  const [campaigns, globalTasks] = await Promise.all([getCampaigns(), getGlobalTasks()])
+  if (globalTasks.length === 0) {
+    return buildWorkspaceTasks(campaigns)
+  }
+  return mergeWorkspaceTasks(campaigns, globalTasks)
+}
+
+export interface UpdateCampaignTaskStatusInput {
+  campaignId: string
+  taskId?: string
+  taskIndex?: number
+  status: string
+}
+
+export interface UpdateWorkspaceTaskStatusInput {
+  globalTaskId?: string
+  campaignId?: string
+  taskId?: string
+  taskIndex?: number
+  status: string
+}
+
+/** Update a single task status — global Task record or legacy campaign JSON task. */
+export async function updateWorkspaceTaskStatus(
+  input: UpdateWorkspaceTaskStatusInput,
+): Promise<WorkspaceTask | null> {
+  if (input.globalTaskId?.trim()) {
+    const updated = await updateGlobalTaskStatus(input.globalTaskId.trim(), input.status)
+    if (!updated) return null
+    const campaigns = await getCampaigns()
+    return mergeWorkspaceTasks(campaigns, [updated]).find((task) => task.globalTaskId === updated.id) ?? null
+  }
+
+  return updateCampaignTaskStatus({
+    campaignId: input.campaignId ?? "",
+    taskId: input.taskId,
+    taskIndex: input.taskIndex,
+    status: input.status,
+  })
 }
 
 /** Update a single task status on a campaign without mutating other tasks. */
@@ -93,10 +129,20 @@ export async function updateCampaignTaskStatus(
   revalidateTaskRoutes()
 
   const matchIndex =
-    input.taskIndex ??
-    saved.tasks.findIndex((task) => task.id === input.taskId?.trim())
+    input.taskIndex ?? saved.tasks.findIndex((task) => task.id === input.taskId?.trim())
   const matchTask = saved.tasks[matchIndex]
   if (!matchTask || matchIndex < 0) return null
 
   return buildWorkspaceTask(saved, matchTask, matchIndex)
+}
+
+/** Sync all campaign JSON tasks into global Task records. */
+export async function syncAllWorkspaceTasks(): Promise<{ campaigns: number; tasks: number }> {
+  const campaigns = await getCampaigns()
+  for (const campaign of campaigns) {
+    await syncCampaignTasksToGlobal(campaign)
+  }
+  const globalTasks = await getGlobalTasks()
+  revalidateTaskRoutes()
+  return { campaigns: campaigns.length, tasks: globalTasks.length }
 }

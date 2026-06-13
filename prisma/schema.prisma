@@ -1267,6 +1267,14 @@ model SongConcept {
   qualityReviewId     String   @default("")
   tags                String   @default("[]")
   notes               String   @default("")
+  publishedUrl        String   @default("")
+  publishedPlatform   String   @default("")
+  publishedDate       String   @default("")
+  releaseStatus       String   @default("")
+  performanceNotes    String   @default("")
+  futureMerchIdeas    String   @default("")
+  futureCampaignIdeas String   @default("")
+  relatedYouTubeVideoId String @default("")
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -1331,5 +1339,62 @@ model VisualIdentityProfile {
   @@index([artistName])
   @@index([profileName])
   @@index([status])
+  @@index([updatedAt])
+}
+
+/// Global workspace tasks — optionally linked to campaigns, artists, songs, assets, etc.
+model Task {
+  id                 String   @id
+  title              String   @default("")
+  description        String   @default("")
+  status             String   @default("To Do")
+  priority           String   @default("Medium")
+  dueDate            String   @default("")
+  module             String   @default("")
+  taskType           String   @default("Global")
+  artistName         String   @default("")
+  campaignId         String   @default("")
+  campaignName       String   @default("")
+  songConceptId      String   @default("")
+  songTitle          String   @default("")
+  productId          String   @default("")
+  assetId            String   @default("")
+  integrationType    String   @default("")
+  sourceRecordType   String   @default("")
+  sourceRecordId     String   @default("")
+  /// JSON string[] tags
+  tags               String   @default("[]")
+  notes              String   @default("")
+  createdAt          DateTime
+  updatedAt          DateTime
+
+  @@index([status])
+  @@index([priority])
+  @@index([taskType])
+  @@index([module])
+  @@index([artistName])
+  @@index([campaignId])
+  @@index([songConceptId])
+  @@index([assetId])
+  @@index([dueDate])
+  @@index([updatedAt])
+}
+
+/// Cross-module record relationships (assets, lore, songs, campaigns, etc.).
+model CreatorOpsLink {
+  id               String   @id
+  sourceType       String   @default("")
+  sourceId         String   @default("")
+  targetType       String   @default("")
+  targetId         String   @default("")
+  relationshipType String   @default("")
+  label            String   @default("")
+  notes            String   @default("")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([sourceType, sourceId, targetType, targetId, relationshipType])
+  @@index([sourceType, sourceId])
+  @@index([targetType, targetId])
   @@index([updatedAt])
 }

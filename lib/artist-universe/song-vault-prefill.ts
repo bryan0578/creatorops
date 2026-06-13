@@ -7,6 +7,7 @@ import type {
 } from "@/lib/artist-universe/types"
 import type { SongConceptFormState } from "@/components/artist-universe/song-concept-form"
 import { isPrettyWiseArtist, PRETTYWISE_LORE_TAGS } from "@/lib/artist-universe/lore-prefill"
+import { filterPublishedSongs } from "@/lib/artist-universe/published-songs"
 import { formatListForInput, formatTagsForInput } from "@/lib/artist-universe/utils"
 import { DEMO_DATA_MARKER } from "@/lib/demo-data/constants"
 
@@ -46,6 +47,14 @@ export function emptySongConceptForm(artistName = ""): SongConceptFormState {
     qualityReviewId: "",
     tags: formatTagsForInput(prettyWise ? PRETTYWISE_SONG_TAGS : []),
     notes: "",
+    publishedUrl: "",
+    publishedPlatform: "",
+    publishedDate: "",
+    releaseStatus: "",
+    performanceNotes: "",
+    futureMerchIdeas: "",
+    futureCampaignIdeas: "",
+    relatedYouTubeVideoId: "",
   }
 }
 
@@ -240,7 +249,9 @@ export function filterSongConceptForTab(concepts: SongConceptRecord[], tabKey: s
     case "visual":
       return concepts.filter((c) => c.visualConcept.trim() || c.youtubeAngle.trim())
     case "products":
-      return concepts.filter((c) => c.productTieIn.trim())
+      return concepts.filter((c) => c.productTieIn.trim() || c.futureMerchIdeas.trim())
+    case "published":
+      return filterPublishedSongs(concepts)
     case "ai":
       return concepts
     case "concepts":
@@ -277,6 +288,11 @@ const TAB_EMPTY: Record<string, { title: string; description: string }> = {
   products: {
     title: "No product tie-ins",
     description: "Concepts with merch, poster, or product tie-in notes will appear here.",
+  },
+  published: {
+    title: "No published songs yet",
+    description:
+      "Songs marked Published or Released, or with a published URL, appear here — no campaign required.",
   },
   ai: {
     title: "No concept selected for AI context",
@@ -322,6 +338,14 @@ export const PRETTYWISE_STARTER_SONG_CONCEPTS: PrettyWiseStarterSongInput[] = [
     qualityReviewId: "",
     tags: PRETTYWISE_SONG_TAGS,
     notes: `${DEMO_DATA_MARKER} — STARTER_PRETTYWISE`,
+    publishedUrl: "",
+    publishedPlatform: "",
+    publishedDate: "",
+    releaseStatus: "",
+    performanceNotes: "",
+    futureMerchIdeas: "",
+    futureCampaignIdeas: "",
+    relatedYouTubeVideoId: "",
   },
   {
     title: "Cotton Candy Skies",
@@ -352,6 +376,14 @@ export const PRETTYWISE_STARTER_SONG_CONCEPTS: PrettyWiseStarterSongInput[] = [
     qualityReviewId: "",
     tags: PRETTYWISE_SONG_TAGS,
     notes: `${DEMO_DATA_MARKER} — STARTER_PRETTYWISE`,
+    publishedUrl: "",
+    publishedPlatform: "",
+    publishedDate: "",
+    releaseStatus: "",
+    performanceNotes: "",
+    futureMerchIdeas: "",
+    futureCampaignIdeas: "",
+    relatedYouTubeVideoId: "",
   },
   {
     title: "Red Light Lullaby",
@@ -381,6 +413,14 @@ export const PRETTYWISE_STARTER_SONG_CONCEPTS: PrettyWiseStarterSongInput[] = [
     qualityReviewId: "",
     tags: PRETTYWISE_SONG_TAGS,
     notes: `${DEMO_DATA_MARKER} — STARTER_PRETTYWISE`,
+    publishedUrl: "",
+    publishedPlatform: "",
+    publishedDate: "",
+    releaseStatus: "",
+    performanceNotes: "",
+    futureMerchIdeas: "",
+    futureCampaignIdeas: "",
+    relatedYouTubeVideoId: "",
   },
   {
     title: "Sugar Trap",
@@ -410,6 +450,14 @@ export const PRETTYWISE_STARTER_SONG_CONCEPTS: PrettyWiseStarterSongInput[] = [
     qualityReviewId: "",
     tags: PRETTYWISE_SONG_TAGS,
     notes: `${DEMO_DATA_MARKER} — STARTER_PRETTYWISE`,
+    publishedUrl: "",
+    publishedPlatform: "",
+    publishedDate: "",
+    releaseStatus: "",
+    performanceNotes: "",
+    futureMerchIdeas: "",
+    futureCampaignIdeas: "",
+    relatedYouTubeVideoId: "",
   },
   {
     title: "Static Dollhouse",

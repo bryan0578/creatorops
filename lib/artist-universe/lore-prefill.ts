@@ -1,4 +1,9 @@
-import type { ArtistBibleRecord, LoreEntryRecord, VisualIdentityProfileRecord } from "@/lib/artist-universe/types"
+import type {
+  ArtistBibleRecord,
+  LoreEntryRecord,
+  SongConceptRecord,
+  VisualIdentityProfileRecord,
+} from "@/lib/artist-universe/types"
 import type { LoreFormState } from "@/components/artist-universe/lore-form"
 import {
   canonStatusContains,
@@ -239,19 +244,80 @@ export const PRETTYWISE_STARTER_LORE: PrettyWiseStarterLoreInput[] = [
   },
 ]
 
-export function filterLoreForTab(entries: LoreEntryRecord[], tabKey: string): LoreEntryRecord[] {
+export type LoreSongLink = {
+  name: string
+  conceptId: string | null
+}
+
+function normArtist(value: string): string {
+  return value.trim().toLowerCase()
+}
+
+function songConceptMatchesName(concept: SongConceptRecord, name: string): boolean {
+  const needle = name.trim().toLowerCase()
+  if (!needle) return false
+  return (
+    concept.title.trim().toLowerCase() === needle ||
+    concept.songTitle.trim().toLowerCase() === needle
+  )
+}
+
+/** Resolve related song names and optional Song Concept ids for a lore entry. */
+export function resolveLoreSongLinks(
+  entry: LoreEntryRecord,
+  songConcepts: SongConceptRecord[],
+): LoreSongLink[] {
+  const artist = normArtist(entry.artistName)
+  const artistConcepts = songConcepts.filter((c) => normArtist(c.artistName) === artist)
+  const links: LoreSongLink[] = []
+  const seen = new Set<string>()
+
+  for (const name of entry.relatedSongs) {
+    const trimmed = name.trim()
+    if (!trimmed) continue
+    const key = trimmed.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    const concept = artistConcepts.find((c) => songConceptMatchesName(c, trimmed)) ?? null
+    links.push({ name: trimmed, conceptId: concept?.id ?? null })
+  }
+
+  for (const concept of artistConcepts) {
+    if (!concept.relatedLoreIds.includes(entry.id)) continue
+    const name = concept.songTitle.trim() || concept.title.trim()
+    if (!name) continue
+    const key = name.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    links.push({ name, conceptId: concept.id })
+  }
+
+  return links
+}
+
+export function loreEntryHasRelatedSongs(
+  entry: LoreEntryRecord,
+  songConcepts: SongConceptRecord[] = [],
+): boolean {
+  return resolveLoreSongLinks(entry, songConcepts).length > 0
+}
+
+export function filterLoreForTab(
+  entries: LoreEntryRecord[],
+  tabKey: string,
+  songConcepts: SongConceptRecord[] = [],
+): LoreEntryRecord[] {
   switch (tabKey) {
     case "canon":
       return entries.filter((e) => canonStatusContains(e.canonStatus, "Canon"))
     case "characters":
       return entries.filter(
-        (e) => loreTypeContainsAny(e.loreType, ["Character"]) || safeArray(e.characters).length > 0,
+        (e) =>
+          loreTypeContainsAny(e.loreType, ["Character"]) || e.characters.length > 0,
       )
     case "symbols":
-      return entries.filter(
-        (e) =>
-          loreTypeContainsAny(e.loreType, ["Symbol", "Visual Motif"]) ||
-          safeArray(e.symbols).length > 0,
+      return entries.filter((e) =>
+        loreTypeContainsAny(e.loreType, ["Symbol", "Visual Motif", "World"]),
       )
     case "timeline":
       return entries.filter((e) =>
@@ -261,21 +327,15 @@ export function filterLoreForTab(entries: LoreEntryRecord[], tabKey: string): Lo
       return entries.filter(
         (e) =>
           canonStatusContains(e.canonStatus, "Idea") ||
-          canonStatusContains(e.canonStatus, "Flexible") ||
-          loreTypeContainsAny(e.loreType, ["Theme", "Story Event"]),
+          (canonStatusContains(e.canonStatus, "Flexible") &&
+            !canonStatusContains(e.canonStatus, "Canon")),
       )
     case "songs":
-      return entries.filter((e) => safeArray(e.relatedSongs).length > 0)
+      return entries.filter((e) => loreEntryHasRelatedSongs(e, songConcepts))
     case "board":
     default:
       return entries
   }
-}
-
-function safeArray(value: unknown): string[] {
-  if (value == null) return []
-  if (Array.isArray(value)) return value.map(String).filter(Boolean)
-  return []
 }
 
 const TAB_EMPTY: Record<string, { title: string; description: string }> = {
@@ -310,7 +370,8 @@ const TAB_EMPTY: Record<string, { title: string; description: string }> = {
   },
   songs: {
     title: "No related songs yet",
-    description: "Link lore entries to song concepts or releases to see them here.",
+    description:
+      "Add song names on a lore entry or link a Song Concept from the Related tab to see lore-to-song connections here.",
   },
 }
 

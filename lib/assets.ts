@@ -1,4 +1,9 @@
-import { parseJsonStringArray } from "@/lib/safe-json"
+import { dedupeStringArray, parseJsonStringArray } from "@/lib/utils/json-arrays"
+import {
+  encodeRelatedLinksInNotes,
+  parseRelatedLinksFromNotes,
+  stripRelatedLinksFromNotes,
+} from "@/lib/asset-linking/asset-related-links"
 import {
   ASSET_SOURCE_TOOLS,
   ASSET_STATUSES,
@@ -40,7 +45,7 @@ export function emptyAssetForm(): AssetFormValues {
 }
 
 export function parseAssetTags(raw: string | string[] | undefined | null): string[] {
-  if (Array.isArray(raw)) return raw.map((tag) => String(tag).trim()).filter(Boolean)
+  if (Array.isArray(raw)) return dedupeStringArray(raw)
   return parseJsonStringArray(raw ?? "[]", [])
 }
 
@@ -60,8 +65,9 @@ export function tagsFromInput(input: string): string[] {
 
 function pickAssetType(value: string | undefined): string {
   const trimmed = (value ?? "").trim()
+  if (!trimmed) return "Other"
   if (ASSET_TYPES.includes(trimmed as (typeof ASSET_TYPES)[number])) return trimmed
-  return "Other"
+  return trimmed
 }
 
 function pickAssetStatus(value: string | undefined): string {
@@ -142,7 +148,7 @@ export function assetFormFromRecord(record: AssetRecord): AssetFormValues {
     description: record.description,
     usageNotes: record.usageNotes,
     rightsNotes: record.rightsNotes,
-    notes: record.notes,
+    notes: stripRelatedLinksFromNotes(record.notes),
   }
 }
 
@@ -150,10 +156,14 @@ export function recordFromAssetForm(
   id: string,
   form: AssetFormValues,
   timestamps?: { createdAt?: number; updatedAt?: number },
+  existingNotes?: string,
 ): AssetRecord {
+  const userNotes = stripRelatedLinksFromNotes(form.notes)
+  const links = existingNotes ? parseRelatedLinksFromNotes(existingNotes) : []
   return normalizeAssetRecord({
     id,
     ...form,
+    notes: encodeRelatedLinksInNotes(userNotes, links),
     tags: tagsFromInput(form.tags),
     createdAt: timestamps?.createdAt,
     updatedAt: timestamps?.updatedAt ?? Date.now(),
