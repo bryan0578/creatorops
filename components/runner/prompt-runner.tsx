@@ -90,6 +90,9 @@ export function PromptRunner() {
     null,
   )
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const [appliedPromptIdParam, setAppliedPromptIdParam] = React.useState<
+    string | null
+  >(null)
 
   const selectedPrompt = prompts.find((p) => p.id === selectedPromptId) ?? null
 
@@ -146,17 +149,21 @@ export function PromptRunner() {
     setEditingRunId(null)
   }
 
-  React.useEffect(() => {
-    if (!hydrated || !promptIdParam) return
+  // Select the prompt named by ?promptId once the store has hydrated and
+  // that id is found. Applied during render (guarded by a ref so it only
+  // fires once per distinct id) rather than in an effect, since there's no
+  // side effect here beyond plain state resets.
+  if (hydrated && promptIdParam && appliedPromptIdParam !== promptIdParam) {
     const prompt = prompts.find((p) => p.id === promptIdParam)
     if (prompt) {
+      setAppliedPromptIdParam(promptIdParam)
       setSelectedPromptId(prompt.id)
       setInputValues({})
       setAiResponse("")
       setRunNotes("")
       setEditingRunId(null)
     }
-  }, [hydrated, promptIdParam, prompts])
+  }
 
   function clearFields() {
     setInputValues({})

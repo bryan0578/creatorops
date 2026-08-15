@@ -185,7 +185,10 @@ export function YouTubeThumbnailGenerator() {
   const [pendingDelete, setPendingDelete] =
     React.useState<YouTubeThumbnailRecord | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
-  const prefillApplied = React.useRef(false)
+  const [prefillApplied, setPrefillApplied] = React.useState(false)
+  const [prefillNotice, setPrefillNotice] = React.useState<
+    "record" | "fields" | null
+  >(null)
   const searchParams = useSearchParams()
 
   const template = React.useMemo(
@@ -314,49 +317,77 @@ export function YouTubeThumbnailGenerator() {
     toast.success("Thumbnail loaded")
   }
 
-  React.useEffect(() => {
-    if (prefillApplied.current) return
-
+  // Prefill once from either an existing record (?recordId) or loose
+  // artist-CRM query params. Applied during render (not an effect) so the
+  // state updates stay synchronous with the paint they belong to; the
+  // toast/scroll are real side effects, so they're deferred to a small
+  // effect below that only reacts to `prefillNotice` and never calls a
+  // state setter itself.
+  if (!prefillApplied) {
     const recordId = searchParams.get("recordId")
-    if (recordId && youtubeThumbnailRecords.length > 0) {
-      const record = youtubeThumbnailRecords.find((r) => r.id === recordId)
-      if (record) {
-        prefillApplied.current = true
-        openRecord(normalizeYouTubeThumbnailRecord(record))
-        return
+    const matchedRecord =
+      recordId && youtubeThumbnailRecords.length > 0
+        ? youtubeThumbnailRecords.find((r) => r.id === recordId)
+        : undefined
+
+    if (matchedRecord) {
+      setPrefillApplied(true)
+      const normalized = normalizeYouTubeThumbnailRecord(matchedRecord)
+      setForm({
+        trackTitle: normalized.trackTitle,
+        artistName: normalized.artistName,
+        videoTitle: normalized.videoTitle,
+        contentFormat: normalized.contentFormat,
+        videoType: normalized.videoType,
+        genre: normalized.genre,
+        mood: normalized.mood,
+        targetAudience: normalized.targetAudience,
+        visualTheme: normalized.visualTheme,
+        hookAngle: normalized.hookAngle,
+        mainSubject: normalized.mainSubject,
+        textOverlay: normalized.textOverlay,
+        colorDirection: normalized.colorDirection,
+        brandingNotes: normalized.brandingNotes,
+        referenceStyle: normalized.referenceStyle,
+        ctaGoal: normalized.ctaGoal,
+        notes: normalized.notes,
+      })
+      setAiResponse(normalized.aiResponse)
+      setFinalThumbnail(finalFieldsFromThumbnailRecord(normalized))
+      setEditingId(normalized.id)
+      setPrefillNotice("record")
+    } else {
+      const artistName = searchParams.get("artistName")
+      const trackTitle = searchParams.get("trackTitle")
+      const videoTitle = searchParams.get("videoTitle")
+      const genre = searchParams.get("genre")
+      const mood = searchParams.get("mood")
+      const visualTheme = searchParams.get("visualTheme")
+
+      if (artistName || trackTitle || videoTitle || genre || mood || visualTheme) {
+        setPrefillApplied(true)
+        setForm((prev) => ({
+          ...prev,
+          artistName: artistName ?? prev.artistName,
+          trackTitle: trackTitle ?? prev.trackTitle,
+          videoTitle: videoTitle ?? prev.videoTitle,
+          genre: genre ?? prev.genre,
+          mood: mood ?? prev.mood,
+          visualTheme: visualTheme ?? prev.visualTheme,
+        }))
+        setPrefillNotice("fields")
       }
     }
+  }
 
-    const artistName = searchParams.get("artistName")
-    const trackTitle = searchParams.get("trackTitle")
-    const videoTitle = searchParams.get("videoTitle")
-    const genre = searchParams.get("genre")
-    const mood = searchParams.get("mood")
-    const visualTheme = searchParams.get("visualTheme")
-
-    if (
-      !artistName &&
-      !trackTitle &&
-      !videoTitle &&
-      !genre &&
-      !mood &&
-      !visualTheme
-    ) {
-      return
+  React.useEffect(() => {
+    if (prefillNotice === "record") {
+      window.scrollTo({ top: 0, behavior: "smooth" })
+      toast.success("Thumbnail loaded")
+    } else if (prefillNotice === "fields") {
+      toast.success("Prefilled from artist CRM")
     }
-
-    prefillApplied.current = true
-    setForm((prev) => ({
-      ...prev,
-      artistName: artistName ?? prev.artistName,
-      trackTitle: trackTitle ?? prev.trackTitle,
-      videoTitle: videoTitle ?? prev.videoTitle,
-      genre: genre ?? prev.genre,
-      mood: mood ?? prev.mood,
-      visualTheme: visualTheme ?? prev.visualTheme,
-    }))
-    toast.success("Prefilled from artist CRM")
-  }, [searchParams, youtubeThumbnailRecords])
+  }, [prefillNotice])
 
   function confirmDelete() {
     if (!pendingDelete) return
@@ -438,7 +469,7 @@ export function YouTubeThumbnailGenerator() {
                     <Label htmlFor={id}>{label}</Label>
                     <Select
                       value={form.contentFormat}
-                      onValueChange={(v) => setField("contentFormat", v)}
+                      onValueChange={(v) => v !== null && setField("contentFormat", v)}
                     >
                       <SelectTrigger id={id} className="w-full">
                         <span className="truncate">{form.contentFormat}</span>
@@ -461,7 +492,7 @@ export function YouTubeThumbnailGenerator() {
                     <Label htmlFor={id}>{label}</Label>
                     <Select
                       value={form.videoType}
-                      onValueChange={(v) => setField("videoType", v)}
+                      onValueChange={(v) => v !== null && setField("videoType", v)}
                     >
                       <SelectTrigger id={id} className="w-full">
                         <span className="truncate">{form.videoType}</span>
@@ -484,7 +515,7 @@ export function YouTubeThumbnailGenerator() {
                     <Label htmlFor={id}>{label}</Label>
                     <Select
                       value={form.ctaGoal}
-                      onValueChange={(v) => setField("ctaGoal", v)}
+                      onValueChange={(v) => v !== null && setField("ctaGoal", v)}
                     >
                       <SelectTrigger id={id} className="w-full">
                         <span className="truncate">{form.ctaGoal}</span>

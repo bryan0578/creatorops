@@ -18,6 +18,7 @@ import type {
   YouTubeThumbnailRecord,
 } from "@/lib/types"
 import {
+  createPersistedListStore,
   loadAnalyticsRecords,
   loadArtistRecords,
   loadEmailCampaignRecords,
@@ -48,6 +49,7 @@ import {
   saveYouTubePackages,
   saveYouTubeThumbnailRecords,
 } from "@/lib/storage"
+import { SEED_PROMPTS, SEED_WORKFLOWS } from "@/lib/seed-data"
 import { normalizeAnalyticsRecord } from "@/lib/analytics-tracker"
 import { normalizeArtistRecord } from "@/lib/artist-crm"
 import { normalizeEmailCampaignRecord } from "@/lib/email-campaigns"
@@ -60,6 +62,84 @@ import { normalizeYouTubePackage } from "@/lib/youtube-packaging"
 import { normalizeYouTubeThumbnailRecord } from "@/lib/youtube-thumbnails"
 
 export { createId } from "@/lib/storage"
+
+// One persisted store per data slice. Each is a module-level singleton (the
+// app only ever mounts a single StoreProvider) backed by localStorage and
+// read through React's useSyncExternalStore, which is the supported way to
+// read a client-only, mutable data source without causing SSR hydration
+// mismatches or the cascading re-renders of a useEffect + setState hydration
+// pattern.
+const promptsStore = createPersistedListStore(SEED_PROMPTS, loadPrompts, savePrompts)
+const workflowsStore = createPersistedListStore(SEED_WORKFLOWS, loadWorkflows, saveWorkflows)
+const runsStore = createPersistedListStore<PromptRun>([], loadRuns, saveRuns)
+const workflowRunsStore = createPersistedListStore<WorkflowRun>(
+  [],
+  loadWorkflowRuns,
+  saveWorkflowRuns,
+)
+const youtubePackagesStore = createPersistedListStore<YouTubePackage>(
+  [],
+  loadYouTubePackages,
+  saveYouTubePackages,
+)
+const merchIdeasStore = createPersistedListStore<MerchIdea>(
+  [],
+  loadMerchIdeas,
+  saveMerchIdeas,
+)
+const productListingsStore = createPersistedListStore<ProductListing>(
+  [],
+  loadProductListings,
+  saveProductListings,
+)
+const socialRepurposingStore = createPersistedListStore<SocialRepurposingRecord>(
+  [],
+  loadSocialRepurposingRecords,
+  saveSocialRepurposingRecords,
+)
+const releasePlansStore = createPersistedListStore<ReleasePlan>(
+  [],
+  loadReleasePlans,
+  saveReleasePlans,
+)
+const analyticsStore = createPersistedListStore<AnalyticsRecord>(
+  [],
+  loadAnalyticsRecords,
+  saveAnalyticsRecords,
+)
+const mockupPromptsStore = createPersistedListStore<MockupPromptRecord>(
+  [],
+  loadMockupPromptRecords,
+  saveMockupPromptRecords,
+)
+const emailCampaignsStore = createPersistedListStore<EmailCampaignRecord>(
+  [],
+  loadEmailCampaignRecords,
+  saveEmailCampaignRecords,
+)
+const artistRecordsStore = createPersistedListStore<ArtistRecord>(
+  [],
+  loadArtistRecords,
+  saveArtistRecords,
+)
+const youtubeThumbnailsStore = createPersistedListStore<YouTubeThumbnailRecord>(
+  [],
+  loadYouTubeThumbnailRecords,
+  saveYouTubeThumbnailRecords,
+)
+
+// Standard useSyncExternalStore trick for "has the client taken over from
+// the server-rendered markup yet" — false on the server and on the first
+// client render (so they match), true from the next render onward.
+function subscribeHydrated() {
+  return () => {}
+}
+function getHydratedSnapshot() {
+  return true
+}
+function getHydratedServerSnapshot() {
+  return false
+}
 
 interface StoreContextValue {
   prompts: Prompt[]
@@ -145,154 +225,112 @@ export function useStore() {
 }
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const [prompts, setPrompts] = React.useState<Prompt[]>([])
-  const [workflows, setWorkflows] = React.useState<Workflow[]>([])
-  const [runs, setRuns] = React.useState<PromptRun[]>([])
-  const [workflowRuns, setWorkflowRuns] = React.useState<WorkflowRun[]>([])
-  const [youtubePackages, setYoutubePackages] = React.useState<YouTubePackage[]>(
-    [],
+  const prompts = React.useSyncExternalStore(
+    promptsStore.subscribe,
+    promptsStore.getSnapshot,
+    promptsStore.getServerSnapshot,
   )
-  const [merchIdeas, setMerchIdeas] = React.useState<MerchIdea[]>([])
-  const [productListings, setProductListings] = React.useState<ProductListing[]>(
-    [],
+  const workflows = React.useSyncExternalStore(
+    workflowsStore.subscribe,
+    workflowsStore.getSnapshot,
+    workflowsStore.getServerSnapshot,
   )
-  const [socialRepurposingRecords, setSocialRepurposingRecords] = React.useState<
-    SocialRepurposingRecord[]
-  >([])
-  const [releasePlans, setReleasePlans] = React.useState<ReleasePlan[]>([])
-  const [analyticsRecords, setAnalyticsRecords] = React.useState<AnalyticsRecord[]>(
-    [],
+  const runs = React.useSyncExternalStore(
+    runsStore.subscribe,
+    runsStore.getSnapshot,
+    runsStore.getServerSnapshot,
   )
-  const [mockupPromptRecords, setMockupPromptRecords] = React.useState<
-    MockupPromptRecord[]
-  >([])
-  const [emailCampaignRecords, setEmailCampaignRecords] = React.useState<
-    EmailCampaignRecord[]
-  >([])
-  const [artistRecords, setArtistRecords] = React.useState<ArtistRecord[]>([])
-  const [youtubeThumbnailRecords, setYoutubeThumbnailRecords] = React.useState<
-    YouTubeThumbnailRecord[]
-  >([])
-  const [hydrated, setHydrated] = React.useState(false)
-
-  React.useEffect(() => {
-    setPrompts(loadPrompts())
-    setWorkflows(loadWorkflows())
-    setRuns(loadRuns())
-    setWorkflowRuns(loadWorkflowRuns())
-    setYoutubePackages(loadYouTubePackages())
-    setMerchIdeas(loadMerchIdeas())
-    setProductListings(loadProductListings())
-    setSocialRepurposingRecords(loadSocialRepurposingRecords())
-    setReleasePlans(loadReleasePlans())
-    setAnalyticsRecords(loadAnalyticsRecords())
-    setMockupPromptRecords(loadMockupPromptRecords())
-    setEmailCampaignRecords(loadEmailCampaignRecords())
-    setArtistRecords(loadArtistRecords())
-    setYoutubeThumbnailRecords(loadYouTubeThumbnailRecords())
-    setHydrated(true)
-  }, [])
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    savePrompts(prompts)
-  }, [prompts, hydrated])
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveWorkflows(workflows)
-  }, [workflows, hydrated])
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveRuns(runs)
-  }, [runs, hydrated])
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveWorkflowRuns(workflowRuns)
-  }, [workflowRuns, hydrated])
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveYouTubePackages(youtubePackages)
-  }, [youtubePackages, hydrated])
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveMerchIdeas(merchIdeas)
-  }, [merchIdeas, hydrated])
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveProductListings(productListings)
-  }, [productListings, hydrated])
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveSocialRepurposingRecords(socialRepurposingRecords)
-  }, [socialRepurposingRecords, hydrated])
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveReleasePlans(releasePlans)
-  }, [releasePlans, hydrated])
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveAnalyticsRecords(analyticsRecords)
-  }, [analyticsRecords, hydrated])
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveMockupPromptRecords(mockupPromptRecords)
-  }, [mockupPromptRecords, hydrated])
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveEmailCampaignRecords(emailCampaignRecords)
-  }, [emailCampaignRecords, hydrated])
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveArtistRecords(artistRecords)
-  }, [artistRecords, hydrated])
-
-  React.useEffect(() => {
-    if (!hydrated) return
-    saveYouTubeThumbnailRecords(youtubeThumbnailRecords)
-  }, [youtubeThumbnailRecords, hydrated])
+  const workflowRuns = React.useSyncExternalStore(
+    workflowRunsStore.subscribe,
+    workflowRunsStore.getSnapshot,
+    workflowRunsStore.getServerSnapshot,
+  )
+  const youtubePackages = React.useSyncExternalStore(
+    youtubePackagesStore.subscribe,
+    youtubePackagesStore.getSnapshot,
+    youtubePackagesStore.getServerSnapshot,
+  )
+  const merchIdeas = React.useSyncExternalStore(
+    merchIdeasStore.subscribe,
+    merchIdeasStore.getSnapshot,
+    merchIdeasStore.getServerSnapshot,
+  )
+  const productListings = React.useSyncExternalStore(
+    productListingsStore.subscribe,
+    productListingsStore.getSnapshot,
+    productListingsStore.getServerSnapshot,
+  )
+  const socialRepurposingRecords = React.useSyncExternalStore(
+    socialRepurposingStore.subscribe,
+    socialRepurposingStore.getSnapshot,
+    socialRepurposingStore.getServerSnapshot,
+  )
+  const releasePlans = React.useSyncExternalStore(
+    releasePlansStore.subscribe,
+    releasePlansStore.getSnapshot,
+    releasePlansStore.getServerSnapshot,
+  )
+  const analyticsRecords = React.useSyncExternalStore(
+    analyticsStore.subscribe,
+    analyticsStore.getSnapshot,
+    analyticsStore.getServerSnapshot,
+  )
+  const mockupPromptRecords = React.useSyncExternalStore(
+    mockupPromptsStore.subscribe,
+    mockupPromptsStore.getSnapshot,
+    mockupPromptsStore.getServerSnapshot,
+  )
+  const emailCampaignRecords = React.useSyncExternalStore(
+    emailCampaignsStore.subscribe,
+    emailCampaignsStore.getSnapshot,
+    emailCampaignsStore.getServerSnapshot,
+  )
+  const artistRecords = React.useSyncExternalStore(
+    artistRecordsStore.subscribe,
+    artistRecordsStore.getSnapshot,
+    artistRecordsStore.getServerSnapshot,
+  )
+  const youtubeThumbnailRecords = React.useSyncExternalStore(
+    youtubeThumbnailsStore.subscribe,
+    youtubeThumbnailsStore.getSnapshot,
+    youtubeThumbnailsStore.getServerSnapshot,
+  )
+  const hydrated = React.useSyncExternalStore(
+    subscribeHydrated,
+    getHydratedSnapshot,
+    getHydratedServerSnapshot,
+  )
 
   const addPrompt = React.useCallback((p: Prompt) => {
-    setPrompts((prev) => [p, ...prev])
+    promptsStore.set((prev) => [p, ...prev])
   }, [])
 
   const updatePrompt = React.useCallback((p: Prompt) => {
-    setPrompts((prev) => prev.map((x) => (x.id === p.id ? p : x)))
+    promptsStore.set((prev) => prev.map((x) => (x.id === p.id ? p : x)))
   }, [])
 
   const deletePrompt = React.useCallback((id: string) => {
-    setPrompts((prev) => prev.filter((x) => x.id !== id))
+    promptsStore.set((prev) => prev.filter((x) => x.id !== id))
   }, [])
 
   const importPrompts = React.useCallback((items: Prompt[]) => {
-    setPrompts((prev) => mergeById(prev, items))
+    promptsStore.set((prev) => mergeById(prev, items))
   }, [])
 
   const importWorkflows = React.useCallback((items: Workflow[]) => {
-    setWorkflows((prev) => mergeById(prev, items))
+    workflowsStore.set((prev) => mergeById(prev, items))
   }, [])
 
   const addWorkflow = React.useCallback((w: Workflow) => {
-    setWorkflows((prev) => [w, ...prev])
+    workflowsStore.set((prev) => [w, ...prev])
   }, [])
 
   const updateWorkflow = React.useCallback((w: Workflow) => {
-    setWorkflows((prev) => prev.map((x) => (x.id === w.id ? w : x)))
+    workflowsStore.set((prev) => prev.map((x) => (x.id === w.id ? w : x)))
   }, [])
 
   const deleteWorkflow = React.useCallback((id: string) => {
-    setWorkflows((prev) => prev.filter((x) => x.id !== id))
+    workflowsStore.set((prev) => prev.filter((x) => x.id !== id))
   }, [])
 
   const getPrompt = React.useCallback(
@@ -301,51 +339,51 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   )
 
   const addRun = React.useCallback((run: PromptRun) => {
-    setRuns((prev) => [run, ...prev])
+    runsStore.set((prev) => [run, ...prev])
   }, [])
 
   const updateRun = React.useCallback((run: PromptRun) => {
-    setRuns((prev) => prev.map((x) => (x.id === run.id ? run : x)))
+    runsStore.set((prev) => prev.map((x) => (x.id === run.id ? run : x)))
   }, [])
 
   const deleteRun = React.useCallback((id: string) => {
-    setRuns((prev) => prev.filter((x) => x.id !== id))
+    runsStore.set((prev) => prev.filter((x) => x.id !== id))
   }, [])
 
   const importRuns = React.useCallback((items: PromptRun[]) => {
-    setRuns((prev) => mergeById(prev, items))
+    runsStore.set((prev) => mergeById(prev, items))
   }, [])
 
   const addWorkflowRun = React.useCallback((run: WorkflowRun) => {
-    setWorkflowRuns((prev) => [run, ...prev])
+    workflowRunsStore.set((prev) => [run, ...prev])
   }, [])
 
   const updateWorkflowRun = React.useCallback((run: WorkflowRun) => {
-    setWorkflowRuns((prev) => prev.map((x) => (x.id === run.id ? run : x)))
+    workflowRunsStore.set((prev) => prev.map((x) => (x.id === run.id ? run : x)))
   }, [])
 
   const deleteWorkflowRun = React.useCallback((id: string) => {
-    setWorkflowRuns((prev) => prev.filter((x) => x.id !== id))
+    workflowRunsStore.set((prev) => prev.filter((x) => x.id !== id))
   }, [])
 
   const importWorkflowRuns = React.useCallback((items: WorkflowRun[]) => {
-    setWorkflowRuns((prev) => mergeById(prev, items))
+    workflowRunsStore.set((prev) => mergeById(prev, items))
   }, [])
 
   const addYouTubePackage = React.useCallback((pkg: YouTubePackage) => {
-    setYoutubePackages((prev) => [pkg, ...prev])
+    youtubePackagesStore.set((prev) => [pkg, ...prev])
   }, [])
 
   const updateYouTubePackage = React.useCallback((pkg: YouTubePackage) => {
-    setYoutubePackages((prev) => prev.map((x) => (x.id === pkg.id ? pkg : x)))
+    youtubePackagesStore.set((prev) => prev.map((x) => (x.id === pkg.id ? pkg : x)))
   }, [])
 
   const deleteYouTubePackage = React.useCallback((id: string) => {
-    setYoutubePackages((prev) => prev.filter((x) => x.id !== id))
+    youtubePackagesStore.set((prev) => prev.filter((x) => x.id !== id))
   }, [])
 
   const importYouTubePackages = React.useCallback((items: YouTubePackage[]) => {
-    setYoutubePackages((prev) =>
+    youtubePackagesStore.set((prev) =>
       mergeById(
         prev,
         items.map((item) => normalizeYouTubePackage(item)),
@@ -354,19 +392,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const addMerchIdea = React.useCallback((idea: MerchIdea) => {
-    setMerchIdeas((prev) => [idea, ...prev])
+    merchIdeasStore.set((prev) => [idea, ...prev])
   }, [])
 
   const updateMerchIdea = React.useCallback((idea: MerchIdea) => {
-    setMerchIdeas((prev) => prev.map((x) => (x.id === idea.id ? idea : x)))
+    merchIdeasStore.set((prev) => prev.map((x) => (x.id === idea.id ? idea : x)))
   }, [])
 
   const deleteMerchIdea = React.useCallback((id: string) => {
-    setMerchIdeas((prev) => prev.filter((x) => x.id !== id))
+    merchIdeasStore.set((prev) => prev.filter((x) => x.id !== id))
   }, [])
 
   const importMerchIdeas = React.useCallback((items: MerchIdea[]) => {
-    setMerchIdeas((prev) =>
+    merchIdeasStore.set((prev) =>
       mergeById(
         prev,
         items.map((item) => normalizeMerchIdea(item)),
@@ -375,21 +413,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const addProductListing = React.useCallback((listing: ProductListing) => {
-    setProductListings((prev) => [listing, ...prev])
+    productListingsStore.set((prev) => [listing, ...prev])
   }, [])
 
   const updateProductListing = React.useCallback((listing: ProductListing) => {
-    setProductListings((prev) =>
+    productListingsStore.set((prev) =>
       prev.map((x) => (x.id === listing.id ? listing : x)),
     )
   }, [])
 
   const deleteProductListing = React.useCallback((id: string) => {
-    setProductListings((prev) => prev.filter((x) => x.id !== id))
+    productListingsStore.set((prev) => prev.filter((x) => x.id !== id))
   }, [])
 
   const importProductListings = React.useCallback((items: ProductListing[]) => {
-    setProductListings((prev) =>
+    productListingsStore.set((prev) =>
       mergeById(
         prev,
         items.map((item) => normalizeProductListing(item)),
@@ -399,14 +437,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const addSocialRepurposingRecord = React.useCallback(
     (record: SocialRepurposingRecord) => {
-      setSocialRepurposingRecords((prev) => [record, ...prev])
+      socialRepurposingStore.set((prev) => [record, ...prev])
     },
     [],
   )
 
   const updateSocialRepurposingRecord = React.useCallback(
     (record: SocialRepurposingRecord) => {
-      setSocialRepurposingRecords((prev) =>
+      socialRepurposingStore.set((prev) =>
         prev.map((x) => (x.id === record.id ? record : x)),
       )
     },
@@ -414,12 +452,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   )
 
   const deleteSocialRepurposingRecord = React.useCallback((id: string) => {
-    setSocialRepurposingRecords((prev) => prev.filter((x) => x.id !== id))
+    socialRepurposingStore.set((prev) => prev.filter((x) => x.id !== id))
   }, [])
 
   const importSocialRepurposingRecords = React.useCallback(
     (items: SocialRepurposingRecord[]) => {
-      setSocialRepurposingRecords((prev) =>
+      socialRepurposingStore.set((prev) =>
         mergeById(
           prev,
           items.map((item) => normalizeSocialRepurposingRecord(item)),
@@ -430,19 +468,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   )
 
   const addReleasePlan = React.useCallback((plan: ReleasePlan) => {
-    setReleasePlans((prev) => [plan, ...prev])
+    releasePlansStore.set((prev) => [plan, ...prev])
   }, [])
 
   const updateReleasePlan = React.useCallback((plan: ReleasePlan) => {
-    setReleasePlans((prev) => prev.map((x) => (x.id === plan.id ? plan : x)))
+    releasePlansStore.set((prev) => prev.map((x) => (x.id === plan.id ? plan : x)))
   }, [])
 
   const deleteReleasePlan = React.useCallback((id: string) => {
-    setReleasePlans((prev) => prev.filter((x) => x.id !== id))
+    releasePlansStore.set((prev) => prev.filter((x) => x.id !== id))
   }, [])
 
   const importReleasePlans = React.useCallback((items: ReleasePlan[]) => {
-    setReleasePlans((prev) =>
+    releasePlansStore.set((prev) =>
       mergeById(
         prev,
         items.map((item) => normalizeReleasePlan(item)),
@@ -451,22 +489,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const addAnalyticsRecord = React.useCallback((record: AnalyticsRecord) => {
-    setAnalyticsRecords((prev) => [record, ...prev])
+    analyticsStore.set((prev) => [record, ...prev])
   }, [])
 
   const updateAnalyticsRecord = React.useCallback((record: AnalyticsRecord) => {
-    setAnalyticsRecords((prev) =>
+    analyticsStore.set((prev) =>
       prev.map((x) => (x.id === record.id ? record : x)),
     )
   }, [])
 
   const deleteAnalyticsRecord = React.useCallback((id: string) => {
-    setAnalyticsRecords((prev) => prev.filter((x) => x.id !== id))
+    analyticsStore.set((prev) => prev.filter((x) => x.id !== id))
   }, [])
 
   const importAnalyticsRecords = React.useCallback(
     (items: AnalyticsRecord[]) => {
-      setAnalyticsRecords((prev) =>
+      analyticsStore.set((prev) =>
         mergeById(
           prev,
           items.map((item) => normalizeAnalyticsRecord(item)),
@@ -477,12 +515,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   )
 
   const addMockupPromptRecord = React.useCallback((record: MockupPromptRecord) => {
-    setMockupPromptRecords((prev) => [record, ...prev])
+    mockupPromptsStore.set((prev) => [record, ...prev])
   }, [])
 
   const updateMockupPromptRecord = React.useCallback(
     (record: MockupPromptRecord) => {
-      setMockupPromptRecords((prev) =>
+      mockupPromptsStore.set((prev) =>
         prev.map((x) => (x.id === record.id ? record : x)),
       )
     },
@@ -490,12 +528,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   )
 
   const deleteMockupPromptRecord = React.useCallback((id: string) => {
-    setMockupPromptRecords((prev) => prev.filter((x) => x.id !== id))
+    mockupPromptsStore.set((prev) => prev.filter((x) => x.id !== id))
   }, [])
 
   const importMockupPromptRecords = React.useCallback(
     (items: MockupPromptRecord[]) => {
-      setMockupPromptRecords((prev) =>
+      mockupPromptsStore.set((prev) =>
         mergeById(
           prev,
           items.map((item) => normalizeMockupPromptRecord(item)),
@@ -507,14 +545,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const addEmailCampaignRecord = React.useCallback(
     (record: EmailCampaignRecord) => {
-      setEmailCampaignRecords((prev) => [record, ...prev])
+      emailCampaignsStore.set((prev) => [record, ...prev])
     },
     [],
   )
 
   const updateEmailCampaignRecord = React.useCallback(
     (record: EmailCampaignRecord) => {
-      setEmailCampaignRecords((prev) =>
+      emailCampaignsStore.set((prev) =>
         prev.map((x) => (x.id === record.id ? record : x)),
       )
     },
@@ -522,12 +560,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   )
 
   const deleteEmailCampaignRecord = React.useCallback((id: string) => {
-    setEmailCampaignRecords((prev) => prev.filter((x) => x.id !== id))
+    emailCampaignsStore.set((prev) => prev.filter((x) => x.id !== id))
   }, [])
 
   const importEmailCampaignRecords = React.useCallback(
     (items: EmailCampaignRecord[]) => {
-      setEmailCampaignRecords((prev) =>
+      emailCampaignsStore.set((prev) =>
         mergeById(
           prev,
           items.map((item) => normalizeEmailCampaignRecord(item)),
@@ -538,35 +576,35 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   )
 
   const addArtistRecord = React.useCallback((record: ArtistRecord) => {
-    setArtistRecords((prev) => [record, ...prev])
+    artistRecordsStore.set((prev) => [record, ...prev])
   }, [])
 
   const updateArtistRecord = React.useCallback((record: ArtistRecord) => {
-    setArtistRecords((prev) =>
+    artistRecordsStore.set((prev) =>
       prev.map((x) => (x.id === record.id ? record : x)),
     )
   }, [])
 
   const deleteArtistRecord = React.useCallback((id: string) => {
-    setArtistRecords((prev) => prev.filter((x) => x.id !== id))
+    artistRecordsStore.set((prev) => prev.filter((x) => x.id !== id))
   }, [])
 
   const importArtistRecords = React.useCallback((items: ArtistRecord[]) => {
-    setArtistRecords((prev) =>
+    artistRecordsStore.set((prev) =>
       mergeById(prev, items.map((item) => normalizeArtistRecord(item))),
     )
   }, [])
 
   const addYouTubeThumbnailRecord = React.useCallback(
     (record: YouTubeThumbnailRecord) => {
-      setYoutubeThumbnailRecords((prev) => [record, ...prev])
+      youtubeThumbnailsStore.set((prev) => [record, ...prev])
     },
     [],
   )
 
   const updateYouTubeThumbnailRecord = React.useCallback(
     (record: YouTubeThumbnailRecord) => {
-      setYoutubeThumbnailRecords((prev) =>
+      youtubeThumbnailsStore.set((prev) =>
         prev.map((x) => (x.id === record.id ? record : x)),
       )
     },
@@ -574,12 +612,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   )
 
   const deleteYouTubeThumbnailRecord = React.useCallback((id: string) => {
-    setYoutubeThumbnailRecords((prev) => prev.filter((x) => x.id !== id))
+    youtubeThumbnailsStore.set((prev) => prev.filter((x) => x.id !== id))
   }, [])
 
   const importYouTubeThumbnailRecords = React.useCallback(
     (items: YouTubeThumbnailRecord[]) => {
-      setYoutubeThumbnailRecords((prev) =>
+      youtubeThumbnailsStore.set((prev) =>
         mergeById(
           prev,
           items.map((item) => normalizeYouTubeThumbnailRecord(item)),

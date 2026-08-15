@@ -52,7 +52,6 @@ export function deriveWorkflowRunStatus(
   if (stepRuns.length === 0) return "Not started"
   const anyStarted = stepRuns.some((step) => step.status !== "Not started")
   if (!anyStarted) return "Not started"
-  if (allStepsFinished(stepRuns)) return current === "Complete" ? "Complete" : "In progress"
   return "In progress"
 }
 

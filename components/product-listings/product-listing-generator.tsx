@@ -373,7 +373,7 @@ export function ProductListingGenerator() {
                     </Label>
                     <Select
                       value={form.productType}
-                      onValueChange={(v) => setField("productType", v)}
+                      onValueChange={(v) => v !== null && setField("productType", v)}
                     >
                       <SelectTrigger id={id} className="w-full">
                         <span className="truncate">{form.productType}</span>

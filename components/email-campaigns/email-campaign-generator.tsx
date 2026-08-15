@@ -360,7 +360,7 @@ export function EmailCampaignGenerator() {
                     <Label htmlFor={id}>{label}</Label>
                     <Select
                       value={form.campaignType}
-                      onValueChange={(v) => setField("campaignType", v)}
+                      onValueChange={(v) => v !== null && setField("campaignType", v)}
                     >
                       <SelectTrigger id={id} className="w-full">
                         <span className="truncate">{form.campaignType}</span>
@@ -383,7 +383,7 @@ export function EmailCampaignGenerator() {
                     <Label htmlFor={id}>{label}</Label>
                     <Select
                       value={form.businessArea}
-                      onValueChange={(v) => setField("businessArea", v)}
+                      onValueChange={(v) => v !== null && setField("businessArea", v)}
                     >
                       <SelectTrigger id={id} className="w-full">
                         <span className="truncate">{form.businessArea}</span>

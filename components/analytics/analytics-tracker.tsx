@@ -147,6 +147,23 @@ function formFromRecord(record: AnalyticsRecord): AnalyticsFormState {
   return rest
 }
 
+function SortIcon({
+  column,
+  sortKey,
+  sortDir,
+}: {
+  column: AnalyticsSortKey
+  sortKey: AnalyticsSortKey
+  sortDir: "asc" | "desc"
+}) {
+  if (sortKey !== column) return <ArrowUpDown className="size-3.5 opacity-40" />
+  return sortDir === "asc" ? (
+    <ArrowUp className="size-3.5" />
+  ) : (
+    <ArrowDown className="size-3.5" />
+  )
+}
+
 function SummaryCard({
   label,
   value,
@@ -195,7 +212,7 @@ export function AnalyticsTracker() {
     null,
   )
   const fileInputRef = React.useRef<HTMLInputElement>(null)
-  const prefillApplied = React.useRef(false)
+  const [prefillApplied, setPrefillApplied] = React.useState(false)
   const searchParams = useSearchParams()
 
   const summary = React.useMemo(
@@ -205,7 +222,7 @@ export function AnalyticsTracker() {
 
   const filteredRecords = React.useMemo(() => {
     const q = recordSearch.trim().toLowerCase()
-    let results = analyticsRecords.filter((record) => {
+    const results = analyticsRecords.filter((record) => {
       if (filterItemType !== "all" && record.itemType !== filterItemType) {
         return false
       }
@@ -273,9 +290,11 @@ export function AnalyticsTracker() {
     toast.success("Analytics record loaded")
   }
 
-  React.useEffect(() => {
-    if (prefillApplied.current) return
-
+  // Prefill once from artist-CRM query params. Applied during render (not an
+  // effect) so the state update stays synchronous with the initial paint;
+  // the toast is the only real side effect, so it's the only part left in
+  // an effect, and that effect never calls a state setter.
+  if (!prefillApplied) {
     const relatedArtist = searchParams.get("relatedArtist")
     const relatedSong = searchParams.get("relatedSong")
     const itemName = searchParams.get("itemName")
@@ -283,29 +302,23 @@ export function AnalyticsTracker() {
     const mood = searchParams.get("mood")
     const url = searchParams.get("url")
 
-    if (
-      !relatedArtist &&
-      !relatedSong &&
-      !itemName &&
-      !genre &&
-      !mood &&
-      !url
-    ) {
-      return
+    if (relatedArtist || relatedSong || itemName || genre || mood || url) {
+      setPrefillApplied(true)
+      setForm((prev) => ({
+        ...prev,
+        relatedArtist: relatedArtist ?? prev.relatedArtist,
+        relatedSong: relatedSong ?? prev.relatedSong,
+        itemName: itemName ?? prev.itemName,
+        genre: genre ?? prev.genre,
+        mood: mood ?? prev.mood,
+        url: url ?? prev.url,
+      }))
     }
+  }
 
-    prefillApplied.current = true
-    setForm((prev) => ({
-      ...prev,
-      relatedArtist: relatedArtist ?? prev.relatedArtist,
-      relatedSong: relatedSong ?? prev.relatedSong,
-      itemName: itemName ?? prev.itemName,
-      genre: genre ?? prev.genre,
-      mood: mood ?? prev.mood,
-      url: url ?? prev.url,
-    }))
-    toast.success("Prefilled from artist CRM")
-  }, [searchParams])
+  React.useEffect(() => {
+    if (prefillApplied) toast.success("Prefilled from artist CRM")
+  }, [prefillApplied])
 
   function handleSave() {
     const now = Date.now()
@@ -382,15 +395,6 @@ export function AnalyticsTracker() {
       setSortKey(key)
       setSortDir("desc")
     }
-  }
-
-  function SortIcon({ column }: { column: AnalyticsSortKey }) {
-    if (sortKey !== column) return <ArrowUpDown className="size-3.5 opacity-40" />
-    return sortDir === "asc" ? (
-      <ArrowUp className="size-3.5" />
-    ) : (
-      <ArrowDown className="size-3.5" />
-    )
   }
 
   function toggleSelect(id: string) {
@@ -482,7 +486,7 @@ export function AnalyticsTracker() {
                       <Label htmlFor={id}>{label}</Label>
                       <Select
                         value={form.itemType}
-                        onValueChange={(v) => setField("itemType", v)}
+                        onValueChange={(v) => v !== null && setField("itemType", v)}
                       >
                         <SelectTrigger id={id} className="w-full">
                           <span className="truncate">{form.itemType}</span>
@@ -505,7 +509,7 @@ export function AnalyticsTracker() {
                       <Label htmlFor={id}>{label}</Label>
                       <Select
                         value={form.platform}
-                        onValueChange={(v) => setField("platform", v)}
+                        onValueChange={(v) => v !== null && setField("platform", v)}
                       >
                         <SelectTrigger id={id} className="w-full">
                           <span className="truncate">{form.platform}</span>
@@ -683,7 +687,7 @@ export function AnalyticsTracker() {
                 className="pl-8"
               />
             </div>
-            <Select value={filterItemType} onValueChange={setFilterItemType}>
+            <Select value={filterItemType} onValueChange={(v) => v !== null && setFilterItemType(v)}>
               <SelectTrigger className="w-full lg:w-44">
                 <span className="truncate">
                   {filterItemType === "all" ? "All item types" : filterItemType}
@@ -698,7 +702,7 @@ export function AnalyticsTracker() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={filterPlatform} onValueChange={setFilterPlatform}>
+            <Select value={filterPlatform} onValueChange={(v) => v !== null && setFilterPlatform(v)}>
               <SelectTrigger className="w-full lg:w-40">
                 <span className="truncate">
                   {filterPlatform === "all" ? "All platforms" : filterPlatform}
@@ -768,7 +772,7 @@ export function AnalyticsTracker() {
                       onClick={() => toggleSort("views")}
                     >
                       Views
-                      <SortIcon column="views" />
+                      <SortIcon column="views" sortKey={sortKey} sortDir={sortDir} />
                     </button>
                   </TableHead>
                   <TableHead>
@@ -778,7 +782,7 @@ export function AnalyticsTracker() {
                       onClick={() => toggleSort("clicks")}
                     >
                       Clicks
-                      <SortIcon column="clicks" />
+                      <SortIcon column="clicks" sortKey={sortKey} sortDir={sortDir} />
                     </button>
                   </TableHead>
                   <TableHead>
@@ -788,7 +792,7 @@ export function AnalyticsTracker() {
                       onClick={() => toggleSort("sales")}
                     >
                       Sales
-                      <SortIcon column="sales" />
+                      <SortIcon column="sales" sortKey={sortKey} sortDir={sortDir} />
                     </button>
                   </TableHead>
                   <TableHead>
@@ -798,7 +802,7 @@ export function AnalyticsTracker() {
                       onClick={() => toggleSort("revenue")}
                     >
                       Revenue
-                      <SortIcon column="revenue" />
+                      <SortIcon column="revenue" sortKey={sortKey} sortDir={sortDir} />
                     </button>
                   </TableHead>
                   <TableHead>
@@ -808,7 +812,7 @@ export function AnalyticsTracker() {
                       onClick={() => toggleSort("rating")}
                     >
                       Rating
-                      <SortIcon column="rating" />
+                      <SortIcon column="rating" sortKey={sortKey} sortDir={sortDir} />
                     </button>
                   </TableHead>
                   <TableHead className="text-right">Actions</TableHead>

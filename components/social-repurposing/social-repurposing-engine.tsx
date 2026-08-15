@@ -187,7 +187,7 @@ export function SocialRepurposingEngine() {
   const [pendingDelete, setPendingDelete] =
     React.useState<SocialRepurposingRecord | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
-  const prefillApplied = React.useRef(false)
+  const [prefillApplied, setPrefillApplied] = React.useState(false)
   const searchParams = useSearchParams()
 
   const template = React.useMemo(
@@ -308,36 +308,33 @@ export function SocialRepurposingEngine() {
     toast.success("Social content loaded")
   }
 
-  React.useEffect(() => {
-    if (prefillApplied.current) return
-
+  // Prefill once from artist-CRM query params. Applied during render (not an
+  // effect) so the state update stays synchronous with the initial paint;
+  // the toast is the only real side effect, so it's the only part left in
+  // an effect, and that effect never calls a state setter.
+  if (!prefillApplied) {
     const campaignName = searchParams.get("campaignName")
     const audience = searchParams.get("audience")
     const tone = searchParams.get("tone")
     const sourceContent = searchParams.get("sourceContent")
     const productOrReleaseLink = searchParams.get("productOrReleaseLink")
 
-    if (
-      !campaignName &&
-      !audience &&
-      !tone &&
-      !sourceContent &&
-      !productOrReleaseLink
-    ) {
-      return
+    if (campaignName || audience || tone || sourceContent || productOrReleaseLink) {
+      setPrefillApplied(true)
+      setForm((prev) => ({
+        ...prev,
+        campaignName: campaignName ?? prev.campaignName,
+        audience: audience ?? prev.audience,
+        tone: tone ?? prev.tone,
+        sourceContent: sourceContent ?? prev.sourceContent,
+        productOrReleaseLink: productOrReleaseLink ?? prev.productOrReleaseLink,
+      }))
     }
+  }
 
-    prefillApplied.current = true
-    setForm((prev) => ({
-      ...prev,
-      campaignName: campaignName ?? prev.campaignName,
-      audience: audience ?? prev.audience,
-      tone: tone ?? prev.tone,
-      sourceContent: sourceContent ?? prev.sourceContent,
-      productOrReleaseLink: productOrReleaseLink ?? prev.productOrReleaseLink,
-    }))
-    toast.success("Prefilled from artist CRM")
-  }, [searchParams])
+  React.useEffect(() => {
+    if (prefillApplied) toast.success("Prefilled from artist CRM")
+  }, [prefillApplied])
 
   function confirmDelete() {
     if (!pendingDelete) return
@@ -416,7 +413,7 @@ export function SocialRepurposingEngine() {
                     </Label>
                     <Select
                       value={form.contentType}
-                      onValueChange={(v) => setField("contentType", v)}
+                      onValueChange={(v) => v !== null && setField("contentType", v)}
                     >
                       <SelectTrigger id={id} className="w-full">
                         <span className="truncate">{form.contentType}</span>
@@ -441,7 +438,7 @@ export function SocialRepurposingEngine() {
                     </Label>
                     <Select
                       value={form.businessArea}
-                      onValueChange={(v) => setField("businessArea", v)}
+                      onValueChange={(v) => v !== null && setField("businessArea", v)}
                     >
                       <SelectTrigger id={id} className="w-full">
                         <span className="truncate">{form.businessArea}</span>

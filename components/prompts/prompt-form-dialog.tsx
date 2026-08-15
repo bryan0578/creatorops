@@ -59,14 +59,22 @@ export function PromptFormDialog({
   const [draft, setDraft] = React.useState<Prompt>(emptyPrompt())
   const [variablesText, setVariablesText] = React.useState("")
   const [tagsText, setTagsText] = React.useState("")
+  const [wasOpen, setWasOpen] = React.useState(false)
 
-  React.useEffect(() => {
-    if (!open) return
+  // Reset the draft each time the dialog transitions from closed to open.
+  // `initial` is set by the caller right before `open` flips true and stays
+  // stable for the rest of the session, so comparing `open` alone is enough
+  // — done during render (guarded, not unconditional) rather than in an
+  // effect, since this is a plain state derivation with no side effect.
+  if (open && !wasOpen) {
+    setWasOpen(true)
     const base = initial ? { ...initial } : emptyPrompt()
     setDraft(base)
     setVariablesText(base.variables.join(", "))
     setTagsText(base.tags.join(", "))
-  }, [open, initial])
+  } else if (!open && wasOpen) {
+    setWasOpen(false)
+  }
 
   function set<K extends keyof Prompt>(key: K, value: Prompt[K]) {
     setDraft((prev) => ({ ...prev, [key]: value }))

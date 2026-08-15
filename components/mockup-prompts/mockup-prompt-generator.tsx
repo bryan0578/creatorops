@@ -377,7 +377,7 @@ export function MockupPromptGenerator() {
                     <Label htmlFor={id}>{label}</Label>
                     <Select
                       value={form.mockupType}
-                      onValueChange={(v) => setField("mockupType", v)}
+                      onValueChange={(v) => v !== null && setField("mockupType", v)}
                     >
                       <SelectTrigger id={id} className="w-full">
                         <span className="truncate">{form.mockupType}</span>
@@ -400,7 +400,7 @@ export function MockupPromptGenerator() {
                     <Label htmlFor={id}>{label}</Label>
                     <Select
                       value={form.platformUse}
-                      onValueChange={(v) => setField("platformUse", v)}
+                      onValueChange={(v) => v !== null && setField("platformUse", v)}
                     >
                       <SelectTrigger id={id} className="w-full">
                         <span className="truncate">{form.platformUse}</span>
@@ -423,7 +423,7 @@ export function MockupPromptGenerator() {
                     <Label htmlFor={id}>{label}</Label>
                     <Select
                       value={form.aspectRatio}
-                      onValueChange={(v) => setField("aspectRatio", v)}
+                      onValueChange={(v) => v !== null && setField("aspectRatio", v)}
                     >
                       <SelectTrigger id={id} className="w-full">
                         <span className="truncate">{form.aspectRatio}</span>

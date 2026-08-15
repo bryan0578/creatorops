@@ -147,7 +147,7 @@ export function YouTubePackagingTool() {
     null,
   )
   const fileInputRef = React.useRef<HTMLInputElement>(null)
-  const prefillApplied = React.useRef(false)
+  const [prefillApplied, setPrefillApplied] = React.useState(false)
   const searchParams = useSearchParams()
 
   const template = React.useMemo(
@@ -267,9 +267,11 @@ export function YouTubePackagingTool() {
     toast.success("Package loaded")
   }
 
-  React.useEffect(() => {
-    if (prefillApplied.current) return
-
+  // Prefill once from artist-CRM query params. Applied during render (not an
+  // effect) so the state update stays synchronous with the initial paint;
+  // the toast is the only real side effect, so it's the only part left in
+  // an effect, and that effect never calls a state setter.
+  if (!prefillApplied) {
     const artistName = searchParams.get("artistName")
     const trackTitle = searchParams.get("trackTitle")
     const genre = searchParams.get("genre")
@@ -281,34 +283,35 @@ export function YouTubePackagingTool() {
     const streamingLink = searchParams.get("streamingLink")
 
     if (
-      !artistName &&
-      !trackTitle &&
-      !genre &&
-      !mood &&
-      !visualTheme &&
-      !channelName &&
-      !targetListener &&
-      !releaseDate &&
-      !streamingLink
+      artistName ||
+      trackTitle ||
+      genre ||
+      mood ||
+      visualTheme ||
+      channelName ||
+      targetListener ||
+      releaseDate ||
+      streamingLink
     ) {
-      return
+      setPrefillApplied(true)
+      setForm((prev) => ({
+        ...prev,
+        artistName: artistName ?? prev.artistName,
+        trackTitle: trackTitle ?? prev.trackTitle,
+        genre: genre ?? prev.genre,
+        mood: mood ?? prev.mood,
+        visualTheme: visualTheme ?? prev.visualTheme,
+        channelName: channelName ?? prev.channelName,
+        targetListener: targetListener ?? prev.targetListener,
+        releaseDate: releaseDate ?? prev.releaseDate,
+        streamingLink: streamingLink ?? prev.streamingLink,
+      }))
     }
+  }
 
-    prefillApplied.current = true
-    setForm((prev) => ({
-      ...prev,
-      artistName: artistName ?? prev.artistName,
-      trackTitle: trackTitle ?? prev.trackTitle,
-      genre: genre ?? prev.genre,
-      mood: mood ?? prev.mood,
-      visualTheme: visualTheme ?? prev.visualTheme,
-      channelName: channelName ?? prev.channelName,
-      targetListener: targetListener ?? prev.targetListener,
-      releaseDate: releaseDate ?? prev.releaseDate,
-      streamingLink: streamingLink ?? prev.streamingLink,
-    }))
-    toast.success("Prefilled from artist CRM")
-  }, [searchParams])
+  React.useEffect(() => {
+    if (prefillApplied) toast.success("Prefilled from artist CRM")
+  }, [prefillApplied])
 
   function confirmDelete() {
     if (!pendingDelete) return
@@ -398,7 +401,7 @@ export function YouTubePackagingTool() {
                     </Label>
                     <Select
                       value={form.videoType}
-                      onValueChange={(v) => setField("videoType", v)}
+                      onValueChange={(v) => v !== null && setField("videoType", v)}
                     >
                       <SelectTrigger id={id} className="w-full">
                         <span className="truncate">{form.videoType}</span>
@@ -423,7 +426,7 @@ export function YouTubePackagingTool() {
                     </Label>
                     <Select
                       value={form.primaryGoal}
-                      onValueChange={(v) => setField("primaryGoal", v)}
+                      onValueChange={(v) => v !== null && setField("primaryGoal", v)}
                     >
                       <SelectTrigger id={id} className="w-full">
                         <span className="truncate">{form.primaryGoal}</span>

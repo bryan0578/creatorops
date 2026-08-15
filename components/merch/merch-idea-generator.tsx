@@ -371,7 +371,7 @@ export function MerchIdeaGenerator() {
                     </Label>
                     <Select
                       value={form[field]}
-                      onValueChange={(v) => setField(field, v)}
+                      onValueChange={(v) => v !== null && setField(field, v)}
                     >
                       <SelectTrigger id={id} className="w-full">
                         <span className="truncate">{form[field]}</span>

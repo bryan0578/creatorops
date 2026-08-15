@@ -1,12 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   images: {
+    // The Dorsyth Digital wordmark on /about is an SVG; Next's image
+    // optimizer requires extra allowlisting for SVGs, so this app opts out
+    // of optimization entirely rather than special-case one logo.
     unoptimized: true,
   },
-  allowedDevOrigins: ['192.168.4.65'],
 }
 
 export default nextConfig

@@ -212,11 +212,19 @@ export function WorkflowFormDialog({
   onSave: (workflow: Workflow) => void
 }) {
   const [draft, setDraft] = React.useState<Workflow>(emptyWorkflow())
+  const [wasOpen, setWasOpen] = React.useState(false)
 
-  React.useEffect(() => {
-    if (!open) return
+  // Reset the draft each time the dialog transitions from closed to open.
+  // `initial` is set by the caller right before `open` flips true and stays
+  // stable for the rest of the session, so comparing `open` alone is enough
+  // — done during render (guarded, not unconditional) rather than in an
+  // effect, since this is a plain state derivation with no side effect.
+  if (open && !wasOpen) {
+    setWasOpen(true)
     setDraft(initial ? { ...initial, steps: [...initial.steps] } : emptyWorkflow())
-  }, [open, initial])
+  } else if (!open && wasOpen) {
+    setWasOpen(false)
+  }
 
   function set<K extends keyof Workflow>(key: K, value: Workflow[K]) {
     setDraft((prev) => ({ ...prev, [key]: value }))
@@ -296,7 +304,7 @@ export function WorkflowFormDialog({
                   <Label htmlFor="wf-category">Category</Label>
                   <Select
                     value={draft.category}
-                    onValueChange={(v) => set("category", v as PromptCategory)}
+                    onValueChange={(v) => v !== null && set("category", v as PromptCategory)}
                   >
                     <SelectTrigger id="wf-category">
                       <SelectValue />
@@ -327,7 +335,7 @@ export function WorkflowFormDialog({
                   <Label htmlFor="wf-status">Status</Label>
                   <Select
                     value={draft.status}
-                    onValueChange={(v) => set("status", v as WorkflowStatus)}
+                    onValueChange={(v) => v !== null && set("status", v as WorkflowStatus)}
                   >
                     <SelectTrigger id="wf-status">
                       <SelectValue />

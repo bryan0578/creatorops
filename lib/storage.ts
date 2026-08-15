@@ -303,6 +303,47 @@ export function saveYouTubeThumbnailRecords(
   localStorage.setItem(YOUTUBE_THUMBNAILS_KEY, JSON.stringify(records))
 }
 
+/**
+ * A localStorage-backed list store exposed through React's
+ * `useSyncExternalStore` contract. `getServerSnapshot` always returns the
+ * stable `seed` reference so server render and the first client render
+ * agree; `getSnapshot` reads the real client value once (caching it) so
+ * later renders don't need to re-parse `localStorage`.
+ */
+export function createPersistedListStore<T>(
+  seed: T[],
+  load: () => T[],
+  save: (items: T[]) => void,
+) {
+  let cache: T[] | null = null
+  const listeners = new Set<() => void>()
+
+  function getSnapshot(): T[] {
+    if (cache === null) {
+      cache = typeof window === "undefined" ? seed : load()
+    }
+    return cache
+  }
+
+  function getServerSnapshot(): T[] {
+    return seed
+  }
+
+  function subscribe(callback: () => void): () => void {
+    listeners.add(callback)
+    return () => listeners.delete(callback)
+  }
+
+  function set(updater: (prev: T[]) => T[]): void {
+    const next = updater(getSnapshot())
+    cache = next
+    save(next)
+    listeners.forEach((listener) => listener())
+  }
+
+  return { getSnapshot, getServerSnapshot, subscribe, set }
+}
+
 export function mergeById<T extends { id: string }>(existing: T[], incoming: T[]): T[] {
   const map = new Map(existing.map((item) => [item.id, item]))
   for (const item of incoming) map.set(item.id, item)

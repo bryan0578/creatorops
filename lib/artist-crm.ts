@@ -31,9 +31,7 @@ import {
   getYouTubeMetadataTemplate,
 } from "@/lib/youtube-packaging"
 import {
-  buildFinalThumbnailText,
   buildYouTubeThumbnailCompletedPrompt,
-  finalFieldsFromThumbnailRecord,
   getYouTubeThumbnailTemplate,
 } from "@/lib/youtube-thumbnails"
 import { createId } from "@/lib/storage"

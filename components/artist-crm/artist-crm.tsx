@@ -418,7 +418,7 @@ export function ArtistCrm() {
                       <Label htmlFor={id}>{label}</Label>
                       <Select
                         value={form.artistType}
-                        onValueChange={(v) => setField("artistType", v)}
+                        onValueChange={(v) => v !== null && setField("artistType", v)}
                       >
                         <SelectTrigger id={id} className="w-full">
                           <span className="truncate">{form.artistType}</span>
@@ -773,6 +773,7 @@ export function ArtistCrm() {
                             <Select
                               value={release.status}
                               onValueChange={(v) =>
+                                v !== null &&
                                 updateRelease(release.id, { status: v })
                               }
                             >
@@ -857,7 +858,7 @@ export function ArtistCrm() {
                               value={release.thumbnailRecordId || "none"}
                               onValueChange={(v) =>
                                 updateRelease(release.id, {
-                                  thumbnailRecordId: v === "none" ? "" : v,
+                                  thumbnailRecordId: !v || v === "none" ? "" : v,
                                 })
                               }
                             >
@@ -894,7 +895,7 @@ export function ArtistCrm() {
                               onValueChange={(v) =>
                                 updateRelease(release.id, {
                                   youtubePackagingRecordId:
-                                    v === "none" ? "" : v,
+                                    !v || v === "none" ? "" : v,
                                 })
                               }
                             >
@@ -931,7 +932,7 @@ export function ArtistCrm() {
                               value={release.releasePlanRecordId || "none"}
                               onValueChange={(v) =>
                                 updateRelease(release.id, {
-                                  releasePlanRecordId: v === "none" ? "" : v,
+                                  releasePlanRecordId: !v || v === "none" ? "" : v,
                                 })
                               }
                             >
@@ -967,7 +968,7 @@ export function ArtistCrm() {
                               value={release.analyticsRecordId || "none"}
                               onValueChange={(v) =>
                                 updateRelease(release.id, {
-                                  analyticsRecordId: v === "none" ? "" : v,
+                                  analyticsRecordId: !v || v === "none" ? "" : v,
                                 })
                               }
                             >
@@ -1184,7 +1185,7 @@ export function ArtistCrm() {
                             <Select
                               value={product.status}
                               onValueChange={(v) =>
-                                updateMerch(product.id, { status: v })
+                                v !== null && updateMerch(product.id, { status: v })
                               }
                             >
                               <SelectTrigger className="w-full">
@@ -1312,6 +1313,7 @@ export function ArtistCrm() {
                             <Select
                               value={campaign.status}
                               onValueChange={(v) =>
+                                v !== null &&
                                 updateCampaign(campaign.id, { status: v })
                               }
                             >

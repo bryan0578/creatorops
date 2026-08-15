@@ -182,7 +182,7 @@ export function PromptLibrary() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={minRating} onValueChange={setMinRating}>
+        <Select value={minRating} onValueChange={(v) => v !== null && setMinRating(v)}>
           <SelectTrigger className="sm:w-40">
             <SelectValue placeholder="Rating" />
           </SelectTrigger>
@@ -249,8 +249,8 @@ export function PromptLibrary() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+            <DialogClose render={<Button variant="outline" />}>
+              Cancel
             </DialogClose>
             <Button variant="destructive" onClick={confirmDelete}>
               Delete
