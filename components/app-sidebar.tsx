@@ -102,6 +102,12 @@ export function AppSidebar() {
         <p className="px-2 py-1 text-xs text-muted-foreground text-balance">
           Data is saved locally in this browser.
         </p>
+        <Link
+          href="/about"
+          className="px-2 py-1 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+        >
+          About
+        </Link>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
